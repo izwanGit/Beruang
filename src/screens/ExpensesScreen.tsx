@@ -8,6 +8,7 @@ import {
   ScrollView,
   StatusBar,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
@@ -15,13 +16,13 @@ import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIc
 import { COLORS } from '../constants/colors';
 import { DonutChart } from '../components/DonutChart';
 import { transactionItemStyles } from '../styles/transactionItemStyles';
-import { Screen } from './HomeScreen';
+import { Screen } from './HomeScreen'; // Import Screen type
 
 type ExpensesScreenProps = {
   onBack: () => void;
   transactions: Array<any>;
   onNavigate: (screen: Screen) => void;
-  onAskAI: (message: string) => void; // This prop stays
+  onAskAI: (message: string) => void;
 };
 
 const categoryIcons = {
@@ -44,9 +45,12 @@ const categoryColors = [
   '#C9CBCF',
 ];
 
-// Helper function to group expenses
 const getSubCategoryGroups = (expenseList: Array<any>) => {
-  return expenseList.reduce((acc, t) => {
+  const spendableExpenses = expenseList.filter(
+    (t) => t.category === 'needs' || t.category === 'wants' || t.category === 'others'
+  );
+  
+  return spendableExpenses.reduce((acc, t) => {
     if (!acc[t.subCategory]) {
       acc[t.subCategory] = { amount: 0, count: 0 };
     }
@@ -60,7 +64,7 @@ export const ExpensesScreen = ({
   onBack,
   transactions,
   onNavigate,
-  onAskAI, // We still need this prop
+  onAskAI,
 }: ExpensesScreenProps) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [activeTab, setActiveTab] = useState('latest');
@@ -80,21 +84,32 @@ export const ExpensesScreen = ({
 
   const currentYear = currentDate.getFullYear();
 
-  const filteredTransactions = transactions.filter((t) => {
+  const allMonthlyTransactions = transactions.filter((t) => {
     const txDate = new Date(t.date);
     const txMonth = txDate.getMonth() + 1;
     const txYear = txDate.getFullYear();
     return txMonth === selectedMonth && txYear === currentYear;
   });
 
-  const expenses = filteredTransactions.filter((t) => t.type === 'expense');
+  const latestTransactions = allMonthlyTransactions.filter((t) => {
+    if (t.type === 'expense' && (t.category === 'needs' || t.category === 'wants' || t.category === 'others')) {
+      return true;
+    }
+    if (t.type === 'income' && !t.isCarriedOver) {
+      return true;
+    }
+    return false;
+  });
+
+  const expenses = allMonthlyTransactions.filter(
+    (t) => t.type === 'expense' && (t.category === 'needs' || t.category === 'wants' || t.category === 'others')
+  );
   const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
 
-  const incomeForMonth = filteredTransactions
-    .filter((t) => t.type === 'income')
+  const incomeForMonth = allMonthlyTransactions
+    .filter((t) => t.type === 'income' && !t.isCarriedOver)
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // Calculate Needs/Wants lists and totals
   const needsExpenses = expenses.filter((t) => t.category === 'needs');
   const wantsExpenses = expenses.filter((t) => t.category === 'wants');
 
@@ -104,10 +119,9 @@ export const ExpensesScreen = ({
   const needsBudget = incomeForMonth * 0.5;
   const wantsBudget = incomeForMonth * 0.3;
 
-  // Dynamic data for Chart and Category Scroll
   let chartData;
   let totalForChart;
-  let subCategoryGroups; // This will be used for the horizontal scroll
+  let subCategoryGroups;
 
   if (activeTab === 'needs') {
     subCategoryGroups = getSubCategoryGroups(needsExpenses);
@@ -116,7 +130,6 @@ export const ExpensesScreen = ({
     subCategoryGroups = getSubCategoryGroups(wantsExpenses);
     totalForChart = wantsForMonth;
   } else {
-    // 'latest' tab
     subCategoryGroups = getSubCategoryGroups(expenses);
     totalForChart = totalExpenses;
   }
@@ -129,13 +142,11 @@ export const ExpensesScreen = ({
     }),
   );
 
-  // Create color map from chartData
   const colorMap: Record<string, string> = chartData.reduce((acc, slice) => {
     acc[slice.name] = slice.color;
     return acc;
   }, {} as Record<string, string>);
 
-  // --- This function's logic remains the same ---
   const handleAskAI = () => {
     const monthName = monthNames[selectedMonth - 1];
     let context = `I'm looking at my expenses for ${monthName}. `;
@@ -163,11 +174,9 @@ export const ExpensesScreen = ({
 
     const message = `${context}Can you give me some advice or insights based on this?`;
     
-    // Call the new prop which will be handled by App.tsx
     onAskAI(message);
   };
 
-  // Reusable component for budget breakdown
   const BudgetCategoryView: React.FC<{
     title: string;
     spent: number;
@@ -217,13 +226,11 @@ export const ExpensesScreen = ({
     <View style={expensesStyles.container}>
       <SafeAreaView style={expensesStyles.safeAreaContent} edges={['top', 'left', 'right']}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-        {/* --- HEADER Restored to original state --- */}
         <View style={expensesStyles.header}>
           <TouchableOpacity onPress={onBack} style={expensesStyles.backButton}>
             <Icon name="arrow-left" size={24} color={COLORS.accent} />
           </TouchableOpacity>
           <Text style={expensesStyles.headerTitle}>Expenses</Text>
-          {/* This spacer view centers the title */}
           <View style={{ width: 40 }} /> 
         </View>
 
@@ -251,16 +258,15 @@ export const ExpensesScreen = ({
             ))}
           </View>
 
-          {/* --- MODIFIED CHART CONTAINER --- */}
+          {/* --- CHART CONTAINER --- */}
           <View style={expensesStyles.chartContainer}>
             <DonutChart data={chartData} total={totalForChart} />
-            {/* --- MODIFIED BUTTON ICON --- */}
             <TouchableOpacity onPress={handleAskAI} style={expensesStyles.aiChartButton}>
               <MaterialCommunityIcon name="robot-outline" size={24} color={COLORS.accent} />
             </TouchableOpacity>
           </View>
 
-          {/* Horizontal Scroll also uses dynamic data */}
+          {/* Horizontal Scroll */}
           {totalForChart > 0 && (
             <ScrollView
               horizontal
@@ -346,8 +352,8 @@ export const ExpensesScreen = ({
           {/* Tab Content */}
           {activeTab === 'latest' ? (
             <View>
-              {filteredTransactions.length > 0 ? (
-                filteredTransactions
+              {latestTransactions.length > 0 ? (
+                latestTransactions
                   .slice()
                   .reverse()
                   .map((item) => (
@@ -389,7 +395,7 @@ export const ExpensesScreen = ({
                   ))
               ) : (
                 <Text style={expensesStyles.merchantsText}>
-                  No transactions for {monthNames[selectedMonth - 1]}.
+                  No spendable transactions for {monthNames[selectedMonth - 1]}.
                 </Text>
               )}
             </View>
@@ -404,7 +410,7 @@ export const ExpensesScreen = ({
                 />
               ) : (
                 <Text style={expensesStyles.merchantsText}>
-                  No income recorded for {monthNames[selectedMonth - 1]} to calculate budget.
+                  No new income recorded for {monthNames[selectedMonth - 1]} to calculate budget.
                 </Text>
               )}
             </View>
@@ -419,7 +425,7 @@ export const ExpensesScreen = ({
                 />
               ) : (
                 <Text style={expensesStyles.merchantsText}>
-                  No income recorded for {monthNames[selectedMonth - 1]} to calculate budget.
+                  No new income recorded for {monthNames[selectedMonth - 1]} to calculate budget.
                 </Text>
               )}
             </View>
@@ -427,7 +433,7 @@ export const ExpensesScreen = ({
         </ScrollView>
       </SafeAreaView>
 
-      {/* Mock Bottom Tab Navigator */}
+      {/* Bottom Tab Navigator */}
       <SafeAreaView style={expensesStyles.bottomNavSafeArea} edges={['bottom']}>
         <View style={expensesStyles.bottomNav}>
           <TouchableOpacity
@@ -444,8 +450,6 @@ export const ExpensesScreen = ({
             <Icon name="pie-chart" size={26} color={COLORS.accent} />
             <Text style={expensesStyles.navTextActive}>Expenses</Text>
           </TouchableOpacity>
-
-          {/* --- FAB WAS HERE, NOW REMOVED --- */}
           
           <TouchableOpacity
             style={expensesStyles.navItem}
@@ -454,7 +458,8 @@ export const ExpensesScreen = ({
             <Icon name="message-square" size={26} color={COLORS.darkGray} />
             <Text style={expensesStyles.navText}>Chatbot</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={expensesStyles.navItem}>
+          {/* --- MODIFIED: Link to Profile --- */}
+          <TouchableOpacity style={expensesStyles.navItem} onPress={() => onNavigate('Profile')}>
             <Icon name="user" size={26} color={COLORS.darkGray} />
             <Text style={expensesStyles.navText}>Profile</Text>
           </TouchableOpacity>
@@ -477,7 +482,7 @@ const expensesStyles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between', // This centers title with spacer
+    justifyContent: 'space-between',
     paddingHorizontal: 15,
     paddingVertical: 10,
     paddingTop: 20,
@@ -521,25 +526,24 @@ const expensesStyles = StyleSheet.create({
   chartContainer: {
     alignItems: 'center',
     marginBottom: 20,
-    position: 'relative', // This is CRITICAL for absolute positioning
+    position: 'relative',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
-  // --- MODIFIED STYLE for floating AI Button ---
   aiChartButton: {
     position: 'absolute',
     top: 10,
     right: 10,
-    backgroundColor: COLORS.white, // Changed to white
-    padding: 12, // Adjusted padding
-    borderRadius: 30, // Kept it circular
-    elevation: 4, // Increased elevation for better "pop"
+    backgroundColor: COLORS.white,
+    padding: 12,
+    borderRadius: 30,
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2, // Increased shadow
+    shadowOpacity: 0.2,
     shadowRadius: 4,
   },
   tabContainer: {
@@ -657,8 +661,6 @@ const expensesStyles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-
-  // Styles for Bottom Nav
   bottomNavSafeArea: {
     backgroundColor: COLORS.white,
   },
@@ -687,5 +689,5 @@ const expensesStyles = StyleSheet.create({
     marginTop: 2,
     fontWeight: 'bold',
   },
-  // --- fab STYLE WAS HERE, NOW REMOVED ---
 });
+

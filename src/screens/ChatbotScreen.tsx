@@ -9,28 +9,35 @@ import {
   StatusBar,
   ActivityIndicator,
   FlatList,
+  Alert, // <-- ADDED
+  Clipboard, // <-- ADDED
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import { COLORS } from '../constants/colors';
 
-// --- NEW: Import navigation types ---
+// --- Import navigation types ---
 import { RouteProp } from '@react-navigation/native';
 // Adjust this path if your App.tsx is in a different location
-import { RootStackParamList } from '../../App'; 
+import { RootStackParamList } from '../../App';
 
-// --- NEW: Define the route prop type ---
+// --- Define the route prop type ---
 type ChatbotScreenRouteProp = RouteProp<RootStackParamList, 'Chatbot'>;
 
-// --- MODIFIED: Update props type ---
+// --- Props type ---
 type ChatbotScreenProps = {
   onBack: () => void;
   transactions: Array<any>;
-  route: ChatbotScreenRouteProp; // <-- ADDED
+  route: ChatbotScreenRouteProp;
+  onSaveAdvice: (messageText: string) => void;
 };
 
-export const ChatbotScreen = ({ onBack, transactions, route }: ChatbotScreenProps) => { // <-- Add route
-  // --- NEW: Get the prefill message from route params ---
+export const ChatbotScreen = ({
+  onBack,
+  transactions,
+  route,
+  onSaveAdvice,
+}: ChatbotScreenProps) => {
   const prefillMessage = route.params?.prefillMessage;
 
   const [messages, setMessages] = useState([
@@ -40,14 +47,14 @@ export const ChatbotScreen = ({ onBack, transactions, route }: ChatbotScreenProp
       sender: 'bot',
     },
   ]);
-  
-  // --- MODIFIED: Set initial input state from prefillMessage ---
+
   const [input, setInput] = useState(prefillMessage || '');
-  
+
   const [isTyping, setIsTyping] = useState(false);
   const flatListRef = useRef(null);
 
   const handleSend = async () => {
+    // ... (This function is unchanged)
     if (input.trim().length === 0) return;
     const userMessage = { id: Date.now().toString(), text: input, sender: 'user' };
     setMessages((prev) => [...prev, userMessage]);
@@ -61,7 +68,7 @@ export const ChatbotScreen = ({ onBack, transactions, route }: ChatbotScreenProp
 
     try {
       // Call your local backend server's /chat endpoint
-      const response = await fetch('http://localhost:3000/chat', {
+      const response = await fetch('http://192.168.0.8:3000/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -97,6 +104,33 @@ export const ChatbotScreen = ({ onBack, transactions, route }: ChatbotScreenProp
     }
   };
 
+  // --- NEW: Function to show message options ---
+  const showChatOptions = (messageText: string) => {
+    Alert.alert(
+      'Message Options', // Title
+      'What would you like to do with this message?', // Message
+      [
+        // Button Array
+        {
+          text: 'Save Advice',
+          onPress: () => onSaveAdvice(messageText), // This calls the function from App.tsx
+          style: 'default',
+        },
+        {
+          text: 'Copy Text',
+          onPress: () => Clipboard.setString(messageText),
+          style: 'default',
+        },
+        {
+          text: 'Cancel',
+          onPress: () => {}, // Does nothing
+          style: 'cancel', // This makes it the "cancel" button
+        },
+      ],
+      { cancelable: true } // Allows tapping outside to dismiss on Android
+    );
+  };
+
   return (
     <SafeAreaView style={chatbotStyles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
@@ -117,24 +151,35 @@ export const ChatbotScreen = ({ onBack, transactions, route }: ChatbotScreenProp
         }
         onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
         renderItem={({ item }) => (
-          <View
-            style={[
-              chatbotStyles.messageBubble,
-              item.sender === 'user'
-                ? chatbotStyles.userBubble
-                : chatbotStyles.botBubble,
-            ]}
-          >
-            <Text
-              style={
-                item.sender === 'user'
-                  ? chatbotStyles.userMessageText
-                  : chatbotStyles.botMessageText
+          <TouchableOpacity
+            // --- MODIFIED: onLongPress now calls showChatOptions ---
+            onLongPress={() => {
+              if (item.sender === 'bot') {
+                showChatOptions(item.text);
               }
+            }}
+            disabled={item.sender !== 'bot'}
+            activeOpacity={0.8}
+          >
+            <View
+              style={[
+                chatbotStyles.messageBubble,
+                item.sender === 'user'
+                  ? chatbotStyles.userBubble
+                  : chatbotStyles.botBubble,
+              ]}
             >
-              {item.text}
-            </Text>
-          </View>
+              <Text
+                style={
+                  item.sender === 'user'
+                    ? chatbotStyles.userMessageText
+                    : chatbotStyles.botMessageText
+                }
+              >
+                {item.text}
+              </Text>
+            </View>
+          </TouchableOpacity>
         )}
         ListFooterComponent={
           isTyping ? (
@@ -147,7 +192,7 @@ export const ChatbotScreen = ({ onBack, transactions, route }: ChatbotScreenProp
       <View style={chatbotStyles.inputContainer}>
         <TextInput
           style={chatbotStyles.input}
-          value={input} // <-- This will now show the pre-filled message
+          value={input}
           onChangeText={setInput}
           placeholder="Ask a financial question..."
           placeholderTextColor={COLORS.darkGray}
@@ -166,6 +211,7 @@ export const ChatbotScreen = ({ onBack, transactions, route }: ChatbotScreenProp
 };
 
 // --- Styles for ChatbotScreen ---
+// (Styles remain unchanged)
 const chatbotStyles = StyleSheet.create({
   container: {
     flex: 1,

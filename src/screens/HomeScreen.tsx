@@ -12,9 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import { COLORS } from '../constants/colors';
-import { transactionItemStyles } from '../styles/transactionItemStyles'; // <-- IMPORT NEW STYLES
+import { transactionItemStyles } from '../styles/transactionItemStyles';
 
-// This type definition was fixed in the previous step
 export type Screen =
   | 'Login'
   | 'Home'
@@ -23,15 +22,25 @@ export type Screen =
   | 'Onboarding'
   | 'Chatbot'
   | 'Expenses'
-  | 'Savings';
+  | 'Savings'
+  | 'AddMoney'
+  | 'SavedAdvice'
+  // --- NEW: Add Profile ---
+  | 'Profile';
 
 type HomeScreenProps = {
   onNavigate: (screen: Screen) => void;
   transactions: Array<any>;
   userName: string;
+  allocatedSavingsTarget: number;
 };
 
-export const HomeScreen = ({ onNavigate, transactions, userName }: HomeScreenProps) => {
+export const HomeScreen = ({
+  onNavigate,
+  transactions,
+  userName,
+  allocatedSavingsTarget,
+}: HomeScreenProps) => {
   // Helper function to get month-year key
   const getMonthKey = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -42,8 +51,7 @@ export const HomeScreen = ({ onNavigate, transactions, userName }: HomeScreenPro
   const currentDate = new Date();
   const currentMonthKey = getMonthKey(currentDate.toISOString().split('T')[0]);
 
-  // --- NEW: Mini Budget Bar Component ---
-  // This component is for the new, smaller budget breakdown box
+  // --- Mini Budget Bar Component ---
   type MiniBudgetCategoryProps = {
     name: string;
     spent: number;
@@ -68,7 +76,6 @@ export const HomeScreen = ({ onNavigate, transactions, userName }: HomeScreenPro
           style={[
             homeStyles.miniProgressBar,
             {
-              // Calculate width, ensuring it's at least 0 and at most 100
               width: `${Math.max(0, Math.min((spent / (total || 1)) * 100, 100))}%`,
               backgroundColor: color,
             },
@@ -78,10 +85,19 @@ export const HomeScreen = ({ onNavigate, transactions, userName }: HomeScreenPro
     </View>
   );
 
-  // --- Calculations (monthly only) ---
-  const monthlyIncome = transactions
-    .filter((t) => t.type === 'income' && getMonthKey(t.date) === currentMonthKey)
+  // --- Calculations ---
+  const allMonthlyIncomeTrans = transactions.filter(
+    (t) => t.type === 'income' && getMonthKey(t.date) === currentMonthKey
+  );
+
+  const newMonthlyIncome = allMonthlyIncomeTrans
+    .filter((t) => !t.isCarriedOver)
     .reduce((sum, t) => sum + t.amount, 0);
+
+  const allMonthlyIncome = allMonthlyIncomeTrans.reduce(
+    (sum, t) => sum + t.amount,
+    0
+  );
 
   const monthlyExpenses = transactions.filter(
     (t) => t.type === 'expense' && getMonthKey(t.date) === currentMonthKey
@@ -95,19 +111,57 @@ export const HomeScreen = ({ onNavigate, transactions, userName }: HomeScreenPro
     .filter((t) => t.category === 'wants')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const savingsTotal = monthlyExpenses
+  const totalExpenses = needsTotal + wantsTotal;
+
+  const allMonthlySavings = monthlyExpenses
     .filter((t) => t.category === 'savings')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const totalExpenses = needsTotal + wantsTotal; // Displayed expenses (needs + wants)
-  const balance = monthlyIncome - totalExpenses - savingsTotal; // Balance after expenses and savings
+  const cumulativeTotalSavings = transactions
+    .filter((t) => t.type === 'expense' && t.category === 'savings')
+    .reduce((sum, t) => sum + t.amount, 0);
 
-  // Budget targets based on monthly income
-  const needsTarget = monthlyIncome * 0.5;
-  const wantsTarget = monthlyIncome * 0.3;
-  const savingsTarget = monthlyIncome * 0.2;
-  // Actual savings for the month
-  const actualSavings = savingsTotal;
+  const actualSavings20Percent = monthlyExpenses
+    .filter(
+      (t) => t.category === 'savings' && t.name === 'Monthly Savings'
+    )
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const monthlySavedLeftover = monthlyExpenses
+    .filter(
+      (t) => t.category === 'savings' && t.name === 'Saving Leftover Balance'
+    )
+    .reduce((sum, t) => sum + t.amount, 0);
+  
+  const pendingLeftoverToSave = Math.max(
+    0,
+    allocatedSavingsTarget - monthlySavedLeftover
+  );
+
+  const currentBalance = allMonthlyIncome - totalExpenses - actualSavings20Percent - monthlySavedLeftover;
+
+  const displayBalance = currentBalance - pendingLeftoverToSave;
+
+  const needsTarget = newMonthlyIncome * 0.5;
+  const wantsTarget = newMonthlyIncome * 0.3;
+  const savingsTarget20Percent = newMonthlyIncome * 0.2;
+
+  const remainingToSave20Percent = Math.max(
+    0,
+    savingsTarget20Percent - actualSavings20Percent
+  );
+  const totalPendingToSave = pendingLeftoverToSave + remainingToSave20Percent;
+  
+  const filteredTransactions = transactions.filter(t => {
+    if (t.type === 'income' && t.isCarriedOver) {
+      return false;
+    }
+    return true;
+  });
+
+  const recentTransactions = filteredTransactions.slice(0, 3);
+  const hasMoreTransactions = filteredTransactions.length > 3;
+
 
   return (
     <SafeAreaView
@@ -130,14 +184,16 @@ export const HomeScreen = ({ onNavigate, transactions, userName }: HomeScreenPro
         {/* --- Balance Card --- */}
         <View style={homeStyles.balanceCard}>
           <Text style={homeStyles.balanceLabel}>Total Balance</Text>
-          <Text style={homeStyles.balanceAmount}>RM {balance.toFixed(2)}</Text>
+          <Text style={homeStyles.balanceAmount}>
+            RM {displayBalance.toFixed(2)}
+          </Text>
           <View style={homeStyles.incomeExpenseContainer}>
             <View style={homeStyles.incomeExpenseBox}>
               <Icon name="arrow-down" size={20} color={COLORS.success} />
               <View style={{ marginLeft: 8 }}>
                 <Text style={homeStyles.incomeExpenseLabel}>Income</Text>
                 <Text style={homeStyles.incomeExpenseAmount}>
-                  RM {monthlyIncome.toFixed(2)}
+                  RM {newMonthlyIncome.toFixed(2)}
                 </Text>
               </View>
             </View>
@@ -158,44 +214,53 @@ export const HomeScreen = ({ onNavigate, transactions, userName }: HomeScreenPro
           <View style={homeStyles.actionBar}>
             <TouchableOpacity
               style={homeStyles.actionButton}
-              onPress={() => onNavigate('AddTransaction')}
+              onPress={() => onNavigate('AddMoney')}
             >
               <View style={homeStyles.iconCircle}>
                 <Icon name="plus" size={24} color={COLORS.white} />
               </View>
               <Text style={homeStyles.actionText}>Add money</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={homeStyles.actionButton}
-              onPress={() => Alert.alert('Coming soon!', 'Scan QR feature is under development.')}
+              onPress={() => onNavigate('AddTransaction')}
             >
               <View style={homeStyles.iconCircle}>
-                <Icon name="maximize" size={24} color={COLORS.white} />
+                <Icon name="plus-circle" size={24} color={COLORS.white} />
               </View>
-              <Text style={homeStyles.actionText}>Scan QR</Text>
+              <Text style={homeStyles.actionText}>Add Transaction</Text>
             </TouchableOpacity>
+            
             <TouchableOpacity
               style={homeStyles.actionButton}
-              onPress={() => Alert.alert('Coming soon!', 'Send money feature is under development.')}
+              onPress={() => onNavigate('SavedAdvice')}
             >
               <View style={homeStyles.iconCircle}>
-                <Icon name="arrow-right" size={24} color={COLORS.white} />
+                <Icon name="bookmark" size={24} color={COLORS.white} />
               </View>
-              <Text style={homeStyles.actionText}>Send money</Text>
+              <Text style={homeStyles.actionText}>Saved Advice</Text>
             </TouchableOpacity>
           </View>
 
-          {/* --- NEW: Savings & Budget Section --- */}
+          {/* --- Savings & Budget Section --- */}
           <View style={homeStyles.splitBoxContainer}>
-            
             {/* Left Box: Savings */}
             <TouchableOpacity 
               style={[homeStyles.splitBox, homeStyles.splitBoxLeft]}
-              onPress={() => onNavigate('Savings')} // Updated to navigate to Savings
+              onPress={() => onNavigate('Savings')}
             >
               <Text style={homeStyles.splitBoxTitle}>Total Savings</Text>
-              <Text style={homeStyles.splitBoxAmount}>RM {savingsTotal.toFixed(2)}</Text>
-              {/* This spacer pushes the link to the bottom */}
+              <Text style={homeStyles.splitBoxAmountSmall}>
+                RM {cumulativeTotalSavings.toFixed(2)}
+              </Text>
+
+              {totalPendingToSave > 0 && (
+                <Text style={homeStyles.pendingText}>
+                  To Save: RM {totalPendingToSave.toFixed(2)}
+                </Text>
+              )}
+
               <View style={{ flex: 1 }} /> 
               <Text style={homeStyles.splitBoxLink}>View Graph</Text>
             </TouchableOpacity>
@@ -217,8 +282,8 @@ export const HomeScreen = ({ onNavigate, transactions, userName }: HomeScreenPro
               />
               <MiniBudgetCategory
                 name="Savings (20%)"
-                spent={actualSavings} // Show how much you've actually saved...
-                total={savingsTarget}  // ...against your 20% target
+                spent={actualSavings20Percent}
+                total={savingsTarget20Percent}
                 color="#66bb6a"
               />
             </View>
@@ -228,44 +293,57 @@ export const HomeScreen = ({ onNavigate, transactions, userName }: HomeScreenPro
         {/* --- Recent Transactions --- */}
         <View style={homeStyles.section}>
           <Text style={homeStyles.sectionTitle}>Recent Transactions</Text>
-          {transactions
-            .slice()
-            .reverse()
-            .slice(0, 10)
-            .map((item) => (
-              <View key={item.id} style={transactionItemStyles.transactionItem}>
-                <View
-                  style={[
-                    transactionItemStyles.transactionIcon,
-                    { backgroundColor: COLORS.primary },
-                  ]}
-                >
-                  <Icon name={item.icon} size={22} color={COLORS.accent} />
-                </View>
-                <View style={transactionItemStyles.transactionDetails}>
-                  <Text style={transactionItemStyles.transactionName}>{item.name}</Text>
-                  <Text style={transactionItemStyles.transactionDate}>
-                    {new Date(item.date).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}{' '}
-                    • {item.subCategory}
+
+          {recentTransactions.length > 0 ? (
+            recentTransactions
+              .map((item) => (
+                <View key={item.id} style={transactionItemStyles.transactionItem}>
+                  <View
+                    style={[
+                      transactionItemStyles.transactionIcon,
+                      { backgroundColor: COLORS.primary },
+                    ]}
+                  >
+                    <Icon name={item.icon} size={22} color={COLORS.accent} />
+                  </View>
+                  <View style={transactionItemStyles.transactionDetails}>
+                    <Text style={transactionItemStyles.transactionName}>{item.name}</Text>
+
+                    <Text style={transactionItemStyles.transactionDate}>
+                      {new Date(item.date).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}{' '}
+                      • {item.subCategory}
+                    </Text>
+                  </View>
+                  <Text
+                    style={[
+                      transactionItemStyles.transactionAmount,
+                      {
+                        color:
+                          item.type === 'income' ? COLORS.success : 
+                          (item.amount < 0 ? COLORS.danger : COLORS.accent),
+                      },
+                    ]}
+                  >
+                    {item.type === 'income' ? '+' : (item.amount > 0 ? '-' : '')} RM {Math.abs(item.amount).toFixed(2)}
                   </Text>
                 </View>
-                <Text
-                  style={[
-                    transactionItemStyles.transactionAmount,
-                    {
-                      color:
-                        item.type === 'income' ? COLORS.success : COLORS.accent,
-                    },
-                  ]}
-                >
-                  {item.type === 'income' ? '+' : '-'} RM {item.amount.toFixed(2)}
-                </Text>
-              </View>
-            ))}
+              ))
+          ) : (
+            <Text style={homeStyles.noTransactionsText}>No transactions yet.</Text>
+          )}
+          
+          {hasMoreTransactions && (
+            <TouchableOpacity 
+              style={homeStyles.viewMoreButton}
+              onPress={() => onNavigate('Expenses')}
+            >
+              <Text style={homeStyles.viewMoreText}>View All</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
 
@@ -292,7 +370,8 @@ export const HomeScreen = ({ onNavigate, transactions, userName }: HomeScreenPro
           <Icon name="message-square" size={26} color={COLORS.darkGray} />
           <Text style={homeStyles.navText}>Chatbot</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={homeStyles.navItem} onPress={() => Alert.alert('Coming soon!', 'Profile feature is under development.')}>
+        {/* --- MODIFIED: onPress now navigates to 'Profile' --- */}
+        <TouchableOpacity style={homeStyles.navItem} onPress={() => onNavigate('Profile')}>
           <Icon name="user" size={26} color={COLORS.darkGray} />
           <Text style={homeStyles.navText}>Profile</Text>
         </TouchableOpacity>
@@ -368,21 +447,41 @@ const homeStyles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 0,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.accent,
-    marginBottom: 15,
+    marginBottom: 15, 
   },
-
-  // --- NEW STYLES for the 2 boxes ---
+  viewMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.accent,
+  },
+  viewMoreButton: {
+    padding: 10,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  noTransactionsText: {
+    textAlign: 'center',
+    color: COLORS.darkGray,
+    paddingVertical: 20,
+    fontStyle: 'italic',
+  },
   splitBoxContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10, // Reduced margin
+    marginBottom: 10,
   },
   splitBox: {
-    flex: 1, // Each box takes half the space
+    flex: 1,
     backgroundColor: COLORS.white,
     borderRadius: 15,
     padding: 15,
@@ -391,14 +490,14 @@ const homeStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
-    height: 190, // Fixed height for a clean look
+    height: 190,
   },
   splitBoxLeft: {
-    marginRight: 10, // Gutter space
-    flexDirection: 'column', // To push link to bottom
+    marginRight: 10,
+    flexDirection: 'column',
   },
   splitBoxRight: {
-    marginLeft: 10, // Gutter space
+    marginLeft: 10,
   },
   splitBoxTitle: {
     fontSize: 16,
@@ -406,22 +505,27 @@ const homeStyles = StyleSheet.create({
     color: COLORS.accent,
     marginBottom: 8,
   },
-  splitBoxAmount: {
-    fontSize: 24,
+  splitBoxAmountSmall: {
+    fontSize: 22,
     fontWeight: 'bold',
     color: COLORS.accent,
     marginBottom: 10,
   },
+  pendingText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: COLORS.info,
+    marginTop: -5,
+    marginBottom: 5,
+  },
   splitBoxLink: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.accent, // Use accent color
-    marginTop: 'auto', // Pushes to the bottom
+    color: COLORS.accent,
+    marginTop: 'auto',
   },
-
-  // --- NEW STYLES for the mini budget bars ---
   miniBudgetCategory: {
-    marginBottom: 12, // Space between bars
+    marginBottom: 12,
   },
   miniBudgetHeader: {
     flexDirection: 'row',
@@ -438,7 +542,7 @@ const homeStyles = StyleSheet.create({
     color: COLORS.darkGray,
   },
   miniProgressBarBackground: {
-    height: 8, // Thinner bar
+    height: 8,
     backgroundColor: COLORS.lightGray,
     borderRadius: 4,
     overflow: 'hidden',
@@ -447,8 +551,6 @@ const homeStyles = StyleSheet.create({
     height: '100%',
     borderRadius: 4,
   },
-
-  // --- Bottom Nav Styles ---
   bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -474,8 +576,6 @@ const homeStyles = StyleSheet.create({
     marginTop: 2,
     fontWeight: 'bold',
   },
-
-  // --- Action Bar Styles ---
   actionBar: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -508,3 +608,4 @@ const homeStyles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+
