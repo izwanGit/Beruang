@@ -76,6 +76,7 @@ export type User = {
   name: string;
   avatar: string;
   age: string | number;
+  state: string; // <-- ★★★ ADDED THIS ★★★
   occupation: string;
   monthlyIncome: number;
   financialSituation: string;
@@ -165,6 +166,7 @@ export default function App() {
             email: firebaseUser.email,
             avatar: 'bear',
             age: '',
+            state: '', // <-- ★★★ ADDED THIS ★★★
             occupation: '',
             monthlyIncome: 0,
             financialSituation: '',
@@ -177,27 +179,20 @@ export default function App() {
           });
         }
 
-        // --- ★★★ THIS IS THE FIX ★★★ ---
-        // I renamed the snapshot variable from 'doc' to 'profileDoc'
-        // to prevent the variable shadowing bug.
         const unsubProfile = onSnapshot(doc(db, 'users', userId), (profileDoc) => {
           if (profileDoc.exists()) {
             const profileData = profileDoc.data() as User;
-            // --- ★★★ END OF FIX ★★★ ---
 
-            // --- Fix for race condition where name isn't set yet ---
             if (!profileData.name && firebaseUser.displayName) {
-              // Now 'doc' here correctly refers to the IMPORTED FUNCTION
               updateDoc(doc(db, 'users', userId), { name: firebaseUser.displayName });
-              profileData.name = firebaseUser.displayName; // Update locally for this render
+              profileData.name = firebaseUser.displayName; 
             }
             
             setUserProfile(profileData);
 
-            // Logic to show InitialBalanceModal
             if (
-              profileData.financialGoals && // Onboarding is done
-              !profileData.hasSetInitialBalance // Flag is not set
+              profileData.financialGoals && 
+              !profileData.hasSetInitialBalance 
             ) {
               setShowInitialBalanceModal(true);
             } else {
@@ -625,9 +620,7 @@ export default function App() {
                   <ChatbotScreen
                     onBack={() => navigation.goBack()}
                     transactions={transactions}
-                    // --- ★★★ THIS IS THE CHANGE ★★★ ---
                     userProfile={userProfile!} 
-                    // --- ★★★ END OF CHANGE ★★★ ---
                     route={route}
                     onSaveAdvice={handleSaveAdvice}
                   />

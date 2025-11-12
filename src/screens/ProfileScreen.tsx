@@ -124,6 +124,13 @@ export const ProfileScreen = ({
                 <Text style={styles.infoLabel}>Age</Text>
                 <Text style={styles.infoValue}>{user.age || 'N/A'}</Text>
               </View>
+              {/* --- ★★★ ADDED THIS BLOCK ★★★ --- */}
+              <View style={styles.infoRow}>
+                <Icon name="map-pin" size={20} color={COLORS.darkGray} style={styles.infoIcon} />
+                <Text style={styles.infoLabel}>State</Text>
+                <Text style={styles.infoValue}>{user.state || 'N/A'}</Text>
+              </View>
+              {/* --- ★★★ END OF BLOCK ★★★ --- */}
               <View style={styles.infoRow}>
                 <Icon name="briefcase" size={20} color={COLORS.darkGray} style={styles.infoIcon} />
                 <Text style={styles.infoLabel}>Occupation</Text>

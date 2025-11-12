@@ -28,6 +28,26 @@ type OnboardingScreenProps = {
   navigation?: NativeStackNavigationProp<RootStackParamList>;
 };
 
+// --- ★★★ ADDED THIS LIST ★★★ ---
+const malaysianStates = [
+  'Johor',
+  'Kedah',
+  'Kelantan',
+  'Melaka',
+  'Negeri Sembilan',
+  'Pahang',
+  'Pulau Pinang',
+  'Perak',
+  'Perlis',
+  'Sabah',
+  'Sarawak',
+  'Selangor',
+  'Terengganu',
+  'W.P. Kuala Lumpur',
+  'W.P. Labuan',
+  'W.P. Putrajaya',
+];
+
 export const OnboardingScreen = ({
   onComplete,
   showMessage,
@@ -36,9 +56,9 @@ export const OnboardingScreen = ({
   navigation,
 }: OnboardingScreenProps) => {
   const [currentStep, setCurrentStep] = useState(0);
-  // We still keep name in state, but we no longer send it back
   const [name, setName] = useState(initialData?.name || '');
   const [age, setAge] = useState(initialData?.age?.toString() || '');
+  const [state, setState] = useState(initialData?.state || ''); // <-- ★★★ ADDED ★★★
   const [occupation, setOccupation] = useState(initialData?.occupation || '');
   const [monthlyIncome, setMonthlyIncome] = useState(
     initialData?.monthlyIncome?.toString() || ''
@@ -74,6 +94,20 @@ export const OnboardingScreen = ({
       },
       error: 'Age must be between 18 and 30',
     },
+    // --- ★★★ ADDED THIS NEW QUESTION OBJECT ★★★ ---
+    {
+      id: 'state',
+      icon: 'map-pin',
+      question: 'Which state are you in?',
+      placeholder: 'Select your state',
+      value: state,
+      setValue: setState,
+      keyboardType: 'default' as const,
+      hint: 'This helps us personalize advice based on your cost of living',
+      type: 'radio',
+      options: malaysianStates,
+    },
+    // --- END OF NEW QUESTION ---
     {
       id: 'occupation',
       icon: 'briefcase',
@@ -212,11 +246,9 @@ export const OnboardingScreen = ({
     } else {
       setIsLoading(true);
       try {
-        // --- ★★★ THIS IS THE FIX ★★★ ---
-        // We NO LONGER send 'name' from here.
-        // 'App.tsx' will get the name from Firebase Auth instead.
         const data: Partial<User> = {
           age: parseInt(age) || 0,
+          state: state, // <-- ★★★ ADDED ★★★
           occupation,
           monthlyIncome: parseFloat(monthlyIncome) || 0,
           financialSituation: biggestChallenge,
@@ -224,7 +256,7 @@ export const OnboardingScreen = ({
           riskTolerance: spendingStyle,
           cashFlow: trackingMethod,
         };
-        // --- ★★★ END OF FIX ★★★ ---
+        
         await onComplete(data, !!isRetake);
         if (navigation) {
           navigation.reset({
