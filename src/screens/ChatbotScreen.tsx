@@ -19,7 +19,7 @@ import { COLORS } from '../constants/colors';
 // --- Import navigation types ---
 import { RouteProp } from '@react-navigation/native';
 // Adjust this path if your App.tsx is in a different location
-import { RootStackParamList } from '../../App';
+import { RootStackParamList, User, Transaction } from '../../App'; // <-- ★★★ MODIFIED ★★★
 
 // --- Define the route prop type ---
 type ChatbotScreenRouteProp = RouteProp<RootStackParamList, 'Chatbot'>;
@@ -27,7 +27,8 @@ type ChatbotScreenRouteProp = RouteProp<RootStackParamList, 'Chatbot'>;
 // --- Props type ---
 type ChatbotScreenProps = {
   onBack: () => void;
-  transactions: Array<any>;
+  transactions: Array<Transaction>; // <-- ★★★ MODIFIED (using Transaction type) ★★★
+  userProfile: User; // <-- ★★★ ADDED ★★★
   route: ChatbotScreenRouteProp;
   onSaveAdvice: (messageText: string) => void;
 };
@@ -35,6 +36,7 @@ type ChatbotScreenProps = {
 export const ChatbotScreen = ({
   onBack,
   transactions,
+  userProfile, // <-- ★★★ ADDED ★★★
   route,
   onSaveAdvice,
 }: ChatbotScreenProps) => {
@@ -73,11 +75,14 @@ export const ChatbotScreen = ({
         headers: {
           'Content-Type': 'application/json',
         },
+        // --- ★★★ THIS IS THE CHANGE ★★★ ---
         body: JSON.stringify({
           message: input,
           history: chatHistory,
           transactions: transactions,
+          userProfile: userProfile, // <-- We now send the user's profile
         }),
+        // --- ★★★ END OF CHANGE ★★★ ---
       });
 
       if (!response.ok) {

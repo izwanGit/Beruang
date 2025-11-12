@@ -625,6 +625,9 @@ export default function App() {
                   <ChatbotScreen
                     onBack={() => navigation.goBack()}
                     transactions={transactions}
+                    // --- ★★★ THIS IS THE CHANGE ★★★ ---
+                    userProfile={userProfile!} 
+                    // --- ★★★ END OF CHANGE ★★★ ---
                     route={route}
                     onSaveAdvice={handleSaveAdvice}
                   />

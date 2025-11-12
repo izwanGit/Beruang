@@ -81,5 +81,4 @@ yarn-error.log
 
 # Firebase config
 firebaseConfig.js
-*.xcuserdata/firebase.config
-firebase.config
+*.xcuserdata
