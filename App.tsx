@@ -1,13 +1,14 @@
-// App.tsx
+import 'react-native-gesture-handler'; // MUST BE THE VERY FIRST LINE
 import React, { useState, useEffect } from 'react';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // --- Firebase Imports ---
 import { initializeApp } from 'firebase/app';
-import { firebaseConfig } from './firebaseConfig'; // Your config file
+import { firebaseConfig } from './firebaseConfig'; 
 import {
   initializeAuth,
   getReactNativePersistence,
@@ -17,17 +18,19 @@ import {
 } from 'firebase/auth';
 import {
   getFirestore,
-  doc, // <-- This is the function
+  doc,
   getDoc,
   setDoc,
   updateDoc,
   addDoc,
-  deleteDoc,
   onSnapshot,
   collection,
   query,
-  where,
   writeBatch,
+  serverTimestamp, 
+  orderBy, 
+  deleteDoc, 
+  getDocs, 
 } from 'firebase/firestore';
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -56,7 +59,7 @@ export type RootStackParamList = {
   AddTransaction: undefined;
   AddMoney: undefined;
   SavedAdvice: undefined;
-  Chatbot: { prefillMessage?: string };
+  Chatbot: { prefillMessage?: string; chatId?: string; messageId?: string };
   Expenses: undefined;
   Savings: undefined;
   Profile: undefined;
@@ -66,17 +69,33 @@ type AppNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 // --- Data Types ---
+export type Message = {
+  id: string;
+  text: string;
+  sender: 'user' | 'bot';
+  createdAt: any; 
+};
+
+export type ChatSession = {
+  id: string;
+  title: string; 
+  createdAt: any; 
+  lastMessage: string; 
+};
+
 export type Advice = {
-  id: string; // Firestore document ID
+  id: string; 
   text: string;
   date: string;
+  chatId: string; 
+  messageId: string; 
 };
 
 export type User = {
   name: string;
   avatar: string;
   age: string | number;
-  state: string; // <-- ★★★ ADDED THIS ★★★
+  state: string; 
   occupation: string;
   monthlyIncome: number;
   financialSituation: string;
@@ -89,10 +108,10 @@ export type User = {
 };
 
 export type Transaction = {
-  id: string; // Firestore document ID
+  id: string; 
   icon: string;
   name: string;
-  date: string; // ISO string
+  date: string; 
   amount: number;
   type: 'income' | 'expense';
   category: 'income' | 'needs' | 'wants' | 'savings';
@@ -136,6 +155,12 @@ export default function App() {
   const [savedAdvices, setSavedAdvices] = useState<Advice[]>([]);
   const [isAuthReady, setIsAuthReady] = useState(false);
 
+  // --- Chat State ---
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+  const [currentChatMessages, setCurrentChatMessages] = useState<Message[]>([]);
+
+
   // --- 1. Auth Listener ---
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -145,14 +170,21 @@ export default function App() {
         setUserProfile(null);
         setTransactions([]);
         setSavedAdvices([]);
+        setChatSessions([]); 
+        setCurrentChatId(null); 
+        setCurrentChatMessages([]); 
         setIsAuthReady(true);
       }
     });
     return () => unsubscribe();
   }, []);
 
-  // --- 2. Data Listeners ---
+  // --- 2. Data Listeners (Profile, Transactions, Advice) ---
   useEffect(() => {
+    let unsubProfile: () => void = () => {};
+    let unsubTransactions: () => void = () => {};
+    let unsubAdvices: () => void = () => {};
+
     const setupListeners = async () => {
       if (firebaseUser) {
         const userId = firebaseUser.uid;
@@ -166,39 +198,32 @@ export default function App() {
             email: firebaseUser.email,
             avatar: 'bear',
             age: '',
-            state: '', // <-- ★★★ ADDED THIS ★★★
+            state: '', 
             occupation: '',
             monthlyIncome: 0,
             financialSituation: '',
-            financialGoals: '', // This empty string triggers Onboarding
+            financialGoals: '', 
             riskTolerance: '',
             cashFlow: '',
             lastCheckedMonth: getMonthKey(new Date().toISOString()),
             allocatedSavingsTarget: 0,
-            hasSetInitialBalance: false, // Default to false
+            hasSetInitialBalance: false, 
           });
         }
 
-        const unsubProfile = onSnapshot(doc(db, 'users', userId), (profileDoc) => {
+        unsubProfile = onSnapshot(doc(db, 'users', userId), (profileDoc) => {
           if (profileDoc.exists()) {
             const profileData = profileDoc.data() as User;
-
             if (!profileData.name && firebaseUser.displayName) {
               updateDoc(doc(db, 'users', userId), { name: firebaseUser.displayName });
               profileData.name = firebaseUser.displayName; 
             }
-            
             setUserProfile(profileData);
-
-            if (
-              profileData.financialGoals && 
-              !profileData.hasSetInitialBalance 
-            ) {
+            if (profileData.financialGoals && !profileData.hasSetInitialBalance) {
               setShowInitialBalanceModal(true);
             } else {
               setShowInitialBalanceModal(false);
             }
-            
             checkLeftoverBalance(profileData, transactions);
           } else {
             setUserProfile(null);
@@ -206,13 +231,13 @@ export default function App() {
           setIsAuthReady(true);
         });
 
-        // Transactions Listener
         const transRef = collection(db, 'users', userId, 'transactions');
-        const transQuery = query(transRef);
-        const unsubTransactions = onSnapshot(transQuery, (snapshot) => {
+        const transQuery = query(transRef, orderBy('date', 'desc')); 
+        unsubTransactions = onSnapshot(transQuery, (snapshot) => {
+          // --- FIX: Correctly map ID to ensure doc.id is the source of truth ---
           const transData: Transaction[] = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
+            ...doc.data(), // Spread data first
+            id: doc.id,    // Overwrite with real Firestore Document ID
           })) as Transaction[];
           setTransactions(transData);
           if (userProfile) {
@@ -220,28 +245,68 @@ export default function App() {
           }
         });
 
-        // Saved Advice Listener
         const adviceRef = collection(db, 'users', userId, 'savedAdvices');
         const adviceQuery = query(adviceRef);
-        const unsubAdvices = onSnapshot(adviceQuery, (snapshot) => {
+        unsubAdvices = onSnapshot(adviceQuery, (snapshot) => {
           const adviceData: Advice[] = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
+            id: doc.id, ...doc.data(),
           })) as Advice[];
           setSavedAdvices(adviceData);
         });
 
-        return () => {
-          unsubProfile();
-          unsubTransactions();
-          unsubAdvices();
-        };
       }
     };
     
     setupListeners();
   
+    return () => {
+      unsubProfile();
+      unsubTransactions();
+      unsubAdvices();
+    };
+  
   }, [firebaseUser]); 
+
+  // --- 3. Chat Listeners ---
+  useEffect(() => {
+    if (!firebaseUser) return;
+
+    // Listen to the list of chat sessions
+    const sessionsRef = collection(db, 'users', firebaseUser.uid, 'chatSessions');
+    const sessionsQuery = query(sessionsRef, orderBy('createdAt', 'desc'));
+    
+    const unsubSessions = onSnapshot(sessionsQuery, (snapshot) => {
+      const sessionsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as ChatSession[];
+      setChatSessions(sessionsData);
+    });
+
+    return () => unsubSessions();
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    if (!firebaseUser || !currentChatId) {
+      setCurrentChatMessages([]); // Clear messages if no chat is selected
+      return;
+    }
+
+    // Listen to the messages of the *currently active* chat
+    const messagesRef = collection(db, 'users', firebaseUser.uid, 'chatSessions', currentChatId, 'messages');
+    const messagesQuery = query(messagesRef, orderBy('createdAt', 'asc'));
+
+    const unsubMessages = onSnapshot(messagesQuery, (snapshot) => {
+      const messagesData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Message[];
+      setCurrentChatMessages(messagesData);
+    });
+
+    return () => unsubMessages();
+  }, [firebaseUser, currentChatId]);
+
 
   // --- Helper Functions ---
 
@@ -353,14 +418,14 @@ export default function App() {
       } else {
         // 'savings' option
         batch.set(doc(transRef), {
-          icon: 'chevrons-down',
-          name: 'Leftover to Budget',
-          date: currentDate,
-          amount: pendingBalance,
-          type: 'income',
-          category: 'income',
-          subCategory: 'Carried Over',
-          isCarriedOver: true,
+            icon: 'chevrons-down',
+            name: 'Leftover to Budget',
+            date: currentDate,
+            amount: pendingBalance,
+            type: 'income',
+            category: 'income',
+            subCategory: 'Carried Over',
+            isCarriedOver: true,
         });
         batch.update(profileRef, {
           allocatedSavingsTarget: (userProfile?.allocatedSavingsTarget || 0) + pendingBalance,
@@ -378,6 +443,7 @@ export default function App() {
     }
   };
 
+
   const handleAddTransaction = async (
     transaction: Transaction | Transaction[],
     showMsg = true
@@ -386,16 +452,18 @@ export default function App() {
     if (!userId) return;
     try {
       const batch = writeBatch(db);
-      const transRef = collection(db, 'users', userId, 'transactions');
-
+      
+      // --- FIX: Ensure ID exists (Fallback to random if missing to prevent crash) ---
       if (Array.isArray(transaction)) {
         transaction.forEach((t) => {
-          const docRef = doc(transRef);
-          batch.set(docRef, t);
+          const safeId = t.id || String(Date.now() + Math.random()); 
+          const docRef = doc(db, 'users', userId, 'transactions', safeId); 
+          batch.set(docRef, { ...t, id: safeId, createdAt: serverTimestamp() }); 
         });
       } else {
-        const docRef = doc(transRef);
-        batch.set(docRef, transaction);
+        const safeId = transaction.id || String(Date.now());
+        const docRef = doc(db, 'users', userId, 'transactions', safeId); 
+        batch.set(docRef, { ...transaction, id: safeId, createdAt: serverTimestamp() }); 
       }
 
       await batch.commit();
@@ -410,17 +478,261 @@ export default function App() {
     }
   };
 
-  const handleSaveAdvice = async (adviceText: string) => {
+  // --- Update Transaction Handler ---
+  const handleUpdateTransaction = async (transactionId: string, updatedData: Partial<Transaction>) => {
     const userId = getUserId();
     if (!userId) return;
     try {
+      const transRef = doc(db, 'users', userId, 'transactions', transactionId);
+      await updateDoc(transRef, updatedData);
+      showMessage('Transaction updated.');
+    } catch (e) {
+      console.error('Error updating transaction: ', e);
+      showMessage('Error updating transaction.');
+    }
+  };
+
+  // --- Delete Transaction Handler ---
+  const handleDeleteTransaction = async (transactionId: string) => {
+    const userId = getUserId();
+    if (!userId) return;
+    try {
+      const transRef = doc(db, 'users', userId, 'transactions', transactionId);
+      await deleteDoc(transRef);
+      showMessage('Transaction deleted.');
+    } catch (e) {
+      console.error('Error deleting transaction: ', e);
+      showMessage('Error deleting transaction.');
+    }
+  };
+
+  // --- Chat Handlers ---
+  const handleCreateNewChat = async (prefillMessage?: string) => {
+    const userId = getUserId();
+    if (!userId) return;
+
+    const sessionsRef = collection(db, 'users', userId, 'chatSessions');
+    const newSessionDoc = await addDoc(sessionsRef, {
+      title: 'New Chat', 
+      createdAt: serverTimestamp(),
+      lastMessage: '...',
+    });
+
+    setCurrentChatId(newSessionDoc.id);
+
+    if (prefillMessage) {
+      await handleSendMessage(prefillMessage, newSessionDoc.id, true);
+    }
+    
+    return newSessionDoc.id; 
+  };
+
+  const handleSendMessage = async (text: string, chatId: string | null, isPrefill = false) => {
+    const userId = getUserId();
+    if (!userId || !chatId || !userProfile) {
+      console.error("Missing data for sending message:", { userId, chatId, userProfile });
+      return;
+    }
+
+    const messagesRef = collection(db, 'users', userId, 'chatSessions', chatId, 'messages');
+    const userMessage: Omit<Message, 'id'> = {
+      text,
+      sender: 'user',
+      createdAt: serverTimestamp(),
+    };
+
+    if (!isPrefill) { 
+        await addDoc(messagesRef, userMessage);
+    } else {
+        await addDoc(messagesRef, userMessage);
+    }
+
+    const sessionRef = doc(db, 'users', userId, 'chatSessions', chatId);
+    await updateDoc(sessionRef, { lastMessage: text });
+
+    const messagesQuery = query(messagesRef, orderBy('createdAt', 'asc'));
+    const messagesSnap = await getDocs(messagesQuery);
+    const fullHistory = messagesSnap.docs.map(doc => doc.data());
+
+    const historyForServer = fullHistory.map(m => ({
+      role: m.sender === 'user' ? 'user' : 'model',
+      parts: [{ text: m.text }]
+    }));
+
+    try {
+      const response = await fetch('http://192.168.0.8:3000/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          history: historyForServer, 
+          transactions: transactions,
+          userProfile: userProfile,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Server error');
+
+      const { message: botResponseText } = await response.json();
+
+      const botMessage: Omit<Message, 'id'> = {
+        text: botResponseText,
+        sender: 'bot',
+        createdAt: serverTimestamp(),
+      };
+      await addDoc(messagesRef, botMessage);
+      
+      if (fullHistory.length === 1 || (isPrefill && fullHistory.length === 0)) { 
+        const newTitle = text.length > 30 ? text.substring(0, 30) + '...' : text;
+        await updateDoc(sessionRef, { title: newTitle });
+      }
+
+    } catch (error: any) {
+      console.error('Failed to get bot response:', error);
+      // --- FIX: Better error message for Network Errors ---
+      let errorText = 'Sorry, I ran into an error. Please try again.';
+      if (error.message && error.message.includes('Network request failed')) {
+        errorText = 'Error: Network request failed. Please check Info.plist for App Transport Security (ATS) settings or your server IP.';
+      }
+      
+      await addDoc(messagesRef, {
+        text: errorText,
+        sender: 'bot',
+        createdAt: serverTimestamp(),
+      });
+    }
+  };
+
+  const handleEditMessage = async (chatId: string, messageId: string, newText: string) => {
+    const userId = getUserId();
+    if (!userId || !userProfile) return;
+
+    const messageRef = doc(db, 'users', userId, 'chatSessions', chatId, 'messages', messageId);
+    await updateDoc(messageRef, {
+      text: newText,
+      editedAt: serverTimestamp()
+    });
+
+    const messagesRef = collection(db, 'users', userId, 'chatSessions', chatId, 'messages');
+    const q = query(messagesRef, orderBy('createdAt', 'asc'));
+    const messagesSnap = await getDocs(q);
+    
+    let foundMessage = false;
+    const batch = writeBatch(db);
+    const historyForServer = []; 
+
+    for (const docSnap of messagesSnap.docs) {
+      const messageData = docSnap.data();
+      
+      if (foundMessage && messageData.sender === 'bot') {
+        batch.delete(docSnap.ref); 
+      } else if (docSnap.id === messageId) {
+        foundMessage = true;
+        historyForServer.push({
+          role: 'user',
+          parts: [{ text: newText }]
+        });
+      } else if (!foundMessage) {
+        historyForServer.push({
+          role: messageData.sender === 'user' ? 'user' : 'model',
+          parts: [{ text: messageData.text }]
+        });
+      }
+    }
+    await batch.commit(); 
+
+    const sessionRef = doc(db, 'users', userId, 'chatSessions', chatId);
+    await updateDoc(sessionRef, { lastMessage: newText });
+
+    try {
+      const response = await fetch('http://192.168.0.8:3000/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: newText, 
+          history: historyForServer, 
+          transactions: transactions,
+          userProfile: userProfile,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Server error');
+
+      const { message: botResponseText } = await response.json();
+
+      const botMessage: Omit<Message, 'id'> = {
+        text: botResponseText,
+        sender: 'bot',
+        createdAt: serverTimestamp(),
+      };
+      await addDoc(messagesRef, botMessage);
+
+    } catch (error) {
+      console.error('Failed to get bot response after edit:', error);
+      await addDoc(messagesRef, {
+        text: 'Sorry, I ran into an error after editing. Please try again.',
+        sender: 'bot',
+        createdAt: serverTimestamp(),
+      });
+    }
+  };
+
+  const handleDeleteChatSession = async (chatId: string) => {
+    const userId = getUserId();
+    if (!userId) return;
+
+    try {
+      const messagesRef = collection(db, 'users', userId, 'chatSessions', chatId, 'messages');
+      const messagesSnap = await getDocs(messagesRef);
+      const batch = writeBatch(db);
+      messagesSnap.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+
+      const sessionRef = doc(db, 'users', userId, 'chatSessions', chatId);
+      await deleteDoc(sessionRef);
+
+      if (currentChatId === chatId) {
+        setCurrentChatId(null);
+      }
+      showMessage('Chat deleted.');
+    } catch (error) {
+      console.error("Error deleting chat session: ", error);
+      showMessage('Error deleting chat.');
+    }
+  };
+
+  const handleDeleteSavedAdvice = async (adviceId: string) => {
+    const userId = getUserId();
+    if (!userId) return;
+    try {
+      const adviceRef = doc(db, 'users', userId, 'savedAdvices', adviceId);
+      await deleteDoc(adviceRef);
+      showMessage('Advice deleted.');
+    } catch (e) {
+      console.error('Error deleting advice: ', e);
+      showMessage('Error deleting advice.');
+    }
+  };
+
+  const handleSaveAdvice = async (text: string, chatId: string, messageId: string) => {
+    const userId = getUserId();
+    if (!userId || !chatId || !messageId) {
+       console.error("Missing IDs for saving advice:", { userId, chatId, messageId });
+       showMessage('Error: Could not save advice. Missing context.');
+       return;
+    }
+    try {
       await addDoc(collection(db, 'users', userId, 'savedAdvices'), {
-        text: adviceText,
+        text: text,
         date: new Date().toLocaleDateString('en-US', {
           month: 'short',
           day: 'numeric',
           year: 'numeric',
         }),
+        chatId: chatId,
+        messageId: messageId,
       });
       showMessage('Advice saved.');
     } catch (e) {
@@ -449,21 +761,17 @@ export default function App() {
     }
     try {
       const updateData: Partial<User> = { ...data };
-
       if (firebaseUser?.displayName) {
         updateData.name = firebaseUser.displayName;
       }
-
       if (!isRetake) {
         updateData.hasSetInitialBalance = false;
       }
-
       await updateDoc(doc(db, 'users', userId), updateData);
-    
     } catch (e) {
       console.error('Error completing onboarding: ', e);
       showMessage('Error saving profile.');
-      throw e; // Re-throw error so OnboardingScreen can catch it
+      throw e; 
     }
   };
 
@@ -476,10 +784,11 @@ export default function App() {
     try {
       const batch = writeBatch(db);
       const profileRef = doc(db, 'users', userId);
-
       if (amount > 0) {
         const transRef = collection(db, 'users', userId, 'transactions');
-        batch.set(doc(transRef), {
+        const docRef = doc(transRef); // For initial balance, auto-ID is fine, or specify one
+        batch.set(docRef, {
+          id: docRef.id, // Ensure consistent ID
           icon: 'wallet',
           name: 'Initial Balance',
           date: new Date().toISOString().split('T')[0],
@@ -488,11 +797,10 @@ export default function App() {
           category: 'income',
           subCategory: 'Initial',
           isCarriedOver: false,
+          createdAt: serverTimestamp() 
         });
       }
-
       batch.update(profileRef, { hasSetInitialBalance: true });
-
       await batch.commit();
       setShowInitialBalanceModal(false);
       showMessage('Your starting balance is set!');
@@ -505,8 +813,6 @@ export default function App() {
   const handleLogout = async () => {
     await signOut(auth);
   };
-
-  // --- VIEW (Rendering) ---
 
   if (!isAuthReady) {
     return <LoadingScreen />;
@@ -524,7 +830,7 @@ export default function App() {
   }
 
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
         <Stack.Navigator
           initialRouteName={initialRoute}
@@ -575,9 +881,13 @@ export default function App() {
               <Stack.Screen name="Home">
                 {({ navigation }) => (
                   <HomeScreen
-                    onNavigate={(screen: Screen) =>
-                      navigation.navigate(screen as keyof RootStackParamList)
-                    }
+                    onNavigate={(screen: Screen) => {
+                      if (screen === 'Chatbot') {
+                        navigation.navigate('Chatbot', {});
+                      } else {
+                        navigation.navigate(screen as keyof RootStackParamList)
+                      }
+                    }}
                     transactions={transactions}
                     userName={userProfile?.name || 'User'}
                     allocatedSavingsTarget={
@@ -600,6 +910,11 @@ export default function App() {
                   <SavedAdviceScreen
                     onBack={() => navigation.goBack()}
                     savedAdvices={savedAdvices}
+                    onGoToChat={(chatId, messageId) => {
+                      setCurrentChatId(chatId);
+                      navigation.navigate('Chatbot', { chatId, messageId });
+                    }}
+                    onDeleteAdvice={handleDeleteSavedAdvice}
                   />
                 )}
               </Stack.Screen>
@@ -618,11 +933,22 @@ export default function App() {
               >
                 {({ navigation, route }) => (
                   <ChatbotScreen
-                    onBack={() => navigation.goBack()}
+                    onBack={() => {
+                      navigation.goBack();
+                      setCurrentChatId(null); 
+                    }}
+                    chatSessions={chatSessions}
+                    currentChatMessages={currentChatMessages}
+                    currentChatId={currentChatId}
+                    userProfile={userProfile!}
                     transactions={transactions}
-                    userProfile={userProfile!} 
-                    route={route}
+                    onSetCurrentChatId={setCurrentChatId}
+                    onCreateNewChat={handleCreateNewChat}
+                    onSendMessage={handleSendMessage}
                     onSaveAdvice={handleSaveAdvice}
+                    onDeleteChatSession={handleDeleteChatSession} 
+                    onEditMessage={handleEditMessage} 
+                    route={route}
                   />
                 )}
               </Stack.Screen>
@@ -631,12 +957,19 @@ export default function App() {
                   <ExpensesScreen
                     onBack={() => navigation.goBack()}
                     transactions={transactions}
-                    onNavigate={(screen: Screen) =>
-                      navigation.navigate(screen as keyof RootStackParamList)
-                    }
-                    onAskAI={(message) =>
-                      navigation.navigate('Chatbot', { prefillMessage: message })
-                    }
+                    onNavigate={(screen: Screen) => {
+                      if (screen === 'Chatbot') {
+                        navigation.navigate('Chatbot', {});
+                      } else {
+                        navigation.navigate(screen as keyof RootStackParamList)
+                      }
+                    }}
+                    onAskAI={async (message) => {
+                      const newChatId = await handleCreateNewChat(message);
+                      navigation.navigate('Chatbot', { chatId: newChatId });
+                    }}
+                    onUpdateTransaction={handleUpdateTransaction}
+                    onDeleteTransaction={handleDeleteTransaction}
                   />
                 )}
               </Stack.Screen>
@@ -655,9 +988,13 @@ export default function App() {
               <Stack.Screen name="Profile">
                 {({ navigation }) => (
                   <ProfileScreen
-                    onNavigate={(screen: Screen) =>
-                      navigation.navigate(screen as keyof RootStackParamList)
-                    }
+                    onNavigate={(screen: Screen) => {
+                      if (screen === 'Chatbot') {
+                        navigation.navigate('Chatbot', {});
+                      } else {
+                        navigation.navigate(screen as keyof RootStackParamList)
+                      }
+                    }}
                     user={userProfile!}
                     onUpdateUser={handleUpdateUser}
                     onLogout={handleLogout}
@@ -671,24 +1008,21 @@ export default function App() {
       </NavigationContainer>
 
       {/* --- MODALS --- */}
-
       <BalanceAllocationModal
         visible={showBalanceModal}
         balance={pendingBalance}
         onAllocate={handleBalanceAllocation}
       />
-
       <InitialBalanceModal
         visible={showInitialBalanceModal}
         onSubmit={handleSetInitialBalance}
       />
-
       <MessageModal
         visible={modalVisible}
         message={modalMessage}
         onDismiss={() => setModalVisible(false)}
       />
-    </>
+    </GestureHandlerRootView>
   );
 }
 

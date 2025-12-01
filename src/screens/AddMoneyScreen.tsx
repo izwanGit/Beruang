@@ -70,7 +70,7 @@ export const AddMoneyScreen = ({
       if (numMonths === 1) {
         // --- Logic for a single transaction ---
         const newTransaction = {
-          id: Date.now().toString(),
+          // ❌ REMOVED: id: Date.now().toString(),
           icon: 'dollar-sign',
           name: description,
           date: baseDate.toISOString().split('T')[0],
@@ -98,7 +98,7 @@ export const AddMoneyScreen = ({
           }
 
           const newTransaction = {
-            id: `${Date.now().toString()}-${i}`,
+            // ❌ REMOVED: id: `${Date.now().toString()}-${i}`,
             icon: 'dollar-sign',
             // Add (1/6), (2/6), etc. to the name
             name: `${description} (${i + 1}/${numMonths})`,

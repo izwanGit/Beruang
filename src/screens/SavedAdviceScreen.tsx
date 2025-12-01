@@ -1,5 +1,5 @@
 // src/screens/SavedAdviceScreen.tsx
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,67 +7,98 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+// --- ★★★ App.tsx now defines these types, so we import them ★★★ ---
+import { Advice } from '../../App'; 
+import { COLORS } from '../constants/colors';
 
-// --- Inlined COLORS constant ---
-const COLORS = {
-  primary: '#C8DBBE',
-  secondary: '#9F8772',
-  accent: '#665A48',
-  white: '#FFFFFF',
-  lightGray: '#F5F5F5',
-  darkGray: '#A9A9A9',
-  success: '#4CAF50',
-  danger: '#F44336',
-  info: '#2196F3',
-  yellow: '#FFD700',
-};
-
-// --- Types ---
-// Define the shape of an advice object
-type Advice = {
-  id: string;
-  text: string;
-  date: string;
-};
-
-type RootStackParamList = {
-  SavedAdvice: undefined;
-};
-
-// --- MODIFIED: Update props to accept savedAdvices ---
+// --- ★★★ MODIFIED Props ★★★ ---
 type SavedAdviceScreenProps = {
   onBack: () => void;
-  savedAdvices: Advice[]; // <-- ADDED
+  savedAdvices: Advice[]; 
+  onGoToChat: (chatId: string, messageId: string) => void; 
+  onDeleteAdvice: (adviceId: string) => void; // <-- ADDED
 };
 
-// --- A component for the saved chat bubble card ---
-const AdviceCard = ({ text, date }: { text: string; date: string }) => (
-  <View style={styles.card}>
-    <View style={styles.bubble}>
-      <Text style={styles.bubbleText}>{text}</Text>
+// --- ★★★ MODIFIED Component ★★★ ---
+const AdviceCard = ({
+  advice,
+  onGoToChat,
+  onDelete,
+}: {
+  advice: Advice;
+  onGoToChat: (chatId: string, messageId: string) => void;
+  onDelete: (adviceId: string) => void;
+}) => {
+  
+  const handleDeletePress = () => {
+    Alert.alert(
+      "Delete Advice",
+      "Are you sure you want to delete this saved advice?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive", 
+          onPress: () => onDelete(advice.id) 
+        }
+      ]
+    );
+  };
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.bubble}>
+        <Text style={styles.bubbleText}>{advice.text}</Text>
+      </View>
+      <View style={styles.cardFooter}>
+        <Text style={styles.dateText}>Saved on {advice.date}</Text>
+        
+        <View style={styles.actionsContainer}>
+            <TouchableOpacity 
+                style={styles.actionButton} 
+                onPress={() => onGoToChat(advice.chatId, advice.messageId)}
+            >
+                <Text style={styles.linkText}>Go to Chat</Text>
+                <Icon name="arrow-right" size={14} color={COLORS.accent} style={{marginLeft: 4}}/>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+                style={[styles.actionButton, { marginLeft: 15 }]} 
+                onPress={handleDeletePress}
+            >
+                 <Icon name="trash-2" size={18} color={COLORS.danger} />
+            </TouchableOpacity>
+        </View>
+      </View>
     </View>
-    <View style={styles.cardFooter}>
-      <Text style={styles.dateText}>Saved on {date}</Text>
-      <TouchableOpacity>
-        {/* This button doesn't do anything yet, but we'll leave it */}
-        <Text style={styles.linkText}>Go to Chat</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-);
+  );
+};
 
 // ========================================================================
 // --- SavedAdviceScreen Component ---
 // ========================================================================
 export const SavedAdviceScreen = ({
   onBack,
-  savedAdvices, // <-- Destructure new prop
+  savedAdvices, 
+  onGoToChat, 
+  onDeleteAdvice, // <-- ★★★ ADDED ★★★
 }: SavedAdviceScreenProps) => {
+
+  // --- SORTING LOGIC ---
+  const sortedAdvices = useMemo(() => {
+    return [...savedAdvices].sort((a, b) => {
+      // Convert "Nov 12, 2025" to timestamp
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      // Descending order (Newest first)
+      return dateB - dateA;
+    });
+  }, [savedAdvices]);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
@@ -94,9 +125,8 @@ export const SavedAdviceScreen = ({
           </Text>
         </View>
 
-        {/* --- MODIFIED: Dynamic list based on props --- */}
-        {savedAdvices.length === 0 ? (
-          // --- Show this if the list is empty ---
+        {/* --- ★★★ MODIFIED List Rendering ★★★ --- */}
+        {sortedAdvices.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Icon name="bookmark" size={40} color={COLORS.darkGray} />
             <Text style={styles.emptyText}>
@@ -107,12 +137,12 @@ export const SavedAdviceScreen = ({
             </Text>
           </View>
         ) : (
-          // --- Render the list if it has items ---
-          savedAdvices.map((advice) => (
+          sortedAdvices.map((advice) => (
             <AdviceCard
               key={advice.id}
-              text={advice.text}
-              date={advice.date}
+              advice={advice}
+              onGoToChat={onGoToChat}
+              onDelete={onDeleteAdvice}
             />
           ))
         )}
@@ -125,7 +155,7 @@ export const SavedAdviceScreen = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white, // Use white for the page background
+    backgroundColor: COLORS.white, 
   },
   header: {
     flexDirection: 'row',
@@ -176,11 +206,11 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   bubble: {
-    backgroundColor: COLORS.primary, // Using the theme's light green
+    backgroundColor: COLORS.primary, 
     borderRadius: 15,
-    borderBottomLeftRadius: 0, // Chat bubble shape
+    borderBottomLeftRadius: 0, 
     padding: 15,
-    alignSelf: 'flex-start', // Make it hug the text
+    alignSelf: 'flex-start', 
     maxWidth: '100%',
   },
   bubbleText: {
@@ -198,6 +228,14 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 12,
     color: COLORS.darkGray,
+  },
+  actionsContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+  },
+  actionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
   },
   linkText: {
     fontSize: 12,
@@ -225,48 +263,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-
-// ========================================================================
-// --- Preview App Wrapper ---
-// (This makes the file runnable in the preview)
-// ========================================================================
-
-const Stack = createNativeStackNavigator<RootStackParamList>();
-
-// --- MODIFIED: Mock the props for the preview ---
-const App = () => {
-  // Mock data for the preview
-  const mockAdvices: Advice[] = [
-    {
-      id: '1',
-      text: "A good rule of thumb is the 50/30/20 budget: 50% for Needs, 30% for Wants, and 20% for Savings. Based on your income, that's RM 1750 for Needs.",
-      date: 'Oct 28, 2025',
-    },
-    {
-      id: '2',
-      text: "You've spent RM 218 on 'Food & Beverage' this month, which is 25% over your 'Wants' budget. Try looking for cheaper lunch options.",
-      date: 'Oct 27, 2025',
-    },
-  ];
-
-  // Set to [] to test the empty state
-  const [advices, setAdvices] = React.useState(mockAdvices);
-  // const [advices, setAdvices] = React.useState<Advice[]>([]); // <-- Uncomment to test empty state
-
-  return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="SavedAdvice">
-          {({ navigation }) => (
-            <SavedAdviceScreen
-              onBack={() => alert('Go Back')}
-              savedAdvices={advices} // Pass the mock data
-            />
-          )}
-        </Stack.Screen>
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
-};
-
-export default App;

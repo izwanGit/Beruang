@@ -13,7 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import { COLORS } from '../constants/colors';
-import { simpleCategorizeFallback } from '../utils/categorization';
+// --- UPDATED IMPORT ---
+import { categorizeTransaction } from '../utils/categorization';
 
 type AddTransactionScreenProps = {
   onBack: () => void;
@@ -40,33 +41,42 @@ export const AddTransactionScreen = ({
       showMessage('Please enter a valid amount');
       return;
     }
+
     setIsLoading(true);
-    showMessage('Analyzing transaction...'); // Changed from AI
+    // Feedback to user that something is happening
+    showMessage('Analyzing transaction...'); 
 
     try {
-      // Using fallback categorization directly
-      const { category, subCategory } = simpleCategorizeFallback(description);
+      // --- CALL TO NEW UTILITY FUNCTION ---
+      const result = await categorizeTransaction(description);
+      
       const newTransaction = {
-        id: Date.now().toString(),
+        // ❌ REMOVED: id: Date.now().toString(),
         icon: 'shopping-cart',
         name: description,
         date: new Date().toISOString().split('T')[0],
         amount: amountNum,
         type: 'expense',
-        category,
-        subCategory,
+        category: result.category,       
+        subCategory: result.subCategory,
       };
 
       onAddTransaction(newTransaction);
+      
       setAmount('');
       setDescription('');
+      
+      // --- CUSTOM FEEDBACK MESSAGE ---
+      const method = result.isAi ? '🤖 AI' : '📱 Offline';
       showMessage(
-        `Transaction saved! Categorized as: ${subCategory} (${category.toUpperCase()})`,
+        `${method}: Categorized as ${result.subCategory} (${result.category.toUpperCase()})`,
       );
+      
       setTimeout(() => {
         onBack();
       }, 2000);
     } catch (error) {
+      console.error(error);
       showMessage('Error saving transaction. Please try again.');
     } finally {
       setIsLoading(false);
@@ -167,7 +177,7 @@ export const AddTransactionScreen = ({
   );
 };
 
-// --- Styles for AddTransactionScreen ---
+// --- Styles ---
 const addTransactionStyles = StyleSheet.create({
   container: {
     flex: 1,
