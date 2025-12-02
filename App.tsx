@@ -166,7 +166,6 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
       if (!user) {
-        // User is logged out
         setUserProfile(null);
         setTransactions([]);
         setSavedAdvices([]);
@@ -179,7 +178,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // --- 2. Data Listeners (Profile, Transactions, Advice) ---
+  // --- 2. Data Listeners ---
   useEffect(() => {
     let unsubProfile: () => void = () => {};
     let unsubTransactions: () => void = () => {};
@@ -224,7 +223,6 @@ export default function App() {
             } else {
               setShowInitialBalanceModal(false);
             }
-            checkLeftoverBalance(profileData, transactions);
           } else {
             setUserProfile(null);
           }
@@ -234,15 +232,11 @@ export default function App() {
         const transRef = collection(db, 'users', userId, 'transactions');
         const transQuery = query(transRef, orderBy('date', 'desc')); 
         unsubTransactions = onSnapshot(transQuery, (snapshot) => {
-          // --- FIX: Correctly map ID to ensure doc.id is the source of truth ---
           const transData: Transaction[] = snapshot.docs.map((doc) => ({
-            ...doc.data(), // Spread data first
-            id: doc.id,    // Overwrite with real Firestore Document ID
+            ...doc.data(), 
+            id: doc.id,
           })) as Transaction[];
           setTransactions(transData);
-          if (userProfile) {
-            checkLeftoverBalance(userProfile, transData);
-          }
         });
 
         const adviceRef = collection(db, 'users', userId, 'savedAdvices');
@@ -267,52 +261,43 @@ export default function App() {
   
   }, [firebaseUser]); 
 
-  // --- 3. Chat Listeners ---
+  // --- 3. Balance Check Logic ---
+  useEffect(() => {
+    if (userProfile && transactions.length > 0) {
+      checkLeftoverBalance(userProfile, transactions);
+    }
+  }, [userProfile, transactions]);
+
+  // --- 4. Chat Listeners ---
   useEffect(() => {
     if (!firebaseUser) return;
-
-    // Listen to the list of chat sessions
     const sessionsRef = collection(db, 'users', firebaseUser.uid, 'chatSessions');
     const sessionsQuery = query(sessionsRef, orderBy('createdAt', 'desc'));
-    
     const unsubSessions = onSnapshot(sessionsQuery, (snapshot) => {
-      const sessionsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as ChatSession[];
+      const sessionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ChatSession[];
       setChatSessions(sessionsData);
     });
-
     return () => unsubSessions();
   }, [firebaseUser]);
 
   useEffect(() => {
     if (!firebaseUser || !currentChatId) {
-      setCurrentChatMessages([]); // Clear messages if no chat is selected
+      setCurrentChatMessages([]); 
       return;
     }
-
-    // Listen to the messages of the *currently active* chat
     const messagesRef = collection(db, 'users', firebaseUser.uid, 'chatSessions', currentChatId, 'messages');
     const messagesQuery = query(messagesRef, orderBy('createdAt', 'asc'));
-
     const unsubMessages = onSnapshot(messagesQuery, (snapshot) => {
-      const messagesData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Message[];
+      const messagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Message[];
       setCurrentChatMessages(messagesData);
     });
-
     return () => unsubMessages();
   }, [firebaseUser, currentChatId]);
 
 
   // --- Helper Functions ---
 
-  const getUserId = () => {
-    return firebaseUser?.uid;
-  };
+  const getUserId = () => firebaseUser?.uid;
 
   const showMessage = (message: string) => {
     setModalMessage(message);
@@ -331,13 +316,16 @@ export default function App() {
       const lastMonthTransactions = trans.filter(
         (t) => getMonthKey(t.date) === lastMonthKey
       );
+      
       const lastMonthIncome = lastMonthTransactions
         .filter((t) => t.type === 'income')
         .reduce((sum, t) => sum + t.amount, 0);
       const lastMonthExpenses = lastMonthTransactions
         .filter((t) => t.type === 'expense')
         .reduce((sum, t) => sum + t.amount, 0);
+        
       const leftover = lastMonthIncome - lastMonthExpenses;
+      
       if (leftover > 0) {
         setPendingBalance(leftover);
         setShowBalanceModal(true);
@@ -357,6 +345,7 @@ export default function App() {
     }
   };
 
+  // --- ★★★ ALLOCATION LOGIC FIXED (50/30/20 vs Save All) ★★★ ---
   const handleBalanceAllocation = async (option: 'savings' | 'budget') => {
     const userId = getUserId();
     if (!userId) return;
@@ -368,65 +357,51 @@ export default function App() {
       const transRef = collection(db, 'users', userId, 'transactions');
       const profileRef = doc(db, 'users', userId);
 
-      if (option === 'budget') {
-        const needsAmount = pendingBalance * 0.5;
-        const wantsAmount = pendingBalance * 0.3;
-        const savingsAmount = pendingBalance * 0.2;
+      // --- Common Transaction Data ---
+      // Adds the FULL amount to your wallet (Income).
+      const transactionData = {
+        name: 'Carried Over', 
+        date: currentDate,
+        amount: pendingBalance,
+        type: 'income',
+        category: 'income',
+        subCategory: 'Carried Over',
+        createdAt: serverTimestamp(),
+      };
 
-        if (needsAmount > 0) {
-          batch.set(doc(transRef), {
-            icon: 'chevrons-down',
-            name: 'Leftover to Needs',
-            date: currentDate,
-            amount: needsAmount,
-            type: 'income',
-            category: 'income',
-            subCategory: 'Carried Over',
-            isCarriedOver: true,
-          });
-        }
-        if (wantsAmount > 0) {
-          batch.set(doc(transRef), {
-            icon: 'chevrons-down',
-            name: 'Leftover to Wants',
-            date: currentDate,
-            amount: wantsAmount,
-            type: 'income',
-            category: 'income',
-            subCategory: 'Carried Over',
-            isCarriedOver: true,
-          });
-        }
-        if (savingsAmount > 0) {
-          batch.set(doc(transRef), {
-            icon: 'piggy-bank',
-            name: 'Saving Leftover Balance',
-            date: currentDate,
-            amount: savingsAmount,
-            type: 'expense',
-            category: 'savings',
-            subCategory: 'Savings',
-            isCarriedOver: true,
-          });
-        }
+      if (option === 'budget') {
+        // --- OPTION A: 50/30/20 ---
+        // 1. Transaction: isCarriedOver = FALSE
+        //    Result: System treats it as "Fresh Income" -> Applies 50/30/20 rule automatically.
+        //    Savings Screen: Will show ~20% of this amount as "Target Savings".
+        
+        // 2. Profile: We do NOT add to allocatedSavingsTarget (Leftover Target = 0).
+        
+        batch.set(doc(transRef), {
+          ...transactionData,
+          icon: 'chevrons-down',
+          isCarriedOver: false, // Treated as normal income
+        });
         
         batch.update(profileRef, {
-          allocatedSavingsTarget: (userProfile?.allocatedSavingsTarget || 0),
           lastCheckedMonth: currentMonthKey,
         });
 
       } else {
-        // 'savings' option
+        // --- OPTION B: SAVE ALL ---
+        // 1. Transaction: isCarriedOver = TRUE
+        //    Result: System treats it as "Existing Money" -> IGNORES it for 50/30/20 rule.
+        //    Savings Screen: Will show RM 0.00 for "Target Savings" (from this money).
+        
+        // 2. Profile: We ADD the full amount to allocatedSavingsTarget.
+        //    Savings Screen: Will show "Leftover Balance Target: RM 664.50".
+        
         batch.set(doc(transRef), {
-            icon: 'chevrons-down',
-            name: 'Leftover to Budget',
-            date: currentDate,
-            amount: pendingBalance,
-            type: 'income',
-            category: 'income',
-            subCategory: 'Carried Over',
-            isCarriedOver: true,
+            ...transactionData,
+            icon: 'piggy-bank',
+            isCarriedOver: true, // EXCLUDED from 50/30/20 calculation
         });
+        
         batch.update(profileRef, {
           allocatedSavingsTarget: (userProfile?.allocatedSavingsTarget || 0) + pendingBalance,
           lastCheckedMonth: currentMonthKey,
@@ -453,7 +428,6 @@ export default function App() {
     try {
       const batch = writeBatch(db);
       
-      // --- FIX: Ensure ID exists (Fallback to random if missing to prevent crash) ---
       if (Array.isArray(transaction)) {
         transaction.forEach((t) => {
           const safeId = t.id || String(Date.now() + Math.random()); 
@@ -478,7 +452,6 @@ export default function App() {
     }
   };
 
-  // --- Update Transaction Handler ---
   const handleUpdateTransaction = async (transactionId: string, updatedData: Partial<Transaction>) => {
     const userId = getUserId();
     if (!userId) return;
@@ -492,7 +465,6 @@ export default function App() {
     }
   };
 
-  // --- Delete Transaction Handler ---
   const handleDeleteTransaction = async (transactionId: string) => {
     const userId = getUserId();
     if (!userId) return;
@@ -506,7 +478,6 @@ export default function App() {
     }
   };
 
-  // --- Chat Handlers ---
   const handleCreateNewChat = async (prefillMessage?: string) => {
     const userId = getUserId();
     if (!userId) return;
@@ -541,11 +512,7 @@ export default function App() {
       createdAt: serverTimestamp(),
     };
 
-    if (!isPrefill) { 
-        await addDoc(messagesRef, userMessage);
-    } else {
-        await addDoc(messagesRef, userMessage);
-    }
+    await addDoc(messagesRef, userMessage);
 
     const sessionRef = doc(db, 'users', userId, 'chatSessions', chatId);
     await updateDoc(sessionRef, { lastMessage: text });
@@ -560,7 +527,7 @@ export default function App() {
     }));
 
     try {
-      const response = await fetch('http://192.168.0.8:3000/chat', {
+      const response = await fetch('http://192.168.0.20:3000/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -589,7 +556,6 @@ export default function App() {
 
     } catch (error: any) {
       console.error('Failed to get bot response:', error);
-      // --- FIX: Better error message for Network Errors ---
       let errorText = 'Sorry, I ran into an error. Please try again.';
       if (error.message && error.message.includes('Network request failed')) {
         errorText = 'Error: Network request failed. Please check Info.plist for App Transport Security (ATS) settings or your server IP.';
@@ -786,9 +752,9 @@ export default function App() {
       const profileRef = doc(db, 'users', userId);
       if (amount > 0) {
         const transRef = collection(db, 'users', userId, 'transactions');
-        const docRef = doc(transRef); // For initial balance, auto-ID is fine, or specify one
+        const docRef = doc(transRef);
         batch.set(docRef, {
-          id: docRef.id, // Ensure consistent ID
+          id: docRef.id,
           icon: 'wallet',
           name: 'Initial Balance',
           date: new Date().toISOString().split('T')[0],
@@ -1009,6 +975,7 @@ export default function App() {
 
       {/* --- MODALS --- */}
       <BalanceAllocationModal
+        key={pendingBalance} 
         visible={showBalanceModal}
         balance={pendingBalance}
         onAllocate={handleBalanceAllocation}

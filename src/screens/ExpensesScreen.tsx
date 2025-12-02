@@ -26,6 +26,7 @@ import { DonutChart } from '../components/DonutChart';
 import { transactionItemStyles } from '../styles/transactionItemStyles';
 import { Screen } from './HomeScreen';
 import { Transaction } from '../../App';
+
 type ExpensesScreenProps = {
   onBack: () => void;
   transactions: Array<Transaction>;
@@ -34,7 +35,9 @@ type ExpensesScreenProps = {
   onUpdateTransaction: (transactionId: string, updatedData: Partial<Transaction>) => Promise<void>;
   onDeleteTransaction: (transactionId: string) => Promise<void>;
 };
+
 type SortOption = 'dateDesc' | 'dateAsc' | 'amountHigh' | 'amountLow';
+
 const categoryIcons: Record<string, { icon: string; color: string }> = {
   'Financial Services': { icon: 'calculator', color: COLORS.danger },
   'Food & Beverage': { icon: 'silverware-fork-knife', color: '#FF69B4' },
@@ -44,6 +47,7 @@ const categoryIcons: Record<string, { icon: string; color: string }> = {
   Shopping: { icon: 'shopping', color: '#32CD32' },
   Others: { icon: 'dots-horizontal', color: COLORS.darkGray },
 };
+
 const categoryColors = [
   '#FF6384',
   '#36A2EB',
@@ -53,6 +57,7 @@ const categoryColors = [
   '#FF9F40',
   '#C9CBCF',
 ];
+
 const getSubCategoryGroups = (expenseList: Array<any>) => {
   const spendableExpenses = expenseList.filter(
     (t) => t.category === 'needs' || t.category === 'wants' || t.category === 'others'
@@ -67,7 +72,9 @@ const getSubCategoryGroups = (expenseList: Array<any>) => {
     return acc;
   }, {});
 };
+
 const SCREEN_HEIGHT = Dimensions.get('window').height;
+
 export const ExpensesScreen = ({
   onBack,
   transactions,
@@ -83,17 +90,19 @@ export const ExpensesScreen = ({
  
   // --- EDIT MODAL STATE ---
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
-  const [isSortModalVisible, setIsSortModalVisible] = useState(false); // New Sort Modal
+  const [isSortModalVisible, setIsSortModalVisible] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [editAmount, setEditAmount] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editCategory, setEditCategory] = useState<'needs' | 'wants' | 'savings' | 'income'>('needs');
   const [editSubCategory, setEditSubCategory] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
   // --- ANIMATION REFS ---
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-  const sortSlideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current; // New Anim for Sort
+  const sortSlideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+
   const currentDate = new Date();
   const monthNames = [
     'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
@@ -105,6 +114,7 @@ export const ExpensesScreen = ({
     const m = (currentMonth - i + 12) % 12;
     months.push({ label: monthNames[m], value: m + 1 });
   }
+
   const currentYear = currentDate.getFullYear();
   const allMonthlyTransactions = transactions.filter((t) => {
     const txDate = new Date(t.date);
@@ -112,6 +122,7 @@ export const ExpensesScreen = ({
     const txYear = txDate.getFullYear();
     return txMonth === selectedMonth && txYear === currentYear;
   });
+
   // --- SORTING LOGIC ---
   const getSortedTransactions = (list: Transaction[]) => {
     return [...list].sort((a, b) => {
@@ -128,31 +139,43 @@ export const ExpensesScreen = ({
       }
     });
   };
+
+  // --- FILTER TRANSACTIONS ---
   const latestTransactions = allMonthlyTransactions.filter((t) => {
+    // Show normal expenses
     if (t.type === 'expense' && (t.category === 'needs' || t.category === 'wants' || t.category === 'others')) {
       return true;
     }
-    if (t.type === 'income' && !t.isCarriedOver) {
-      return true;
+    // Show ALL Income (But we will hide 'Carried Over' in the render loop)
+    if (t.type === 'income') {
+      return true; 
     }
     return false;
   });
+
   const expenses = allMonthlyTransactions.filter(
     (t) => t.type === 'expense' && (t.category === 'needs' || t.category === 'wants' || t.category === 'others')
   );
+  
   const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
-  const incomeForMonth = allMonthlyTransactions
-    .filter((t) => t.type === 'income' && !t.isCarriedOver)
+
+  // --- BUDGET LOGIC ---
+  const totalIncomeForMonth = allMonthlyTransactions
+    .filter((t) => t.type === 'income' && t.isCarriedOver !== true) 
     .reduce((sum, t) => sum + t.amount, 0);
+
+  const needsBudget = totalIncomeForMonth * 0.5;
+  const wantsBudget = totalIncomeForMonth * 0.3;
+
   const needsExpenses = expenses.filter((t) => t.category === 'needs');
   const wantsExpenses = expenses.filter((t) => t.category === 'wants');
   const needsForMonth = needsExpenses.reduce((sum, t) => sum + t.amount, 0);
   const wantsForMonth = wantsExpenses.reduce((sum, t) => sum + t.amount, 0);
-  const needsBudget = incomeForMonth * 0.5;
-  const wantsBudget = incomeForMonth * 0.3;
+
   let chartData;
   let totalForChart;
   let subCategoryGroups;
+
   if (activeTab === 'needs') {
     subCategoryGroups = getSubCategoryGroups(needsExpenses);
     totalForChart = needsForMonth;
@@ -163,6 +186,7 @@ export const ExpensesScreen = ({
     subCategoryGroups = getSubCategoryGroups(expenses);
     totalForChart = totalExpenses;
   }
+
   chartData = Object.entries(subCategoryGroups).map(
     ([sub, { amount }], index) => ({
       name: sub,
@@ -170,11 +194,13 @@ export const ExpensesScreen = ({
       color: categoryColors[index % categoryColors.length],
     }),
   );
+
   const colorMap: Record<string, string> = chartData.reduce((acc, slice) => {
     acc[slice.name] = slice.color;
     return acc;
   }, {} as Record<string, string>);
-  // --- MODAL OPEN/CLOSE HELPERS ---
+
+  // --- MODAL HELPERS ---
   const animateModal = (visible: boolean, slideVal: Animated.Value) => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -189,10 +215,11 @@ export const ExpensesScreen = ({
       })
     ]).start();
   };
+
   // --- EDIT MODAL ---
   const openEditModal = (transaction: Transaction) => {
-    if (transaction.isCarriedOver || transaction.category === 'savings') {
-        Alert.alert("Cannot Edit", "System or savings transactions cannot be edited.");
+    if (transaction.category === 'savings' && transaction.isCarriedOver) {
+        Alert.alert("System Transaction", "This carried-over savings allocation cannot be edited here.");
         return;
     }
     setEditingTransaction(transaction);
@@ -208,6 +235,7 @@ export const ExpensesScreen = ({
     setIsEditModalVisible(true);
     animateModal(true, slideAnim);
   };
+
   const closeEditModal = (callback?: () => void) => {
     Keyboard.dismiss();
     animateModal(false, slideAnim);
@@ -216,21 +244,24 @@ export const ExpensesScreen = ({
       if (callback) callback();
     }, 250);
   };
-  // --- SORT MODAL ---
+
   const openSortModal = () => {
     setIsSortModalVisible(true);
     animateModal(true, sortSlideAnim);
   };
+
   const closeSortModal = () => {
     animateModal(false, sortSlideAnim);
     setTimeout(() => {
       setIsSortModalVisible(false);
     }, 250);
   };
+
   const handleSortSelect = (option: SortOption) => {
     setSortOption(option);
     closeSortModal();
   };
+
   const handleSaveEdit = async () => {
     if (!editingTransaction || isSaving) return;
     const amountNum = parseFloat(editAmount);
@@ -261,6 +292,7 @@ export const ExpensesScreen = ({
       }
     });
   };
+
   const handleDelete = () => {
     if (!editingTransaction || isSaving) return;
     Alert.alert(
@@ -288,6 +320,7 @@ export const ExpensesScreen = ({
       ]
     );
   };
+
   const handleAskAI = () => {
     const monthName = monthNames[selectedMonth - 1];
     let context = `I'm looking at my expenses for ${monthName}. `;
@@ -300,6 +333,7 @@ export const ExpensesScreen = ({
     }
     onAskAI(`${context}Can you give me some advice or insights based on this?`);
   };
+
   const BudgetCategoryView: React.FC<{
     title: string;
     spent: number;
@@ -343,8 +377,12 @@ export const ExpensesScreen = ({
       </View>
     );
   };
+
   const renderTransactionsList = (txList: Transaction[]) => {
-    if (!txList || txList.length === 0) {
+    // Filter out "Carried Over" from the visual list
+    const visualList = txList.filter(t => t.subCategory !== 'Carried Over');
+
+    if (!visualList || visualList.length === 0) {
       return (
         <Text style={expensesStyles.merchantsText}>
           No transactions found for {monthNames[selectedMonth - 1]}.
@@ -352,22 +390,16 @@ export const ExpensesScreen = ({
       );
     }
     const lowerSearch = searchQuery.toLowerCase().trim();
-    let filteredList = txList;
+    let filteredList = visualList;
     if (lowerSearch) {
-      filteredList = txList.filter((t) => {
+      filteredList = visualList.filter((t) => {
         const nameMatch = t.name.toLowerCase().includes(lowerSearch);
         const subCatMatch = t.subCategory?.toLowerCase().includes(lowerSearch) || false;
         const catMatch = t.category.toLowerCase().includes(lowerSearch);
         const amountMatch = t.amount.toString().includes(lowerSearch);
-        const txDate = new Date(t.date);
-        const dateShort = txDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase();
-        const dateLong = txDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toLowerCase();
-        const dateNum = txDate.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }).toLowerCase();
-        const dateMatch = dateShort.includes(lowerSearch) || dateLong.includes(lowerSearch) || dateNum.includes(lowerSearch);
-        return nameMatch || subCatMatch || catMatch || amountMatch || dateMatch;
+        return nameMatch || subCatMatch || catMatch || amountMatch;
       });
     }
-    // Sort transactions using the helper
     const sortedList = getSortedTransactions(filteredList);
     if (sortedList.length === 0) {
       return (
@@ -422,6 +454,7 @@ export const ExpensesScreen = ({
       </TouchableOpacity>
     ));
   };
+
   const renderSubCategorySelector = () => {
     const subCategories = Object.keys(categoryIcons);
     return (
@@ -453,6 +486,7 @@ export const ExpensesScreen = ({
       </ScrollView>
     );
   };
+
   const renderTransactionHeader = () => (
     <View style={expensesStyles.transactionHeader}>
       <Text style={expensesStyles.transactionsTitle}>Transactions</Text>
@@ -468,6 +502,7 @@ export const ExpensesScreen = ({
       </TouchableOpacity>
     </View>
   );
+
   return (
     <View style={expensesStyles.container}>
       <SafeAreaView style={expensesStyles.safeAreaContent} edges={['top', 'left', 'right']}>
@@ -502,6 +537,7 @@ export const ExpensesScreen = ({
               </TouchableOpacity>
             ))}
           </View>
+          
           {/* --- CHART CONTAINER --- */}
           <View style={expensesStyles.chartContainer}>
             <DonutChart data={chartData} total={totalForChart} />
@@ -509,6 +545,7 @@ export const ExpensesScreen = ({
               <MaterialCommunityIcon name="robot-outline" size={24} color={COLORS.accent} />
             </TouchableOpacity>
           </View>
+
           {/* Horizontal Scroll */}
           {totalForChart > 0 && (
             <ScrollView
@@ -539,6 +576,7 @@ export const ExpensesScreen = ({
               })}
             </ScrollView>
           )}
+
           {/* Tabs: Latest, Needs, Wants */}
           <View style={expensesStyles.tabContainer}>
             <TouchableOpacity
@@ -590,6 +628,7 @@ export const ExpensesScreen = ({
               </Text>
             </TouchableOpacity>
           </View>
+
           {/* Tab Content */}
           {activeTab === 'latest' ? (
             <View>
@@ -599,7 +638,8 @@ export const ExpensesScreen = ({
           ) : activeTab === 'needs' ? (
             <View>
                 <View style={expensesStyles.budgetContainer}>
-                {incomeForMonth > 0 ? (
+                {/* ★★★ FIXED: Using totalIncomeForMonth ★★★ */}
+                {totalIncomeForMonth > 0 ? (
                     <BudgetCategoryView
                     title="Needs (50%)"
                     spent={needsForMonth}
@@ -608,7 +648,7 @@ export const ExpensesScreen = ({
                     />
                 ) : (
                     <Text style={expensesStyles.merchantsText}>
-                    No new income recorded for {monthNames[selectedMonth - 1]} to calculate budget.
+                    No income recorded for {monthNames[selectedMonth - 1]} to calculate budget.
                     </Text>
                 )}
                 </View>
@@ -618,7 +658,8 @@ export const ExpensesScreen = ({
           ) : ( // activeTab === 'wants'
             <View>
                 <View style={expensesStyles.budgetContainer}>
-                {incomeForMonth > 0 ? (
+                {/* ★★★ FIXED: Using totalIncomeForMonth ★★★ */}
+                {totalIncomeForMonth > 0 ? (
                     <BudgetCategoryView
                     title="Wants (30%)"
                     spent={wantsForMonth}
@@ -627,7 +668,7 @@ export const ExpensesScreen = ({
                     />
                 ) : (
                     <Text style={expensesStyles.merchantsText}>
-                    No new income recorded for {monthNames[selectedMonth - 1]} to calculate budget.
+                    No income recorded for {monthNames[selectedMonth - 1]} to calculate budget.
                     </Text>
                 )}
                 </View>
@@ -637,6 +678,7 @@ export const ExpensesScreen = ({
           )}
         </ScrollView>
       </SafeAreaView>
+
       {/* Bottom Nav */}
       <SafeAreaView style={expensesStyles.bottomNavSafeArea} edges={['bottom']}>
         <View style={expensesStyles.bottomNav}>
@@ -668,6 +710,7 @@ export const ExpensesScreen = ({
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+
       {/* --- EDIT MODAL --- */}
       <Modal
         visible={isEditModalVisible}
@@ -758,6 +801,7 @@ export const ExpensesScreen = ({
           </Animated.View>
         </View>
       </Modal>
+
       {/* --- SORT MODAL --- */}
       <Modal
         visible={isSortModalVisible}
@@ -812,6 +856,7 @@ export const ExpensesScreen = ({
     </View>
   );
 };
+
 // --- Styles for ExpensesScreen ---
 const expensesStyles = StyleSheet.create({
   container: {
