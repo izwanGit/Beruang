@@ -49,6 +49,7 @@ type ChatbotScreenProps = {
   onDeleteChatSession: (chatId: string) => void; 
   onEditMessage: (chatId: string, messageId: string, newText: string) => void; 
   route: ChatbotScreenRouteProp;
+  streamingMessage: string; // <--- NEW PROP
 };
 
 const ChatHistoryDropdown = ({
@@ -169,6 +170,7 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
     onSaveAdvice,
     onDeleteChatSession, 
     onEditMessage,
+    streamingMessage, // <--- Destructure new prop
   } = props;
 
   const [input, setInput] = useState(''); 
@@ -177,11 +179,11 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
   const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null); 
   const [editText, setEditText] = useState(''); 
+  const [cursorVisible, setCursorVisible] = useState(true); // NEW: For blinking cursor
   const flatListRef = useRef<FlatList>(null);
   
-  // ⭐⭐⭐ NEW: Track the last message count to detect when new bot message arrives ⭐⭐⭐
   const lastMessageCountRef = useRef(currentChatMessages.length);
-  const isEditingRef = useRef(false); // Track if we're currently processing an edit
+  const isEditingRef = useRef(false); 
 
   useEffect(() => {
     const prefillMessage = route.params?.prefillMessage;
@@ -235,11 +237,9 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
     setEditText('');
     
     if (newText !== oldText) {
-      // ⭐⭐⭐ FIX: Set typing and mark that we're editing ⭐⭐⭐
       setIsTyping(true);
       isEditingRef.current = true;
       lastMessageCountRef.current = currentChatMessages.length;
-      
       await onEditMessage(currentChatId, id, newText);
     }
   };
@@ -254,24 +254,27 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
     setIsHistoryVisible(false);
   };
 
-  // ⭐⭐⭐ FIX: Better typing state management ⭐⭐⭐
+  // --- UPDATED TYPING LOGIC FOR STREAMING ---
   useEffect(() => {
-    if (currentChatMessages.length > 0) {
+    // 1. If we have a streaming message, we are definitely typing
+    if (streamingMessage) {
+      setIsTyping(true);
+      // Auto-scroll to bottom while streaming
+      flatListRef.current?.scrollToEnd({ animated: true });
+    } 
+    // 2. If no streaming message, check if a new REAL message arrived
+    else if (currentChatMessages.length > 0) {
       const lastMessage = currentChatMessages[currentChatMessages.length - 1];
       
-      // If a new bot message arrived
-      if (lastMessage.sender === 'bot') {
-        // Check if this is a NEW message (message count increased)
-        if (currentChatMessages.length > lastMessageCountRef.current) {
-          setIsTyping(false);
-          isEditingRef.current = false;
-        }
+      // If the last message is from bot and is new (count increased), stop typing
+      if (lastMessage.sender === 'bot' && currentChatMessages.length > lastMessageCountRef.current) {
+        setIsTyping(false);
+        isEditingRef.current = false;
       }
       
-      // Update the count reference
       lastMessageCountRef.current = currentChatMessages.length;
     }
-  }, [currentChatMessages]);
+  }, [currentChatMessages, streamingMessage]);
 
   useEffect(() => {
     if (currentChatMessages.length > 0 && !editingMessage) {
@@ -291,6 +294,18 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
       }
     }
   }, [highlightMessageId, currentChatMessages]);
+
+  // --- NEW: Blinking cursor effect ---
+  useEffect(() => {
+    if (streamingMessage && isTyping) {
+      const interval = setInterval(() => {
+        setCursorVisible((prev) => !prev);
+      }, 500); // Blink every 500ms
+      return () => clearInterval(interval);
+    } else {
+      setCursorVisible(true); // Reset when not streaming
+    }
+  }, [streamingMessage, isTyping]);
 
   const chatTitle =
     (chatSessions || []).find((s) => s.id === currentChatId)?.title || 'New Chat';
@@ -419,10 +434,24 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
               </View>
             );
           }}
+          // --- UPDATED FOOTER TO SHOW STREAMING WITH BLINKING CURSOR ---
           ListFooterComponent={
             isTyping ? (
-              <View style={[styles.messageBubble, styles.botBubble, { marginBottom: 10 }]}>
-                <ActivityIndicator size="small" color={COLORS.accent} />
+              <View style={{ marginBottom: 10 }}>
+                {streamingMessage ? (
+                   // Show streaming text bubble with blinking cursor
+                   <View style={[styles.messageBubble, styles.botBubble]}>
+                     <Text style={styles.botMessageText}>
+                       {streamingMessage}
+                       {cursorVisible && <Text style={{color: COLORS.accent}}> |</Text>}
+                     </Text>
+                   </View>
+                ) : (
+                   // Show loading spinner (connecting...)
+                   <View style={[styles.messageBubble, styles.botBubble]}>
+                     <ActivityIndicator size="small" color={COLORS.accent} />
+                   </View>
+                )}
               </View>
             ) : null
           }

@@ -1,3 +1,4 @@
+// App.tsx
 import 'react-native-gesture-handler'; // MUST BE THE VERY FIRST LINE
 import React, { useState, useEffect } from 'react';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
@@ -126,6 +127,9 @@ export const auth = initializeAuth(app, {
 });
 export const db = getFirestore(app);
 
+// --- Constants ---
+const API_URL = 'http://192.168.0.20:3000'; // Make sure this matches your PC IP
+
 // --- Loading Screen ---
 const LoadingScreen = () => (
   <View style={styles.loadingContainer}>
@@ -159,7 +163,7 @@ export default function App() {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [currentChatMessages, setCurrentChatMessages] = useState<Message[]>([]);
-
+  const [streamingResponse, setStreamingResponse] = useState<string>(''); // <--- NEW Streaming State
 
   // --- 1. Auth Listener ---
   useEffect(() => {
@@ -357,8 +361,6 @@ export default function App() {
       const transRef = collection(db, 'users', userId, 'transactions');
       const profileRef = doc(db, 'users', userId);
 
-      // --- Common Transaction Data ---
-      // Adds the FULL amount to your wallet (Income).
       const transactionData = {
         name: 'Carried Over', 
         date: currentDate,
@@ -370,17 +372,10 @@ export default function App() {
       };
 
       if (option === 'budget') {
-        // --- OPTION A: 50/30/20 ---
-        // 1. Transaction: isCarriedOver = FALSE
-        //    Result: System treats it as "Fresh Income" -> Applies 50/30/20 rule automatically.
-        //    Savings Screen: Will show ~20% of this amount as "Target Savings".
-        
-        // 2. Profile: We do NOT add to allocatedSavingsTarget (Leftover Target = 0).
-        
         batch.set(doc(transRef), {
           ...transactionData,
           icon: 'chevrons-down',
-          isCarriedOver: false, // Treated as normal income
+          isCarriedOver: false, 
         });
         
         batch.update(profileRef, {
@@ -388,18 +383,10 @@ export default function App() {
         });
 
       } else {
-        // --- OPTION B: SAVE ALL ---
-        // 1. Transaction: isCarriedOver = TRUE
-        //    Result: System treats it as "Existing Money" -> IGNORES it for 50/30/20 rule.
-        //    Savings Screen: Will show RM 0.00 for "Target Savings" (from this money).
-        
-        // 2. Profile: We ADD the full amount to allocatedSavingsTarget.
-        //    Savings Screen: Will show "Leftover Balance Target: RM 664.50".
-        
         batch.set(doc(transRef), {
             ...transactionData,
             icon: 'piggy-bank',
-            isCarriedOver: true, // EXCLUDED from 50/30/20 calculation
+            isCarriedOver: true, 
         });
         
         batch.update(profileRef, {
@@ -498,87 +485,207 @@ export default function App() {
     return newSessionDoc.id; 
   };
 
+  // --- ★★★ FIXED STREAMING HANDLER WITH IMPROVED INCREMENTAL PARSER ★★★ ---
   const handleSendMessage = async (text: string, chatId: string | null, isPrefill = false) => {
     const userId = getUserId();
-    if (!userId || !chatId || !userProfile) {
-      console.error("Missing data for sending message:", { userId, chatId, userProfile });
-      return;
-    }
+    if (!userId || !chatId || !userProfile) return;
 
+    // 1. Add USER message to Firestore immediately
     const messagesRef = collection(db, 'users', userId, 'chatSessions', chatId, 'messages');
-    const userMessage: Omit<Message, 'id'> = {
+    await addDoc(messagesRef, {
       text,
       sender: 'user',
       createdAt: serverTimestamp(),
-    };
+    });
 
-    await addDoc(messagesRef, userMessage);
-
+    // Update session info
     const sessionRef = doc(db, 'users', userId, 'chatSessions', chatId);
     await updateDoc(sessionRef, { lastMessage: text });
 
-    const messagesQuery = query(messagesRef, orderBy('createdAt', 'asc'));
-    const messagesSnap = await getDocs(messagesQuery);
-    const fullHistory = messagesSnap.docs.map(doc => doc.data());
-
-    const historyForServer = fullHistory.map(m => ({
-      role: m.sender === 'user' ? 'user' : 'model',
-      parts: [{ text: m.text }]
-    }));
-
-    try {
-      const response = await fetch('http://192.168.0.20:3000/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          history: historyForServer, 
-          transactions: transactions,
-          userProfile: userProfile,
-        }),
-      });
-
-      if (!response.ok) throw new Error('Server error');
-
-      const { message: botResponseText } = await response.json();
-
-      const botMessage: Omit<Message, 'id'> = {
-        text: botResponseText,
-        sender: 'bot',
-        createdAt: serverTimestamp(),
+    // 2. Prepare context (History)
+    const q = query(messagesRef, orderBy('createdAt', 'asc'));
+    const snap = await getDocs(q);
+    const historyForServer = snap.docs.map(d => {
+      const data = d.data();
+      return {
+        role: data.sender === 'user' ? 'user' : 'model',
+        parts: [{ text: data.text }]
       };
-      await addDoc(messagesRef, botMessage);
-      
-      if (fullHistory.length === 1 || (isPrefill && fullHistory.length === 0)) { 
-        const newTitle = text.length > 30 ? text.substring(0, 30) + '...' : text;
-        await updateDoc(sessionRef, { title: newTitle });
-      }
+    });
 
-    } catch (error: any) {
-      console.error('Failed to get bot response:', error);
-      let errorText = 'Sorry, I ran into an error. Please try again.';
-      if (error.message && error.message.includes('Network request failed')) {
-        errorText = 'Error: Network request failed. Please check Info.plist for App Transport Security (ATS) settings or your server IP.';
+    // 3. START STREAMING VIA XHR
+    setStreamingResponse(''); // Clear previous stream
+    let fullResponse = ''; // Accumulate full for Firestore save
+    let buffer = ''; // Incremental buffer
+    let previousLength = 0; // Track cumulative length
+
+    return new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_URL}/chat/stream`);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.setRequestHeader('Accept', 'text/event-stream');
+      xhr.responseType = 'text';
+
+      // Incremental progress
+      xhr.onprogress = () => {
+        const responseText = xhr.responseText;
+        const newData = responseText.substring(previousLength);
+        previousLength = responseText.length;
+        buffer += newData;
+        console.log('DEBUG: New chunk:', newData);
+
+        // Process complete events incrementally
+        while (true) {
+          const index = buffer.indexOf('\n\n');
+          if (index === -1) break;
+
+          const eventStr = buffer.slice(0, index);
+          buffer = buffer.slice(index + 2); // Consume processed part
+
+          const lines = eventStr.split('\n');
+          let currentEvent = '';
+          let dataStr = '';
+
+          lines.forEach(line => {
+            line = line.trim();
+            if (line.startsWith('event:')) {
+              currentEvent = line.slice(6).trim();
+            } else if (line.startsWith('data:')) {
+              dataStr += line.slice(5).trim() + ' ';
+            }
+          });
+
+          if (currentEvent && dataStr.trim()) {
+            try {
+              const data = JSON.parse(dataStr.trim());
+              console.log('DEBUG: Parsed:', { event: currentEvent, data });
+
+              if (currentEvent === 'token' && data.content) {
+                setStreamingResponse((prev) => prev + data.content);
+                fullResponse += data.content;
+              } else if (currentEvent === 'thinking') {
+                console.log('DEBUG: Thinking:', data.message);
+              } else if (currentEvent === 'done') {
+                resolve();
+              } else if (currentEvent === 'error') {
+                reject(new Error(data.error || 'Server error'));
+              }
+            } catch (e) {
+              console.error('DEBUG: Parse error:', e);
+            }
+          }
+        }
+      };
+
+      // Complete
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          // Process remaining buffer
+          while (true) {
+            const index = buffer.indexOf('\n\n');
+            if (index === -1) break;
+
+            const eventStr = buffer.slice(0, index);
+            buffer = buffer.slice(index + 2);
+
+            const lines = eventStr.split('\n');
+            let currentEvent = '';
+            let dataStr = '';
+
+            lines.forEach(line => {
+              line = line.trim();
+              if (line.startsWith('event:')) {
+                currentEvent = line.slice(6).trim();
+              } else if (line.startsWith('data:')) {
+                dataStr += line.slice(5).trim() + ' ';
+              }
+            });
+
+            if (currentEvent === 'done') {
+              resolve();
+            }
+          }
+        } else {
+          reject(new Error(`HTTP error: ${xhr.status}`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('Network error'));
+      xhr.ontimeout = () => reject(new Error('Timeout'));
+
+      xhr.timeout = 30000;
+
+      // Send payload
+      xhr.send(JSON.stringify({
+        message: text,
+        history: historyForServer,
+        transactions: transactions,
+        userProfile: userProfile,
+      }));
+    }).then(async () => {
+      if (fullResponse.trim()) {
+        await addDoc(messagesRef, {
+          text: fullResponse.trim(),
+          sender: 'bot',
+          createdAt: serverTimestamp(),
+        });
+        
+        if (historyForServer.length <= 1 || isPrefill) {
+          const newTitle = text.length > 30 ? text.substring(0, 30) + '...' : text;
+          await updateDoc(sessionRef, { title: newTitle });
+        }
+      } else {
+        throw new Error('Empty response');
       }
-      
-      await addDoc(messagesRef, {
-        text: errorText,
-        sender: 'bot',
-        createdAt: serverTimestamp(),
-      });
-    }
+    }).catch(async (error) => {
+      console.error('Stream error:', error);
+      try {
+        const fallbackResponse = await fetch(`${API_URL}/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text,
+            history: historyForServer,
+            transactions: transactions,
+            userProfile: userProfile,
+          }),
+        });
+
+        if (!fallbackResponse.ok) throw new Error('Fallback failed');
+
+        const { message: botText } = await fallbackResponse.json();
+        fullResponse = botText;
+
+        await addDoc(messagesRef, {
+          text: fullResponse,
+          sender: 'bot',
+          createdAt: serverTimestamp(),
+        });
+      } catch (fallbackErr) {
+        console.error('Fallback error:', fallbackErr);
+        await addDoc(messagesRef, {
+          text: "Network error. Please check your connection.",
+          sender: 'bot',
+          createdAt: serverTimestamp(),
+        });
+      }
+    }).finally(() => {
+      setStreamingResponse('');
+    });
   };
 
   const handleEditMessage = async (chatId: string, messageId: string, newText: string) => {
     const userId = getUserId();
     if (!userId || !userProfile) return;
 
+    // Update the edited message
     const messageRef = doc(db, 'users', userId, 'chatSessions', chatId, 'messages', messageId);
     await updateDoc(messageRef, {
       text: newText,
       editedAt: serverTimestamp()
     });
 
+    // Re-fetch history and remove subsequent bot messages
     const messagesRef = collection(db, 'users', userId, 'chatSessions', chatId, 'messages');
     const q = query(messagesRef, orderBy('createdAt', 'asc'));
     const messagesSnap = await getDocs(q);
@@ -610,8 +717,11 @@ export default function App() {
     const sessionRef = doc(db, 'users', userId, 'chatSessions', chatId);
     await updateDoc(sessionRef, { lastMessage: newText });
 
+    // Use regular (non-streaming) endpoint for edits, OR adapt to streaming. 
+    // For simplicity, using non-streaming fetch here for edits as it's a legacy function
+    // (You can convert this to stream if you want, but it requires duplicating handleSendMessage logic)
     try {
-      const response = await fetch('http://192.168.0.8:3000/chat', {
+      const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -915,6 +1025,7 @@ export default function App() {
                     onDeleteChatSession={handleDeleteChatSession} 
                     onEditMessage={handleEditMessage} 
                     route={route}
+                    streamingMessage={streamingResponse} // <--- PASSING THE STREAM
                   />
                 )}
               </Stack.Screen>
