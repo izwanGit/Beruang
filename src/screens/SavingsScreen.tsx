@@ -16,11 +16,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import { LineChart } from 'react-native-chart-kit';
 import { COLORS } from '../constants/colors';
+import { calculateSavingsProgress } from '../utils/financeUtils';
 
 type SavingsScreenProps = {
   onBack: () => void;
   transactions: Array<any>;
-  onAddTransaction: (transaction: any | any[]) => void; // MODIFIED: Can accept array
+  onAddTransaction: (transaction: any | any[]) => void;
   allocatedSavingsTarget: number;
 };
 
@@ -313,77 +314,23 @@ export const SavingsScreen = ({
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
 
-  // --- CALCULATIONS ---
-  const getMonthKey = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  };
-
-  const currentDate = new Date();
-  const currentMonthKey = getMonthKey(currentDate.toISOString().split('T')[0]);
-
-  // *New* income (for 20% target)
-  const monthlyIncome = transactions
-    .filter(
-      (t) =>
-        t.type === 'income' &&
-        getMonthKey(t.date) === currentMonthKey &&
-        !t.isCarriedOver
-    )
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  // All expense transactions for the month
-  const monthlyExpenses = transactions.filter(
-    (t) => t.type === 'expense' && getMonthKey(t.date) === currentMonthKey
-  );
-
-  // *Positive* 20% savings
-  const monthlySaved20Percent = monthlyExpenses
-    .filter(
-      (t) => t.category === 'savings' && t.name === 'Monthly Savings'
-    )
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  // *Positive* leftover savings
-  const monthlySavedLeftover = monthlyExpenses
-    .filter(
-      (t) => t.category === 'savings' && t.name === 'Saving Leftover Balance'
-    )
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  // Total *positive* savings this month
-  const totalMonthlySaved = monthlySaved20Percent + monthlySavedLeftover;
-
-  // Total *all-time* savings (includes negative withdrawals)
-  const totalSavedAllTime = transactions
-    .filter((t) => t.type === 'expense' && t.category === 'savings')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  // 20% target
-  const targetSavings20Percent = monthlyIncome * 0.2;
-  const remainingToSave20Percent = Math.max(
-    0,
-    targetSavings20Percent - monthlySaved20Percent
-  );
-
-  // Leftover target
-  const remainingToSaveLeftover = Math.max(
-    0,
-    allocatedSavingsTarget - monthlySavedLeftover
-  );
-
-  // *All* income this month (for balance calc)
-  const allMonthlyIncome = transactions
-    .filter((t) => t.type === 'income' && getMonthKey(t.date) === currentMonthKey)
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  // *All* spendable expenses (Needs + Wants)
-  const allSpendableExpenses = monthlyExpenses
-    .filter(t => t.category === 'needs' || t.category === 'wants')
-    .reduce((sum, t) => sum + t.amount, 0);
+  // --- CALCULATIONS USING FINANCE UTILS ---
+  const savingsData = calculateSavingsProgress(transactions, { allocatedSavingsTarget });
   
-  // Available balance = All Income - (Needs + Wants) - (Positive Savings)
-  const monthlyBalance = allMonthlyIncome - allSpendableExpenses - totalMonthlySaved;
+  const {
+    monthlyIncome,
+    targetSavings20Percent,
+    monthlySaved20Percent,
+    monthlySavedLeftover,
+    totalMonthlySaved,
+    totalSavedAllTime,
+    remainingToSave20Percent,
+    remainingToSaveLeftover,
+    savingsPercentage20,
+    monthlyBalance,
+  } = savingsData;
+
+  const hasLeftoverGoal = allocatedSavingsTarget > 0;
 
   // --- Chart Data ---
   const allSavingsTransactions = transactions.filter(
@@ -400,12 +347,17 @@ export const SavingsScreen = ({
       return cumulativeTotal;
   });
   
+  const getMonthKey = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+
   const chartLabels = sortedSavingsTx
     .map(t => {
       const m = getMonthKey(t.date);
       return `${parseInt(m.split('-')[1], 10)}/${m.split('-')[0].slice(2)}`;
     })
-    .filter((value, index, self) => self.indexOf(value) === index); // Unique labels
+    .filter((value, index, self) => self.indexOf(value) === index);
 
   const chartDataPoints = chartLabels.map(label => {
     let lastCumulativeAmount = 0;
@@ -420,18 +372,13 @@ export const SavingsScreen = ({
     return lastCumulativeAmount;
   });
 
-
-  const savingsPercentage20 =
-    targetSavings20Percent > 0
-      ? (monthlySaved20Percent / targetSavings20Percent) * 100
-      : 0;
-
   // --- HANDLERS ---
 
   const handleSaveSubmit = (amount: number, type: '20_percent' | 'leftover') => {
     const transactionName =
       type === '20_percent' ? 'Monthly Savings' : 'Saving Leftover Balance';
 
+    const currentDate = new Date();
     const newTransaction = {
       id: Date.now().toString(),
       icon: 'dollar-sign',
@@ -454,6 +401,7 @@ export const SavingsScreen = ({
     const positiveAmount = amount;
     const negativeAmount = -amount; // Store as negative
 
+    const currentDate = new Date();
     if (type === 'budget') {
       const incomeTx = {
         id: `${Date.now()}-income`,
@@ -464,7 +412,7 @@ export const SavingsScreen = ({
         type: 'income',
         category: 'income',
         subCategory: 'Income',
-        isCarriedOver: false, // --- THIS IS KEY: It counts as new income ---
+        isCarriedOver: false,
       };
       const expenseTx = {
         id: `${Date.now()}-expense`,
@@ -477,7 +425,6 @@ export const SavingsScreen = ({
         subCategory: 'Withdrawal',
       };
       
-      // --- MODIFIED: Pass as an array ---
       onAddTransaction([incomeTx, expenseTx]); 
       
       Alert.alert(
@@ -519,7 +466,7 @@ export const SavingsScreen = ({
           onClose={() => setShowSaveModal(false)}
           onSubmit={handleSaveSubmit}
           monthlyBalance={monthlyBalance}
-          hasLeftoverGoal={allocatedSavingsTarget > 0}
+          hasLeftoverGoal={hasLeftoverGoal}
           remainingToSave20Percent={remainingToSave20Percent}
           remainingToSaveLeftover={remainingToSaveLeftover}
         />
@@ -530,7 +477,7 @@ export const SavingsScreen = ({
           totalSaved={totalSavedAllTime}
         />
 
-        {/* Header (Unchanged) */}
+        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
             <Icon name="arrow-left" size={24} color={COLORS.accent} />
@@ -574,7 +521,7 @@ export const SavingsScreen = ({
                   RM {targetSavings20Percent.toFixed(2)}
                 </Text>
               </View>
-              {allocatedSavingsTarget > 0 && (
+              {hasLeftoverGoal && (
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>
                     Leftover Balance Target:
@@ -617,7 +564,7 @@ export const SavingsScreen = ({
                     RM {remainingToSave20Percent.toFixed(2)}
                   </Text>
                 </View>
-                {allocatedSavingsTarget > 0 && (
+                {hasLeftoverGoal && (
                   <View style={styles.remainingRow}>
                     <Text style={styles.remainingLabel}>
                       Remaining (Leftover):
@@ -1048,4 +995,3 @@ const modalStyles = StyleSheet.create({
     opacity: 0.9,
   },
 });
-

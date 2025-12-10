@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import { COLORS } from '../constants/colors';
 import { transactionItemStyles } from '../styles/transactionItemStyles';
+import { calculateMonthlyStats } from '../utils/financeUtils';
 
 export type Screen =
   | 'Login'
@@ -25,7 +26,6 @@ export type Screen =
   | 'Savings'
   | 'AddMoney'
   | 'SavedAdvice'
-  // --- NEW: Add Profile ---
   | 'Profile';
 
 type HomeScreenProps = {
@@ -41,15 +41,32 @@ export const HomeScreen = ({
   userName,
   allocatedSavingsTarget,
 }: HomeScreenProps) => {
-  // Helper function to get month-year key
-  const getMonthKey = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  };
+  // Calculate all budget data using financeUtils
+  const budgetData = calculateMonthlyStats(transactions, { allocatedSavingsTarget });
+  
+  const {
+    income,
+    budget,
+    totals
+  } = budgetData;
 
-  // Get current month key
-  const currentDate = new Date();
-  const currentMonthKey = getMonthKey(currentDate.toISOString().split('T')[0]);
+  const newMonthlyIncome = income.fresh;
+  const allMonthlyIncome = income.total;
+  const needsTotal = budget.needs.spent;
+  const wantsTotal = budget.wants.spent;
+  const totalExpenses = totals.totalExpenses;
+  const actualSavings20Percent = budget.savings20.saved;
+  const monthlySavedLeftover = budget.leftover.saved;
+  const allMonthlySavings = totals.savedThisMonth;
+  const cumulativeTotalSavings = totals.savedAllTime;
+  const needsTarget = budget.needs.target;
+  const wantsTarget = budget.wants.target;
+  const savingsTarget20Percent = budget.savings20.target;
+  const remainingToSave20Percent = budget.savings20.pending;
+  const pendingLeftoverToSave = budget.leftover.pending;
+  const totalPendingToSave = remainingToSave20Percent + pendingLeftoverToSave;
+  const currentBalance = totals.walletBalance;
+  const displayBalance = totals.displayBalance;
 
   // --- Mini Budget Bar Component ---
   type MiniBudgetCategoryProps = {
@@ -85,73 +102,6 @@ export const HomeScreen = ({
     </View>
   );
 
-  // --- Calculations ---
-  const allMonthlyIncomeTrans = transactions.filter(
-    (t) => t.type === 'income' && getMonthKey(t.date) === currentMonthKey
-  );
-
-  const newMonthlyIncome = allMonthlyIncomeTrans
-    .filter((t) => !t.isCarriedOver)
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const allMonthlyIncome = allMonthlyIncomeTrans.reduce(
-    (sum, t) => sum + t.amount,
-    0
-  );
-
-  const monthlyExpenses = transactions.filter(
-    (t) => t.type === 'expense' && getMonthKey(t.date) === currentMonthKey
-  );
-
-  const needsTotal = monthlyExpenses
-    .filter((t) => t.category === 'needs')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const wantsTotal = monthlyExpenses
-    .filter((t) => t.category === 'wants')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const totalExpenses = needsTotal + wantsTotal;
-
-  const allMonthlySavings = monthlyExpenses
-    .filter((t) => t.category === 'savings')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const cumulativeTotalSavings = transactions
-    .filter((t) => t.type === 'expense' && t.category === 'savings')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const actualSavings20Percent = monthlyExpenses
-    .filter(
-      (t) => t.category === 'savings' && t.name === 'Monthly Savings'
-    )
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const monthlySavedLeftover = monthlyExpenses
-    .filter(
-      (t) => t.category === 'savings' && t.name === 'Saving Leftover Balance'
-    )
-    .reduce((sum, t) => sum + t.amount, 0);
-  
-  const pendingLeftoverToSave = Math.max(
-    0,
-    allocatedSavingsTarget - monthlySavedLeftover
-  );
-
-  const currentBalance = allMonthlyIncome - totalExpenses - actualSavings20Percent - monthlySavedLeftover;
-
-  const displayBalance = currentBalance - pendingLeftoverToSave;
-
-  const needsTarget = newMonthlyIncome * 0.5;
-  const wantsTarget = newMonthlyIncome * 0.3;
-  const savingsTarget20Percent = newMonthlyIncome * 0.2;
-
-  const remainingToSave20Percent = Math.max(
-    0,
-    savingsTarget20Percent - actualSavings20Percent
-  );
-  const totalPendingToSave = pendingLeftoverToSave + remainingToSave20Percent;
-  
   const filteredTransactions = transactions.filter(t => {
     if (t.type === 'income' && t.isCarriedOver) {
       return false;
@@ -161,7 +111,6 @@ export const HomeScreen = ({
 
   const recentTransactions = filteredTransactions.slice(0, 3);
   const hasMoreTransactions = filteredTransactions.length > 3;
-
 
   return (
     <SafeAreaView
@@ -608,4 +557,3 @@ const homeStyles = StyleSheet.create({
     fontWeight: '500',
   },
 });
-

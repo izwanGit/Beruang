@@ -51,6 +51,9 @@ import { ExpensesScreen } from './src/screens/ExpensesScreen';
 import { SavingsScreen } from './src/screens/SavingsScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 
+// Import finance utilities
+import { calculateMonthlyStats, formatBudgetForRAG } from './src/utils/financeUtils';
+
 // --- Types for Navigation ---
 export type RootStackParamList = {
   Login: undefined;
@@ -120,6 +123,33 @@ export type Transaction = {
   isCarriedOver?: boolean;
 };
 
+// --- NEW TYPE: Monthly Budget ---
+export type MonthlyBudget = {
+  id: string;
+  monthKey: string;
+  userId: string;
+  
+  // Budget Allocations
+  income: number;
+  needsAllocation: number;
+  wantsAllocation: number;
+  savingsAllocation: number;
+  
+  // Actual Spending/Saving
+  needsSpent: number;
+  wantsSpent: number;
+  savings20PercentSaved: number;
+  savingsLeftoverSaved: number;
+  
+  // Targets
+  leftoverTarget: number;
+  leftoverRemaining: number;
+  
+  // Metadata
+  updatedAt: any;
+  createdAt: any;
+};
+
 // --- Firebase Initialization ---
 const app = initializeApp(firebaseConfig);
 export const auth = initializeAuth(app, {
@@ -164,6 +194,9 @@ export default function App() {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [currentChatMessages, setCurrentChatMessages] = useState<Message[]>([]);
   const [streamingResponse, setStreamingResponse] = useState<string>(''); // <--- NEW Streaming State
+
+  // --- NEW: Monthly Budgets State ---
+  const [monthlyBudgets, setMonthlyBudgets] = useState<{[key: string]: MonthlyBudget}>({});
 
   // --- 1. Auth Listener ---
   useEffect(() => {
@@ -263,16 +296,33 @@ export default function App() {
       unsubAdvices();
     };
   
-  }, [firebaseUser]); 
+  }, [firebaseUser]);
 
-  // --- 3. Balance Check Logic ---
+  // --- 3. Monthly Budget Listener ---
+  useEffect(() => {
+    if (!firebaseUser) return;
+    
+    const budgetsRef = collection(db, 'users', firebaseUser.uid, 'monthlyBudgets');
+    const unsubBudgets = onSnapshot(budgetsRef, (snapshot) => {
+      const budgetsData: {[key: string]: MonthlyBudget} = {};
+      snapshot.docs.forEach(doc => {
+        const data = doc.data() as MonthlyBudget;
+        budgetsData[data.monthKey] = { id: doc.id, ...data };
+      });
+      setMonthlyBudgets(budgetsData);
+    });
+
+    return () => unsubBudgets();
+  }, [firebaseUser]);
+
+  // --- 4. Balance Check Logic ---
   useEffect(() => {
     if (userProfile && transactions.length > 0) {
       checkLeftoverBalance(userProfile, transactions);
     }
   }, [userProfile, transactions]);
 
-  // --- 4. Chat Listeners ---
+  // --- 5. Chat Listeners ---
   useEffect(() => {
     if (!firebaseUser) return;
     const sessionsRef = collection(db, 'users', firebaseUser.uid, 'chatSessions');
@@ -298,6 +348,12 @@ export default function App() {
     return () => unsubMessages();
   }, [firebaseUser, currentChatId]);
 
+  // --- 6. Auto Sync Monthly Budget ---
+  useEffect(() => {
+    if (transactions.length > 0 && userProfile) {
+      syncMonthlyBudget();
+    }
+  }, [transactions, userProfile]);
 
   // --- Helper Functions ---
 
@@ -349,6 +405,51 @@ export default function App() {
     }
   };
 
+  // --- NEW FUNCTION: Sync Monthly Budget to Firebase ---
+  const syncMonthlyBudget = async () => {
+    const userId = getUserId();
+    if (!userId || !userProfile) return;
+
+    try {
+      const budgetData = calculateMonthlyStats(transactions, userProfile);
+      const currentMonthKey = budgetData.month;
+      
+      const budgetRef = doc(db, 'users', userId, 'monthlyBudgets', currentMonthKey);
+      const now = serverTimestamp();
+      
+      const updateData = {
+        userId,
+        monthKey: currentMonthKey,
+        income: budgetData.income.fresh,
+        needsAllocation: budgetData.budget.needs.target,
+        wantsAllocation: budgetData.budget.wants.target,
+        savingsAllocation: budgetData.budget.savings20.target,
+        needsSpent: budgetData.budget.needs.spent,
+        wantsSpent: budgetData.budget.wants.spent,
+        savings20PercentSaved: budgetData.budget.savings20.saved,
+        savingsLeftoverSaved: budgetData.budget.leftover.saved,
+        leftoverTarget: userProfile.allocatedSavingsTarget || 0,
+        leftoverRemaining: budgetData.budget.leftover.pending,
+        updatedAt: now,
+      };
+
+      // Check if document exists
+      const budgetSnap = await getDoc(budgetRef);
+      if (!budgetSnap.exists()) {
+        await setDoc(budgetRef, {
+          ...updateData,
+          createdAt: now,
+        });
+      } else {
+        await updateDoc(budgetRef, updateData);
+      }
+      
+      console.log('✅ Monthly budget synced:', currentMonthKey);
+    } catch (e) {
+      console.error('Error syncing monthly budget:', e);
+    }
+  };
+
   // --- ★★★ ALLOCATION LOGIC FIXED (50/30/20 vs Save All) ★★★ ---
   const handleBalanceAllocation = async (option: 'savings' | 'budget') => {
     const userId = getUserId();
@@ -396,6 +497,10 @@ export default function App() {
       }
 
       await batch.commit();
+      
+      // Sync budget after allocation
+      setTimeout(() => syncMonthlyBudget(), 100);
+      
       showMessage('Balance allocated successfully.');
       setShowBalanceModal(false);
       setPendingBalance(0);
@@ -404,7 +509,6 @@ export default function App() {
       showMessage('Error allocating balance.');
     }
   };
-
 
   const handleAddTransaction = async (
     transaction: Transaction | Transaction[],
@@ -428,6 +532,10 @@ export default function App() {
       }
 
       await batch.commit();
+      
+      // Sync budget after adding transaction
+      setTimeout(() => syncMonthlyBudget(), 100);
+      
       if (showMsg) {
         showMessage('Transaction added.');
       }
@@ -445,6 +553,10 @@ export default function App() {
     try {
       const transRef = doc(db, 'users', userId, 'transactions', transactionId);
       await updateDoc(transRef, updatedData);
+      
+      // Sync budget after update
+      setTimeout(() => syncMonthlyBudget(), 100);
+      
       showMessage('Transaction updated.');
     } catch (e) {
       console.error('Error updating transaction: ', e);
@@ -458,6 +570,10 @@ export default function App() {
     try {
       const transRef = doc(db, 'users', userId, 'transactions', transactionId);
       await deleteDoc(transRef);
+      
+      // Sync budget after deletion
+      setTimeout(() => syncMonthlyBudget(), 100);
+      
       showMessage('Transaction deleted.');
     } catch (e) {
       console.error('Error deleting transaction: ', e);
@@ -485,7 +601,7 @@ export default function App() {
     return newSessionDoc.id; 
   };
 
-  // --- ★★★ FIXED STREAMING HANDLER WITH IMPROVED INCREMENTAL PARSER ★★★ ---
+  // --- ★★★ FIXED STREAMING HANDLER WITH BUDGET DATA ★★★ ---
   const handleSendMessage = async (text: string, chatId: string | null, isPrefill = false) => {
     const userId = getUserId();
     if (!userId || !chatId || !userProfile) return;
@@ -513,7 +629,11 @@ export default function App() {
       };
     });
 
-    // 3. START STREAMING VIA XHR
+    // 3. Calculate budget data for RAG
+    const budgetData = calculateMonthlyStats(transactions, userProfile);
+    const budgetContext = formatBudgetForRAG(budgetData);
+
+    // 4. START STREAMING VIA XHR
     setStreamingResponse(''); // Clear previous stream
     let fullResponse = ''; // Accumulate full for Firestore save
     let buffer = ''; // Incremental buffer
@@ -615,12 +735,13 @@ export default function App() {
 
       xhr.timeout = 30000;
 
-      // Send payload
+      // Send payload WITH BUDGET CONTEXT
       xhr.send(JSON.stringify({
         message: text,
         history: historyForServer,
-        transactions: transactions,
+        transactions: transactions.slice(0, 20), // Limit to recent
         userProfile: userProfile,
+        budgetContext: budgetContext, // ADDED: Budget data for RAG
       }));
     }).then(async () => {
       if (fullResponse.trim()) {
@@ -639,6 +760,7 @@ export default function App() {
       }
     }).catch(async (error) => {
       console.error('Stream error:', error);
+      // Fallback to non-streaming
       try {
         const fallbackResponse = await fetch(`${API_URL}/chat`, {
           method: 'POST',
@@ -646,8 +768,9 @@ export default function App() {
           body: JSON.stringify({
             message: text,
             history: historyForServer,
-            transactions: transactions,
+            transactions: transactions.slice(0, 20),
             userProfile: userProfile,
+            budgetContext: budgetContext, // Include budget in fallback too
           }),
         });
 
@@ -717,9 +840,11 @@ export default function App() {
     const sessionRef = doc(db, 'users', userId, 'chatSessions', chatId);
     await updateDoc(sessionRef, { lastMessage: newText });
 
-    // Use regular (non-streaming) endpoint for edits, OR adapt to streaming. 
-    // For simplicity, using non-streaming fetch here for edits as it's a legacy function
-    // (You can convert this to stream if you want, but it requires duplicating handleSendMessage logic)
+    // Calculate budget data for edit
+    const budgetData = calculateMonthlyStats(transactions, userProfile);
+    const budgetContext = formatBudgetForRAG(budgetData);
+
+    // Use regular endpoint for edits (simpler)
     try {
       const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
@@ -727,8 +852,9 @@ export default function App() {
         body: JSON.stringify({
           message: newText, 
           history: historyForServer, 
-          transactions: transactions,
+          transactions: transactions.slice(0, 20),
           userProfile: userProfile,
+          budgetContext: budgetContext,
         }),
       });
 
@@ -822,6 +948,10 @@ export default function App() {
     if (!userId) return;
     try {
       await updateDoc(doc(db, 'users', userId), updatedData);
+      
+      // Sync budget after user update
+      setTimeout(() => syncMonthlyBudget(), 100);
+      
       showMessage('Profile updated.');
     } catch (e) {
       console.error('Error updating profile: ', e);
@@ -878,6 +1008,10 @@ export default function App() {
       }
       batch.update(profileRef, { hasSetInitialBalance: true });
       await batch.commit();
+      
+      // Sync budget after setting initial balance
+      setTimeout(() => syncMonthlyBudget(), 100);
+      
       setShowInitialBalanceModal(false);
       showMessage('Your starting balance is set!');
     } catch (e) {
