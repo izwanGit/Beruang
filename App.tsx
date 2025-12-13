@@ -54,6 +54,9 @@ import { ProfileScreen } from './src/screens/ProfileScreen';
 // Import finance utilities
 import { calculateMonthlyStats, formatBudgetForRAG } from './src/utils/financeUtils';
 
+// Import URL config (HARDCODED VERSION)
+import { CHAT_STREAM_URL, CHAT_URL } from './src/config/urls';
+
 // --- Types for Navigation ---
 export type RootStackParamList = {
   Login: undefined;
@@ -157,9 +160,6 @@ export const auth = initializeAuth(app, {
 });
 export const db = getFirestore(app);
 
-// --- Constants ---
-const API_URL = 'http://192.168.0.20:3000'; // Make sure this matches your PC IP
-
 // --- Loading Screen ---
 const LoadingScreen = () => (
   <View style={styles.loadingContainer}>
@@ -193,7 +193,7 @@ export default function App() {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [currentChatMessages, setCurrentChatMessages] = useState<Message[]>([]);
-  const [streamingResponse, setStreamingResponse] = useState<string>(''); // <--- NEW Streaming State
+  const [streamingResponse, setStreamingResponse] = useState<string>('');
 
   // --- NEW: Monthly Budgets State ---
   const [monthlyBudgets, setMonthlyBudgets] = useState<{[key: string]: MonthlyBudget}>({});
@@ -450,7 +450,7 @@ export default function App() {
     }
   };
 
-  // --- ★★★ ALLOCATION LOGIC FIXED (50/30/20 vs Save All) ★★★ ---
+  // --- ALLOCATION LOGIC FIXED (50/30/20 vs Save All) ---
   const handleBalanceAllocation = async (option: 'savings' | 'budget') => {
     const userId = getUserId();
     if (!userId) return;
@@ -601,7 +601,7 @@ export default function App() {
     return newSessionDoc.id; 
   };
 
-  // --- ★★★ FIXED STREAMING HANDLER WITH BUDGET DATA ★★★ ---
+  // --- FIXED STREAMING HANDLER WITH BUDGET DATA ---
   const handleSendMessage = async (text: string, chatId: string | null, isPrefill = false) => {
     const userId = getUserId();
     if (!userId || !chatId || !userProfile) return;
@@ -634,17 +634,20 @@ export default function App() {
     const budgetContext = formatBudgetForRAG(budgetData);
 
     // 4. START STREAMING VIA XHR
-    setStreamingResponse(''); // Clear previous stream
-    let fullResponse = ''; // Accumulate full for Firestore save
-    let buffer = ''; // Incremental buffer
-    let previousLength = 0; // Track cumulative length
+    setStreamingResponse('');
+    let fullResponse = '';
+    let buffer = '';
+    let previousLength = 0;
 
     return new Promise<void>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${API_URL}/chat/stream`);
+      xhr.open('POST', CHAT_STREAM_URL);
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.setRequestHeader('Accept', 'text/event-stream');
+      xhr.setRequestHeader('ngrok-skip-browser-warning', 'true');
       xhr.responseType = 'text';
+
+      xhr.timeout = 45000;
 
       // Incremental progress
       xhr.onprogress = () => {
@@ -652,7 +655,6 @@ export default function App() {
         const newData = responseText.substring(previousLength);
         previousLength = responseText.length;
         buffer += newData;
-        console.log('DEBUG: New chunk:', newData);
 
         // Process complete events incrementally
         while (true) {
@@ -660,7 +662,7 @@ export default function App() {
           if (index === -1) break;
 
           const eventStr = buffer.slice(0, index);
-          buffer = buffer.slice(index + 2); // Consume processed part
+          buffer = buffer.slice(index + 2);
 
           const lines = eventStr.split('\n');
           let currentEvent = '';
@@ -678,7 +680,6 @@ export default function App() {
           if (currentEvent && dataStr.trim()) {
             try {
               const data = JSON.parse(dataStr.trim());
-              console.log('DEBUG: Parsed:', { event: currentEvent, data });
 
               if (currentEvent === 'token' && data.content) {
                 setStreamingResponse((prev) => prev + data.content);
@@ -733,15 +734,13 @@ export default function App() {
       xhr.onerror = () => reject(new Error('Network error'));
       xhr.ontimeout = () => reject(new Error('Timeout'));
 
-      xhr.timeout = 30000;
-
       // Send payload WITH BUDGET CONTEXT
       xhr.send(JSON.stringify({
         message: text,
         history: historyForServer,
-        transactions: transactions.slice(0, 20), // Limit to recent
+        transactions: transactions.slice(0, 20),
         userProfile: userProfile,
-        budgetContext: budgetContext, // ADDED: Budget data for RAG
+        budgetContext: budgetContext,
       }));
     }).then(async () => {
       if (fullResponse.trim()) {
@@ -762,15 +761,18 @@ export default function App() {
       console.error('Stream error:', error);
       // Fallback to non-streaming
       try {
-        const fallbackResponse = await fetch(`${API_URL}/chat`, {
+        const fallbackResponse = await fetch(CHAT_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true' 
+          },
           body: JSON.stringify({
             message: text,
             history: historyForServer,
             transactions: transactions.slice(0, 20),
             userProfile: userProfile,
-            budgetContext: budgetContext, // Include budget in fallback too
+            budgetContext: budgetContext,
           }),
         });
 
@@ -844,11 +846,14 @@ export default function App() {
     const budgetData = calculateMonthlyStats(transactions, userProfile);
     const budgetContext = formatBudgetForRAG(budgetData);
 
-    // Use regular endpoint for edits (simpler)
+    // Use regular endpoint for edits
     try {
-      const response = await fetch(`${API_URL}/chat`, {
+      const response = await fetch(CHAT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true' 
+        },
         body: JSON.stringify({
           message: newText, 
           history: historyForServer, 
@@ -1159,7 +1164,7 @@ export default function App() {
                     onDeleteChatSession={handleDeleteChatSession} 
                     onEditMessage={handleEditMessage} 
                     route={route}
-                    streamingMessage={streamingResponse} // <--- PASSING THE STREAM
+                    streamingMessage={streamingResponse}
                   />
                 )}
               </Stack.Screen>
@@ -1244,6 +1249,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#C8DBBE', // Primary color
+    backgroundColor: '#C8DBBE',
   },
 });

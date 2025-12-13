@@ -81,4 +81,16 @@ yarn-error.log
 
 # Firebase config
 firebaseConfig.js
-*.xcuserdata
+*.xcuserdata.env
+.env.local
+
+# Environment variables
+.env
+.env.local
+*.env
+
+# Ngrok logs
+*.ngrok.log
+ngrok.log
+# Local ngrok URLs
+src/config/urls.ts
