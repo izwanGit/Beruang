@@ -9,7 +9,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // --- Firebase Imports ---
 import { initializeApp } from 'firebase/app';
-import { firebaseConfig } from './firebaseConfig'; 
+import { firebaseConfig } from './firebaseConfig';
 import {
   initializeAuth,
   getReactNativePersistence,
@@ -28,10 +28,10 @@ import {
   collection,
   query,
   writeBatch,
-  serverTimestamp, 
-  orderBy, 
-  deleteDoc, 
-  getDocs, 
+  serverTimestamp,
+  orderBy,
+  deleteDoc,
+  getDocs,
 } from 'firebase/firestore';
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -80,29 +80,29 @@ export type Message = {
   id: string;
   text: string;
   sender: 'user' | 'bot';
-  createdAt: any; 
+  createdAt: any;
 };
 
 export type ChatSession = {
   id: string;
-  title: string; 
-  createdAt: any; 
-  lastMessage: string; 
+  title: string;
+  createdAt: any;
+  lastMessage: string;
 };
 
 export type Advice = {
-  id: string; 
+  id: string;
   text: string;
   date: string;
-  chatId: string; 
-  messageId: string; 
+  chatId: string;
+  messageId: string;
 };
 
 export type User = {
   name: string;
   avatar: string;
   age: string | number;
-  state: string; 
+  state: string;
   occupation: string;
   monthlyIncome: number;
   financialSituation: string;
@@ -115,10 +115,10 @@ export type User = {
 };
 
 export type Transaction = {
-  id: string; 
+  id: string;
   icon: string;
   name: string;
-  date: string; 
+  date: string;
   amount: number;
   type: 'income' | 'expense';
   category: 'income' | 'needs' | 'wants' | 'savings';
@@ -131,23 +131,23 @@ export type MonthlyBudget = {
   id: string;
   monthKey: string;
   userId: string;
-  
+
   // Budget Allocations
   income: number;
   needsAllocation: number;
   wantsAllocation: number;
   savingsAllocation: number;
-  
+
   // Actual Spending/Saving
   needsSpent: number;
   wantsSpent: number;
   savings20PercentSaved: number;
   savingsLeftoverSaved: number;
-  
+
   // Targets
   leftoverTarget: number;
   leftoverRemaining: number;
-  
+
   // Metadata
   updatedAt: any;
   createdAt: any;
@@ -196,7 +196,7 @@ export default function App() {
   const [streamingResponse, setStreamingResponse] = useState<string>('');
 
   // --- NEW: Monthly Budgets State ---
-  const [monthlyBudgets, setMonthlyBudgets] = useState<{[key: string]: MonthlyBudget}>({});
+  const [monthlyBudgets, setMonthlyBudgets] = useState<{ [key: string]: MonthlyBudget }>({});
 
   // --- 1. Auth Listener ---
   useEffect(() => {
@@ -206,9 +206,9 @@ export default function App() {
         setUserProfile(null);
         setTransactions([]);
         setSavedAdvices([]);
-        setChatSessions([]); 
-        setCurrentChatId(null); 
-        setCurrentChatMessages([]); 
+        setChatSessions([]);
+        setCurrentChatId(null);
+        setCurrentChatMessages([]);
         setIsAuthReady(true);
       }
     });
@@ -217,9 +217,9 @@ export default function App() {
 
   // --- 2. Data Listeners ---
   useEffect(() => {
-    let unsubProfile: () => void = () => {};
-    let unsubTransactions: () => void = () => {};
-    let unsubAdvices: () => void = () => {};
+    let unsubProfile: () => void = () => { };
+    let unsubTransactions: () => void = () => { };
+    let unsubAdvices: () => void = () => { };
 
     const setupListeners = async () => {
       if (firebaseUser) {
@@ -234,16 +234,16 @@ export default function App() {
             email: firebaseUser.email,
             avatar: 'bear',
             age: '',
-            state: '', 
+            state: '',
             occupation: '',
             monthlyIncome: 0,
             financialSituation: '',
-            financialGoals: '', 
+            financialGoals: '',
             riskTolerance: '',
             cashFlow: '',
             lastCheckedMonth: getMonthKey(new Date().toISOString()),
             allocatedSavingsTarget: 0,
-            hasSetInitialBalance: false, 
+            hasSetInitialBalance: false,
           });
         }
 
@@ -252,7 +252,7 @@ export default function App() {
             const profileData = profileDoc.data() as User;
             if (!profileData.name && firebaseUser.displayName) {
               updateDoc(doc(db, 'users', userId), { name: firebaseUser.displayName });
-              profileData.name = firebaseUser.displayName; 
+              profileData.name = firebaseUser.displayName;
             }
             setUserProfile(profileData);
             if (profileData.financialGoals && !profileData.hasSetInitialBalance) {
@@ -267,10 +267,10 @@ export default function App() {
         });
 
         const transRef = collection(db, 'users', userId, 'transactions');
-        const transQuery = query(transRef, orderBy('date', 'desc')); 
+        const transQuery = query(transRef, orderBy('date', 'desc'));
         unsubTransactions = onSnapshot(transQuery, (snapshot) => {
           const transData: Transaction[] = snapshot.docs.map((doc) => ({
-            ...doc.data(), 
+            ...doc.data(),
             id: doc.id,
           })) as Transaction[];
           setTransactions(transData);
@@ -287,24 +287,24 @@ export default function App() {
 
       }
     };
-    
+
     setupListeners();
-  
+
     return () => {
       unsubProfile();
       unsubTransactions();
       unsubAdvices();
     };
-  
+
   }, [firebaseUser]);
 
   // --- 3. Monthly Budget Listener ---
   useEffect(() => {
     if (!firebaseUser) return;
-    
+
     const budgetsRef = collection(db, 'users', firebaseUser.uid, 'monthlyBudgets');
     const unsubBudgets = onSnapshot(budgetsRef, (snapshot) => {
-      const budgetsData: {[key: string]: MonthlyBudget} = {};
+      const budgetsData: { [key: string]: MonthlyBudget } = {};
       snapshot.docs.forEach(doc => {
         const data = doc.data() as MonthlyBudget;
         budgetsData[data.monthKey] = { id: doc.id, ...data };
@@ -336,7 +336,7 @@ export default function App() {
 
   useEffect(() => {
     if (!firebaseUser || !currentChatId) {
-      setCurrentChatMessages([]); 
+      setCurrentChatMessages([]);
       return;
     }
     const messagesRef = collection(db, 'users', firebaseUser.uid, 'chatSessions', currentChatId, 'messages');
@@ -376,16 +376,16 @@ export default function App() {
       const lastMonthTransactions = trans.filter(
         (t) => getMonthKey(t.date) === lastMonthKey
       );
-      
+
       const lastMonthIncome = lastMonthTransactions
         .filter((t) => t.type === 'income')
         .reduce((sum, t) => sum + t.amount, 0);
       const lastMonthExpenses = lastMonthTransactions
         .filter((t) => t.type === 'expense')
         .reduce((sum, t) => sum + t.amount, 0);
-        
+
       const leftover = lastMonthIncome - lastMonthExpenses;
-      
+
       if (leftover > 0) {
         setPendingBalance(leftover);
         setShowBalanceModal(true);
@@ -413,10 +413,10 @@ export default function App() {
     try {
       const budgetData = calculateMonthlyStats(transactions, userProfile);
       const currentMonthKey = budgetData.month;
-      
+
       const budgetRef = doc(db, 'users', userId, 'monthlyBudgets', currentMonthKey);
       const now = serverTimestamp();
-      
+
       const updateData = {
         userId,
         monthKey: currentMonthKey,
@@ -443,7 +443,7 @@ export default function App() {
       } else {
         await updateDoc(budgetRef, updateData);
       }
-      
+
       console.log('✅ Monthly budget synced:', currentMonthKey);
     } catch (e) {
       console.error('Error syncing monthly budget:', e);
@@ -463,7 +463,7 @@ export default function App() {
       const profileRef = doc(db, 'users', userId);
 
       const transactionData = {
-        name: 'Carried Over', 
+        name: 'Carried Over',
         date: currentDate,
         amount: pendingBalance,
         type: 'income',
@@ -476,20 +476,20 @@ export default function App() {
         batch.set(doc(transRef), {
           ...transactionData,
           icon: 'chevrons-down',
-          isCarriedOver: false, 
+          isCarriedOver: false,
         });
-        
+
         batch.update(profileRef, {
           lastCheckedMonth: currentMonthKey,
         });
 
       } else {
         batch.set(doc(transRef), {
-            ...transactionData,
-            icon: 'piggy-bank',
-            isCarriedOver: true, 
+          ...transactionData,
+          icon: 'piggy-bank',
+          isCarriedOver: true,
         });
-        
+
         batch.update(profileRef, {
           allocatedSavingsTarget: (userProfile?.allocatedSavingsTarget || 0) + pendingBalance,
           lastCheckedMonth: currentMonthKey,
@@ -497,10 +497,10 @@ export default function App() {
       }
 
       await batch.commit();
-      
+
       // Sync budget after allocation
       setTimeout(() => syncMonthlyBudget(), 100);
-      
+
       showMessage('Balance allocated successfully.');
       setShowBalanceModal(false);
       setPendingBalance(0);
@@ -518,24 +518,24 @@ export default function App() {
     if (!userId) return;
     try {
       const batch = writeBatch(db);
-      
+
       if (Array.isArray(transaction)) {
         transaction.forEach((t) => {
-          const safeId = t.id || String(Date.now() + Math.random()); 
-          const docRef = doc(db, 'users', userId, 'transactions', safeId); 
-          batch.set(docRef, { ...t, id: safeId, createdAt: serverTimestamp() }); 
+          const safeId = t.id || String(Date.now() + Math.random());
+          const docRef = doc(db, 'users', userId, 'transactions', safeId);
+          batch.set(docRef, { ...t, id: safeId, createdAt: serverTimestamp() });
         });
       } else {
         const safeId = transaction.id || String(Date.now());
-        const docRef = doc(db, 'users', userId, 'transactions', safeId); 
-        batch.set(docRef, { ...transaction, id: safeId, createdAt: serverTimestamp() }); 
+        const docRef = doc(db, 'users', userId, 'transactions', safeId);
+        batch.set(docRef, { ...transaction, id: safeId, createdAt: serverTimestamp() });
       }
 
       await batch.commit();
-      
+
       // Sync budget after adding transaction
       setTimeout(() => syncMonthlyBudget(), 100);
-      
+
       if (showMsg) {
         showMessage('Transaction added.');
       }
@@ -553,10 +553,10 @@ export default function App() {
     try {
       const transRef = doc(db, 'users', userId, 'transactions', transactionId);
       await updateDoc(transRef, updatedData);
-      
+
       // Sync budget after update
       setTimeout(() => syncMonthlyBudget(), 100);
-      
+
       showMessage('Transaction updated.');
     } catch (e) {
       console.error('Error updating transaction: ', e);
@@ -570,10 +570,10 @@ export default function App() {
     try {
       const transRef = doc(db, 'users', userId, 'transactions', transactionId);
       await deleteDoc(transRef);
-      
+
       // Sync budget after deletion
       setTimeout(() => syncMonthlyBudget(), 100);
-      
+
       showMessage('Transaction deleted.');
     } catch (e) {
       console.error('Error deleting transaction: ', e);
@@ -587,7 +587,7 @@ export default function App() {
 
     const sessionsRef = collection(db, 'users', userId, 'chatSessions');
     const newSessionDoc = await addDoc(sessionsRef, {
-      title: 'New Chat', 
+      title: 'New Chat',
       createdAt: serverTimestamp(),
       lastMessage: '...',
     });
@@ -597,8 +597,8 @@ export default function App() {
     if (prefillMessage) {
       await handleSendMessage(prefillMessage, newSessionDoc.id, true);
     }
-    
-    return newSessionDoc.id; 
+
+    return newSessionDoc.id;
   };
 
   // --- FIXED STREAMING HANDLER WITH BUDGET DATA ---
@@ -749,7 +749,7 @@ export default function App() {
           sender: 'bot',
           createdAt: serverTimestamp(),
         });
-        
+
         if (historyForServer.length <= 1 || isPrefill) {
           const newTitle = text.length > 30 ? text.substring(0, 30) + '...' : text;
           await updateDoc(sessionRef, { title: newTitle });
@@ -763,9 +763,9 @@ export default function App() {
       try {
         const fallbackResponse = await fetch(CHAT_URL, {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
-            'ngrok-skip-browser-warning': 'true' 
+            'ngrok-skip-browser-warning': 'true'
           },
           body: JSON.stringify({
             message: text,
@@ -814,16 +814,16 @@ export default function App() {
     const messagesRef = collection(db, 'users', userId, 'chatSessions', chatId, 'messages');
     const q = query(messagesRef, orderBy('createdAt', 'asc'));
     const messagesSnap = await getDocs(q);
-    
+
     let foundMessage = false;
     const batch = writeBatch(db);
-    const historyForServer = []; 
+    const historyForServer = [];
 
     for (const docSnap of messagesSnap.docs) {
       const messageData = docSnap.data();
-      
+
       if (foundMessage && messageData.sender === 'bot') {
-        batch.delete(docSnap.ref); 
+        batch.delete(docSnap.ref);
       } else if (docSnap.id === messageId) {
         foundMessage = true;
         historyForServer.push({
@@ -837,7 +837,7 @@ export default function App() {
         });
       }
     }
-    await batch.commit(); 
+    await batch.commit();
 
     const sessionRef = doc(db, 'users', userId, 'chatSessions', chatId);
     await updateDoc(sessionRef, { lastMessage: newText });
@@ -850,13 +850,13 @@ export default function App() {
     try {
       const response = await fetch(CHAT_URL, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true' 
+          'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify({
-          message: newText, 
-          history: historyForServer, 
+          message: newText,
+          history: historyForServer,
           transactions: transactions.slice(0, 20),
           userProfile: userProfile,
           budgetContext: budgetContext,
@@ -926,9 +926,9 @@ export default function App() {
   const handleSaveAdvice = async (text: string, chatId: string, messageId: string) => {
     const userId = getUserId();
     if (!userId || !chatId || !messageId) {
-       console.error("Missing IDs for saving advice:", { userId, chatId, messageId });
-       showMessage('Error: Could not save advice. Missing context.');
-       return;
+      console.error("Missing IDs for saving advice:", { userId, chatId, messageId });
+      showMessage('Error: Could not save advice. Missing context.');
+      return;
     }
     try {
       await addDoc(collection(db, 'users', userId, 'savedAdvices'), {
@@ -953,10 +953,10 @@ export default function App() {
     if (!userId) return;
     try {
       await updateDoc(doc(db, 'users', userId), updatedData);
-      
+
       // Sync budget after user update
       setTimeout(() => syncMonthlyBudget(), 100);
-      
+
       showMessage('Profile updated.');
     } catch (e) {
       console.error('Error updating profile: ', e);
@@ -982,7 +982,7 @@ export default function App() {
     } catch (e) {
       console.error('Error completing onboarding: ', e);
       showMessage('Error saving profile.');
-      throw e; 
+      throw e;
     }
   };
 
@@ -1008,15 +1008,15 @@ export default function App() {
           category: 'income',
           subCategory: 'Initial',
           isCarriedOver: false,
-          createdAt: serverTimestamp() 
+          createdAt: serverTimestamp()
         });
       }
       batch.update(profileRef, { hasSetInitialBalance: true });
       await batch.commit();
-      
+
       // Sync budget after setting initial balance
       setTimeout(() => syncMonthlyBudget(), 100);
-      
+
       setShowInitialBalanceModal(false);
       showMessage('Your starting balance is set!');
     } catch (e) {
@@ -1056,6 +1056,7 @@ export default function App() {
               <Stack.Screen name="Login">
                 {({ navigation }) => (
                   <LoginScreen
+                    key="login-screen-v1"
                     onSignUp={() => navigation.navigate('SignUp')}
                     showMessage={showMessage}
                   />
@@ -1064,6 +1065,7 @@ export default function App() {
               <Stack.Screen name="SignUp">
                 {({ navigation }) => (
                   <SignUpScreen
+                    key="signup-screen-v1"
                     onBack={() => navigation.goBack()}
                     showMessage={showMessage}
                   />
@@ -1150,7 +1152,7 @@ export default function App() {
                   <ChatbotScreen
                     onBack={() => {
                       navigation.goBack();
-                      setCurrentChatId(null); 
+                      setCurrentChatId(null);
                     }}
                     chatSessions={chatSessions}
                     currentChatMessages={currentChatMessages}
@@ -1161,8 +1163,8 @@ export default function App() {
                     onCreateNewChat={handleCreateNewChat}
                     onSendMessage={handleSendMessage}
                     onSaveAdvice={handleSaveAdvice}
-                    onDeleteChatSession={handleDeleteChatSession} 
-                    onEditMessage={handleEditMessage} 
+                    onDeleteChatSession={handleDeleteChatSession}
+                    onEditMessage={handleEditMessage}
                     route={route}
                     streamingMessage={streamingResponse}
                   />
@@ -1225,7 +1227,7 @@ export default function App() {
 
       {/* --- MODALS --- */}
       <BalanceAllocationModal
-        key={pendingBalance} 
+        key={pendingBalance}
         visible={showBalanceModal}
         balance={pendingBalance}
         onAllocate={handleBalanceAllocation}

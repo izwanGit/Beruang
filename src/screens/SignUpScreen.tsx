@@ -1,5 +1,5 @@
 // src/screens/SignUpScreen.tsx
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Text,
   View,
@@ -7,10 +7,14 @@ import {
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
+  Image,
+  Animated,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
-import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../constants/colors';
 import { loginStyles } from '../styles/loginStyles';
 
@@ -21,8 +25,6 @@ import { auth } from '../../App'; // Import auth from App.tsx
 type SignUpScreenProps = {
   onBack: () => void;
   showMessage: (message: string) => void;
-  // onSignUpSuccess is no longer needed,
-  // as onAuthStateChanged in App.tsx will handle navigation
 };
 
 export const SignUpScreen = ({ onBack, showMessage }: SignUpScreenProps) => {
@@ -31,6 +33,35 @@ export const SignUpScreen = ({ onBack, showMessage }: SignUpScreenProps) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Focus States
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
+
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const handlePressIn = () => {
+    Animated.spring(buttonScale, {
+      toValue: 0.98,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(buttonScale, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const handleSignUp = async () => {
     if (!name || !email || !password || !confirmPassword) {
@@ -52,21 +83,8 @@ export const SignUpScreen = ({ onBack, showMessage }: SignUpScreenProps) => {
 
     setIsLoading(true);
     try {
-      // --- NEW: Call Firebase Auth ---
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-
-      // --- NEW: Set the user's display name in Firebase Auth ---
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(userCredential.user, { displayName: name });
-
-      // We pass the name to App.tsx this way
-      // onSignUpSuccess(name);
-      // This is no longer needed. onAuthStateChanged will detect the new user.
-      // App.tsx will then see this user has no profile and show Onboarding.
-      // During onboarding, the name will be saved to the *Firestore document*.
     } catch (error: any) {
       console.error(error);
       if (error.code === 'auth/email-already-in-use') {
@@ -81,97 +99,138 @@ export const SignUpScreen = ({ onBack, showMessage }: SignUpScreenProps) => {
 
   return (
     <SafeAreaView style={loginStyles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-      <View style={loginStyles.logoContainer}>
-        <MaterialCommunityIcon name="bear" size={80} color={COLORS.accent} />
-        <Text style={loginStyles.title}>BERUANG</Text>
-        <Text style={loginStyles.subtitle}>Create Your Account</Text>
-      </View>
-      <View style={loginStyles.inputContainer}>
-        <View style={loginStyles.inputView}>
-          <Icon
-            name="user"
-            size={20}
-            color={COLORS.accent}
-            style={loginStyles.inputIcon}
-          />
-          <TextInput
-            placeholder="Full Name"
-            placeholderTextColor={COLORS.darkGray}
-            style={loginStyles.input}
-            autoCapitalize="words"
-            value={name}
-            onChangeText={setName}
-          />
-        </View>
-        <View style={loginStyles.inputView}>
-          <Icon
-            name="mail"
-            size={20}
-            color={COLORS.accent}
-            style={loginStyles.inputIcon}
-          />
-          <TextInput
-            placeholder="Email"
-            placeholderTextColor={COLORS.darkGray}
-            style={loginStyles.input}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-          />
-        </View>
-        <View style={loginStyles.inputView}>
-          <Icon
-            name="lock"
-            size={20}
-            color={COLORS.accent}
-            style={loginStyles.inputIcon}
-          />
-          <TextInput
-            placeholder="Password"
-            placeholderTextColor={COLORS.darkGray}
-            style={loginStyles.input}
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
-        </View>
-        <View style={loginStyles.inputView}>
-          <Icon
-            name="lock"
-            size={20}
-            color={COLORS.accent}
-            style={loginStyles.inputIcon}
-          />
-          <TextInput
-            placeholder="Confirm Password"
-            placeholderTextColor={COLORS.darkGray}
-            style={loginStyles.input}
-            secureTextEntry
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-          />
-        </View>
-      </View>
-      <TouchableOpacity
-        style={loginStyles.loginButton}
-        onPress={handleSignUp}
-        disabled={isLoading}
+      <StatusBar barStyle="dark-content" />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1, width: '100%', justifyContent: 'center' }}
       >
-        {isLoading ? (
-          <ActivityIndicator color={COLORS.white} />
-        ) : (
-          <Text style={loginStyles.loginButtonText}>Sign Up</Text>
-        )}
-      </TouchableOpacity>
-      <View style={loginStyles.footer}>
-        <TouchableOpacity onPress={onBack}>
-          <Text style={loginStyles.footerText}>
-            Already have an account? Login
-          </Text>
-        </TouchableOpacity>
-      </View>
+        <Animated.View style={[loginStyles.logoContainer, { opacity: fadeAnim }]}>
+          <Image
+            source={require('../../assets/images/bear_logo.png')}
+            style={{ width: 300, height: 140, marginBottom: 5 }}
+            resizeMode="contain"
+          />
+          <Text style={loginStyles.title}>BERUANG</Text>
+          <Text style={loginStyles.subtitle}>Create Your Account</Text>
+        </Animated.View>
+
+        <Animated.View style={[loginStyles.inputContainer, { opacity: fadeAnim }]}>
+          <View style={[
+            loginStyles.inputView,
+            focusedInput === 'name' && loginStyles.inputViewFocused
+          ]}>
+            <Icon
+              name="user"
+              size={20}
+              color={focusedInput === 'name' ? '#6F8455' : COLORS.accent}
+              style={loginStyles.inputIcon}
+            />
+            <TextInput
+              placeholder="Full Name"
+              placeholderTextColor={COLORS.darkGray}
+              style={loginStyles.input}
+              autoCapitalize="words"
+              value={name}
+              onChangeText={setName}
+              onFocus={() => setFocusedInput('name')}
+              onBlur={() => setFocusedInput(null)}
+            />
+          </View>
+
+          <View style={[
+            loginStyles.inputView,
+            focusedInput === 'email' && loginStyles.inputViewFocused
+          ]}>
+            <Icon
+              name="mail"
+              size={20}
+              color={focusedInput === 'email' ? '#6F8455' : COLORS.accent}
+              style={loginStyles.inputIcon}
+            />
+            <TextInput
+              placeholder="Email"
+              placeholderTextColor={COLORS.darkGray}
+              style={loginStyles.input}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+              onFocus={() => setFocusedInput('email')}
+              onBlur={() => setFocusedInput(null)}
+            />
+          </View>
+
+          <View style={[
+            loginStyles.inputView,
+            focusedInput === 'password' && loginStyles.inputViewFocused
+          ]}>
+            <Icon
+              name="lock"
+              size={20}
+              color={focusedInput === 'password' ? '#6F8455' : COLORS.accent}
+              style={loginStyles.inputIcon}
+            />
+            <TextInput
+              placeholder="Password"
+              placeholderTextColor={COLORS.darkGray}
+              style={loginStyles.input}
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              onFocus={() => setFocusedInput('password')}
+              onBlur={() => setFocusedInput(null)}
+            />
+          </View>
+
+          <View style={[
+            loginStyles.inputView,
+            focusedInput === 'confirmPassword' && loginStyles.inputViewFocused
+          ]}>
+            <Icon
+              name="lock"
+              size={20}
+              color={focusedInput === 'confirmPassword' ? '#6F8455' : COLORS.accent}
+              style={loginStyles.inputIcon}
+            />
+            <TextInput
+              placeholder="Confirm Password"
+              placeholderTextColor={COLORS.darkGray}
+              style={loginStyles.input}
+              secureTextEntry
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              onFocus={() => setFocusedInput('confirmPassword')}
+              onBlur={() => setFocusedInput(null)}
+            />
+          </View>
+
+          <Pressable
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            onPress={handleSignUp}
+            disabled={isLoading}
+          >
+            <Animated.View style={[
+              loginStyles.loginButton,
+              { transform: [{ scale: buttonScale }] }
+            ]}>
+              {isLoading ? (
+                <ActivityIndicator color={COLORS.white} />
+              ) : (
+                <Text style={loginStyles.loginButtonText}>Sign Up</Text>
+              )}
+            </Animated.View>
+          </Pressable>
+
+          <View style={loginStyles.footer}>
+            <TouchableOpacity onPress={onBack}>
+              <Text style={loginStyles.footerText}>
+                Already have an account? <Text style={loginStyles.signUpText}>Login</Text>
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

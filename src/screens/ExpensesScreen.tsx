@@ -62,7 +62,7 @@ const getSubCategoryGroups = (expenseList: Array<any>) => {
   const spendableExpenses = expenseList.filter(
     (t) => t.category === 'needs' || t.category === 'wants' || t.category === 'others'
   );
- 
+
   return spendableExpenses.reduce((acc, t) => {
     if (!acc[t.subCategory]) {
       acc[t.subCategory] = { amount: 0, count: 0 };
@@ -87,7 +87,7 @@ export const ExpensesScreen = ({
   const [activeTab, setActiveTab] = useState('latest');
   const [sortOption, setSortOption] = useState<SortOption>('dateDesc');
   const [searchQuery, setSearchQuery] = useState('');
- 
+
   // --- EDIT MODAL STATE ---
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isSortModalVisible, setIsSortModalVisible] = useState(false);
@@ -148,7 +148,7 @@ export const ExpensesScreen = ({
     }
     // Show ALL Income (But we will hide 'Carried Over' in the render loop)
     if (t.type === 'income') {
-      return true; 
+      return true;
     }
     return false;
   });
@@ -156,12 +156,12 @@ export const ExpensesScreen = ({
   const expenses = allMonthlyTransactions.filter(
     (t) => t.type === 'expense' && (t.category === 'needs' || t.category === 'wants' || t.category === 'others')
   );
-  
+
   const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
 
   // --- BUDGET LOGIC ---
   const totalIncomeForMonth = allMonthlyTransactions
-    .filter((t) => t.type === 'income' && t.isCarriedOver !== true) 
+    .filter((t) => t.type === 'income' && t.isCarriedOver !== true)
     .reduce((sum, t) => sum + t.amount, 0);
 
   const needsBudget = totalIncomeForMonth * 0.5;
@@ -219,8 +219,8 @@ export const ExpensesScreen = ({
   // --- EDIT MODAL ---
   const openEditModal = (transaction: Transaction) => {
     if (transaction.category === 'savings' && transaction.isCarriedOver) {
-        Alert.alert("System Transaction", "This carried-over savings allocation cannot be edited here.");
-        return;
+      Alert.alert("System Transaction", "This carried-over savings allocation cannot be edited here.");
+      return;
     }
     setEditingTransaction(transaction);
     setEditAmount(transaction.amount.toString());
@@ -434,7 +434,7 @@ export const ExpensesScreen = ({
             • {item.subCategory}
           </Text>
         </View>
-        <View style={{alignItems: 'flex-end'}}>
+        <View style={{ alignItems: 'flex-end' }}>
           <Text
             style={[
               transactionItemStyles.transactionAmount,
@@ -449,7 +449,7 @@ export const ExpensesScreen = ({
             {item.type === 'income' ? '+' : '-'} RM{' '}
             {item.amount.toFixed(2)}
           </Text>
-          <Icon name="edit-2" size={12} color={COLORS.darkGray} style={{marginTop: 4}} />
+          <Icon name="edit-2" size={12} color={COLORS.darkGray} style={{ marginTop: 4 }} />
         </View>
       </TouchableOpacity>
     ));
@@ -537,7 +537,7 @@ export const ExpensesScreen = ({
               </TouchableOpacity>
             ))}
           </View>
-          
+
           {/* --- CHART CONTAINER --- */}
           <View style={expensesStyles.chartContainer}>
             <DonutChart data={chartData} total={totalForChart} />
@@ -556,7 +556,7 @@ export const ExpensesScreen = ({
               {Object.entries(subCategoryGroups).map(([sub, { amount }]) => {
                 const { icon } = categoryIcons[sub] || { icon: 'dots-horizontal' };
                 const color = colorMap[sub] || categoryIcons[sub]?.color || COLORS.darkGray;
-               
+
                 return (
                   <View key={sub} style={expensesStyles.categoryItem}>
                     <View
@@ -637,43 +637,43 @@ export const ExpensesScreen = ({
             </View>
           ) : activeTab === 'needs' ? (
             <View>
-                <View style={expensesStyles.budgetContainer}>
+              <View style={expensesStyles.budgetContainer}>
                 {/* ★★★ FIXED: Using totalIncomeForMonth ★★★ */}
                 {totalIncomeForMonth > 0 ? (
-                    <BudgetCategoryView
+                  <BudgetCategoryView
                     title="Needs (50%)"
                     spent={needsForMonth}
                     total={needsBudget}
                     color="#42a5f5"
-                    />
+                  />
                 ) : (
-                    <Text style={expensesStyles.merchantsText}>
+                  <Text style={expensesStyles.merchantsText}>
                     No income recorded for {monthNames[selectedMonth - 1]} to calculate budget.
-                    </Text>
+                  </Text>
                 )}
-                </View>
-                {renderTransactionHeader()}
-                {renderTransactionsList(needsExpenses)}
+              </View>
+              {renderTransactionHeader()}
+              {renderTransactionsList(needsExpenses)}
             </View>
           ) : ( // activeTab === 'wants'
             <View>
-                <View style={expensesStyles.budgetContainer}>
+              <View style={expensesStyles.budgetContainer}>
                 {/* ★★★ FIXED: Using totalIncomeForMonth ★★★ */}
                 {totalIncomeForMonth > 0 ? (
-                    <BudgetCategoryView
+                  <BudgetCategoryView
                     title="Wants (30%)"
                     spent={wantsForMonth}
                     total={wantsBudget}
                     color="#ff7043"
-                    />
+                  />
                 ) : (
-                    <Text style={expensesStyles.merchantsText}>
+                  <Text style={expensesStyles.merchantsText}>
                     No income recorded for {monthNames[selectedMonth - 1]} to calculate budget.
-                    </Text>
+                  </Text>
                 )}
-                </View>
-                {renderTransactionHeader()}
-                {renderTransactionsList(wantsExpenses)}
+              </View>
+              {renderTransactionHeader()}
+              {renderTransactionsList(wantsExpenses)}
             </View>
           )}
         </ScrollView>
@@ -696,7 +696,7 @@ export const ExpensesScreen = ({
             <Icon name="pie-chart" size={26} color={COLORS.accent} />
             <Text style={expensesStyles.navTextActive}>Expenses</Text>
           </TouchableOpacity>
-         
+
           <TouchableOpacity
             style={expensesStyles.navItem}
             onPress={() => onNavigate('Chatbot')}
@@ -727,10 +727,10 @@ export const ExpensesScreen = ({
               <ScrollView showsVerticalScrollIndicator={false}>
                 <View style={expensesStyles.modalHeader}>
                   <View style={expensesStyles.modalHandle} />
-                  <View style={{flexDirection: 'row', justifyContent:'space-between', alignItems: 'center', marginTop: 10}}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
                     <Text style={expensesStyles.modalTitle}>Edit Transaction</Text>
                     <TouchableOpacity onPress={() => closeEditModal()} style={expensesStyles.closeButton} disabled={isSaving}>
-                        <Icon name="x" size={22} color={COLORS.darkGray} />
+                      <Icon name="x" size={22} color={COLORS.darkGray} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -790,12 +790,12 @@ export const ExpensesScreen = ({
                 </View>
               </ScrollView>
               <View style={expensesStyles.actionButtons}>
-                  <TouchableOpacity style={expensesStyles.deleteButton} onPress={handleDelete} disabled={isSaving} activeOpacity={isSaving ? 1 : 0.7}>
-                      {isSaving ? <ActivityIndicator color={COLORS.danger} /> : <Icon name="trash-2" size={20} color={COLORS.danger} />}
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[expensesStyles.saveButton, isSaving && { opacity: 0.7 }]} onPress={handleSaveEdit} disabled={isSaving}>
-                    <Text style={expensesStyles.saveButtonText}>{isSaving ? 'Saving...' : 'Save Changes'}</Text>
-                  </TouchableOpacity>
+                <TouchableOpacity style={expensesStyles.deleteButton} onPress={handleDelete} disabled={isSaving} activeOpacity={isSaving ? 1 : 0.7}>
+                  {isSaving ? <ActivityIndicator color={COLORS.danger} /> : <Icon name="trash-2" size={20} color={COLORS.danger} />}
+                </TouchableOpacity>
+                <TouchableOpacity style={[expensesStyles.saveButton, isSaving && { opacity: 0.7 }]} onPress={handleSaveEdit} disabled={isSaving}>
+                  <Text style={expensesStyles.saveButtonText}>{isSaving ? 'Saving...' : 'Save Changes'}</Text>
+                </TouchableOpacity>
               </View>
             </KeyboardAvoidingView>
           </Animated.View>
@@ -810,47 +810,47 @@ export const ExpensesScreen = ({
         onRequestClose={closeSortModal}
       >
         <View style={expensesStyles.modalOverlay}>
-           <TouchableWithoutFeedback onPress={closeSortModal}>
-             <Animated.View style={[expensesStyles.backdrop, { opacity: fadeAnim }]} />
-           </TouchableWithoutFeedback>
-          
-           <Animated.View style={[expensesStyles.modalContent, { transform: [{ translateY: sortSlideAnim }] }]}>
-              <View style={expensesStyles.modalHeader}>
-                <View style={expensesStyles.modalHandle} />
-                <Text style={[expensesStyles.modalTitle, {textAlign: 'center', marginTop: 10}]}>Sort By</Text>
-              </View>
-             
-              <View style={{gap: 12}}>
-                <TouchableOpacity
-                   style={[expensesStyles.sortOption, sortOption === 'dateDesc' && expensesStyles.sortOptionActive]}
-                   onPress={() => handleSortSelect('dateDesc')}
-                >
-                  <Text style={[expensesStyles.sortOptionText, sortOption === 'dateDesc' && expensesStyles.sortOptionTextActive]}>Date (Newest First)</Text>
-                  {sortOption === 'dateDesc' && <Icon name="check" size={20} color={COLORS.accent} />}
-                </TouchableOpacity>
-                <TouchableOpacity
-                   style={[expensesStyles.sortOption, sortOption === 'dateAsc' && expensesStyles.sortOptionActive]}
-                   onPress={() => handleSortSelect('dateAsc')}
-                >
-                  <Text style={[expensesStyles.sortOptionText, sortOption === 'dateAsc' && expensesStyles.sortOptionTextActive]}>Date (Oldest First)</Text>
-                  {sortOption === 'dateAsc' && <Icon name="check" size={20} color={COLORS.accent} />}
-                </TouchableOpacity>
-                <TouchableOpacity
-                   style={[expensesStyles.sortOption, sortOption === 'amountHigh' && expensesStyles.sortOptionActive]}
-                   onPress={() => handleSortSelect('amountHigh')}
-                >
-                   <Text style={[expensesStyles.sortOptionText, sortOption === 'amountHigh' && expensesStyles.sortOptionTextActive]}>Highest Amount</Text>
-                   {sortOption === 'amountHigh' && <Icon name="check" size={20} color={COLORS.accent} />}
-                </TouchableOpacity>
-                <TouchableOpacity
-                   style={[expensesStyles.sortOption, sortOption === 'amountLow' && expensesStyles.sortOptionActive]}
-                   onPress={() => handleSortSelect('amountLow')}
-                >
-                   <Text style={[expensesStyles.sortOptionText, sortOption === 'amountLow' && expensesStyles.sortOptionTextActive]}>Lowest Amount</Text>
-                   {sortOption === 'amountLow' && <Icon name="check" size={20} color={COLORS.accent} />}
-                </TouchableOpacity>
-              </View>
-           </Animated.View>
+          <TouchableWithoutFeedback onPress={closeSortModal}>
+            <Animated.View style={[expensesStyles.backdrop, { opacity: fadeAnim }]} />
+          </TouchableWithoutFeedback>
+
+          <Animated.View style={[expensesStyles.modalContent, { transform: [{ translateY: sortSlideAnim }] }]}>
+            <View style={expensesStyles.modalHeader}>
+              <View style={expensesStyles.modalHandle} />
+              <Text style={[expensesStyles.modalTitle, { textAlign: 'center', marginTop: 10 }]}>Sort By</Text>
+            </View>
+
+            <View style={{ gap: 12 }}>
+              <TouchableOpacity
+                style={[expensesStyles.sortOption, sortOption === 'dateDesc' && expensesStyles.sortOptionActive]}
+                onPress={() => handleSortSelect('dateDesc')}
+              >
+                <Text style={[expensesStyles.sortOptionText, sortOption === 'dateDesc' && expensesStyles.sortOptionTextActive]}>Date (Newest First)</Text>
+                {sortOption === 'dateDesc' && <Icon name="check" size={20} color={COLORS.accent} />}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[expensesStyles.sortOption, sortOption === 'dateAsc' && expensesStyles.sortOptionActive]}
+                onPress={() => handleSortSelect('dateAsc')}
+              >
+                <Text style={[expensesStyles.sortOptionText, sortOption === 'dateAsc' && expensesStyles.sortOptionTextActive]}>Date (Oldest First)</Text>
+                {sortOption === 'dateAsc' && <Icon name="check" size={20} color={COLORS.accent} />}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[expensesStyles.sortOption, sortOption === 'amountHigh' && expensesStyles.sortOptionActive]}
+                onPress={() => handleSortSelect('amountHigh')}
+              >
+                <Text style={[expensesStyles.sortOptionText, sortOption === 'amountHigh' && expensesStyles.sortOptionTextActive]}>Highest Amount</Text>
+                {sortOption === 'amountHigh' && <Icon name="check" size={20} color={COLORS.accent} />}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[expensesStyles.sortOption, sortOption === 'amountLow' && expensesStyles.sortOptionActive]}
+                onPress={() => handleSortSelect('amountLow')}
+              >
+                <Text style={[expensesStyles.sortOptionText, sortOption === 'amountLow' && expensesStyles.sortOptionTextActive]}>Lowest Amount</Text>
+                {sortOption === 'amountLow' && <Icon name="check" size={20} color={COLORS.accent} />}
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
         </View>
       </Modal>
     </View>
@@ -1281,7 +1281,8 @@ const expensesStyles = StyleSheet.create({
   transactionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginTop: 15,
+    marginBottom: 20,
   },
   transactionsTitle: {
     fontSize: 18,

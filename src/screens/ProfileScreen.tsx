@@ -12,7 +12,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Image } from 'react-native';
 import { COLORS } from '../constants/colors';
+import { BEAR_AVATARS, isBearAvatar } from '../constants/avatars';
 import { Screen } from './HomeScreen';
 import { User } from '../../App'; // Import the User type
 import { EditProfileModal } from '../components/EditProfileModal'; // Import new component
@@ -103,7 +105,14 @@ export const ProfileScreen = ({
           <View style={styles.profileHeader}>
             <TouchableOpacity onPress={() => setAvatarModalVisible(true)}>
               <View style={styles.avatar}>
-                <MaterialCommunityIcon name={user.avatar || 'bear'} size={60} color={COLORS.accent} />
+                {isBearAvatar(user.avatar) ? (
+                  <Image
+                    source={BEAR_AVATARS[user.avatar]}
+                    style={{ width: '100%', height: '100%', borderRadius: 50 }}
+                  />
+                ) : (
+                  <MaterialCommunityIcon name={user.avatar || 'bear'} size={60} color={COLORS.accent} />
+                )}
               </View>
             </TouchableOpacity>
             <Text style={styles.nameText}>{user.name || 'Beruang User'}</Text>

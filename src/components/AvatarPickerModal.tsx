@@ -7,9 +7,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Image,
 } from 'react-native';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../constants/colors';
+import { BEAR_AVATARS, DEFAULT_AVATARS } from '../constants/avatars';
 
 type AvatarPickerModalProps = {
   visible: boolean;
@@ -18,32 +20,14 @@ type AvatarPickerModalProps = {
   currentAvatar: string;
 };
 
-// A list of available avatars
-const AVATARS = [
-  'bear',
-  'cat',
-  'dog',
-  'rabbit',
-  'panda',
-  'koala',
-  'account',
-  'account-circle',
-  'face-man-profile',
-  'face-woman-profile',
-  'alien',
-  'robot-happy',
-  'ghost',
-  'rocket',
-  'star',
-  'heart',
-];
-
 export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
   visible,
   onClose,
   onSelect,
   currentAvatar,
 }) => {
+  const bearAvatarKeys = Object.keys(BEAR_AVATARS);
+
   return (
     <Modal
       visible={visible}
@@ -55,18 +39,37 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
         <View style={styles.container}>
           <Text style={styles.title}>Choose an Avatar</Text>
           <ScrollView contentContainerStyle={styles.avatarGrid}>
-            {AVATARS.map((avatar) => (
-              <TouchableOpacity
-                key={avatar}
-                style={[
-                  styles.avatarCell,
-                  currentAvatar === avatar && styles.avatarCellSelected,
-                ]}
-                onPress={() => onSelect(avatar)}
-              >
-                <MaterialCommunityIcon name={avatar} size={40} color={COLORS.accent} />
-              </TouchableOpacity>
-            ))}
+            <Text style={styles.sectionTitle}>Level Avatars</Text>
+            <View style={styles.gridRow}>
+              {bearAvatarKeys.map((key) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[
+                    styles.avatarCell,
+                    currentAvatar === key && styles.avatarCellSelected,
+                  ]}
+                  onPress={() => onSelect(key)}
+                >
+                  <Image source={BEAR_AVATARS[key]} style={styles.bearImage} />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Default Icons</Text>
+            <View style={styles.gridRow}>
+              {DEFAULT_AVATARS.map((avatar) => (
+                <TouchableOpacity
+                  key={avatar}
+                  style={[
+                    styles.avatarCell,
+                    currentAvatar === avatar && styles.avatarCellSelected,
+                  ]}
+                  onPress={() => onSelect(avatar)}
+                >
+                  <MaterialCommunityIcon name={avatar} size={40} color={COLORS.accent} />
+                </TouchableOpacity>
+              ))}
+            </View>
           </ScrollView>
           <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={onClose}>
             <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
@@ -104,7 +107,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.darkGray,
+    marginBottom: 10,
+    paddingHorizontal: 5,
+  },
   avatarGrid: {
+    paddingBottom: 20,
+  },
+  gridRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
@@ -119,10 +132,16 @@ const styles = StyleSheet.create({
     margin: 8,
     borderWidth: 2,
     borderColor: 'transparent',
+    overflow: 'hidden',
   },
   avatarCellSelected: {
     borderColor: COLORS.accent,
     backgroundColor: COLORS.primary,
+  },
+  bearImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   button: {
     padding: 14,
@@ -142,4 +161,3 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 });
-
