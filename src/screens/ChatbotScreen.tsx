@@ -13,18 +13,21 @@ import {
   Clipboard,
   ScrollView,
   Dimensions,
-  Modal, 
+  Modal,
   Animated,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  ImageBackground,
 } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler'; 
+import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import { COLORS } from '../constants/colors';
 
 import { RouteProp } from '@react-navigation/native';
+import { Screen } from './HomeScreen';
 import {
   RootStackParamList,
   User,
@@ -46,8 +49,8 @@ type ChatbotScreenProps = {
   onCreateNewChat: (prefillMessage?: string) => Promise<string | undefined>;
   onSendMessage: (text: string, chatId: string | null, isPrefill?: boolean) => Promise<void>;
   onSaveAdvice: (text: string, chatId: string, messageId: string) => void;
-  onDeleteChatSession: (chatId: string) => void; 
-  onEditMessage: (chatId: string, messageId: string, newText: string) => void; 
+  onDeleteChatSession: (chatId: string) => void;
+  onEditMessage: (chatId: string, messageId: string, newText: string) => void;
   route: ChatbotScreenRouteProp;
   streamingMessage: string; // <--- NEW PROP
 };
@@ -69,18 +72,18 @@ const ChatHistoryDropdown = ({
 
   const handleDeletePress = (id: string, title: string) => {
     swipeableRefs.current[id]?.close();
-    
+
     Alert.alert(
       `Delete "${title}"?`,
       'Are you sure you want to permanently delete this chat?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive', 
+        {
+          text: 'Delete',
+          style: 'destructive',
           onPress: () => {
             onDeleteChat(id);
-          } 
+          }
         },
       ],
       { cancelable: true }
@@ -94,8 +97,8 @@ const ChatHistoryDropdown = ({
       extrapolate: 'clamp',
     });
     return (
-      <TouchableOpacity 
-        style={dropdownStyles.deleteButton} 
+      <TouchableOpacity
+        style={dropdownStyles.deleteButton}
         onPress={() => handleDeletePress(id, title)}
       >
         <Animated.View style={{ transform: [{ translateX: trans }] }}>
@@ -105,53 +108,108 @@ const ChatHistoryDropdown = ({
     );
   };
 
+  const [animation] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    Animated.spring(animation, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 50,
+      friction: 8,
+    }).start();
+  }, []);
+
+  const handleClose = () => {
+    Animated.timing(animation, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => onClose());
+  };
+
+  const containerStyle = {
+    opacity: animation,
+    transform: [
+      {
+        translateY: animation.interpolate({
+          inputRange: [0, 1],
+          outputRange: [-20, 0],
+        }),
+      },
+      {
+        scale: animation.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.95, 1],
+        }),
+      },
+    ],
+  };
+
   return (
     <Modal
       transparent={true}
       visible={true}
-      animationType="fade"
-      onRequestClose={onClose}
+      animationType="none"
+      onRequestClose={handleClose}
     >
       <TouchableOpacity
         style={dropdownStyles.overlay}
         activeOpacity={1}
-        onPress={onClose}
+        onPress={handleClose}
       >
-        <View style={dropdownStyles.container} onStartShouldSetResponder={() => true}>
-          <Text style={dropdownStyles.dropdownTitle}>Chat History</Text>
-          <ScrollView style={dropdownStyles.scroll}>
-            {(sessions || []).map((item, index) => (
-              <Swipeable
-                key={item.id}
-                ref={(ref) => (swipeableRefs.current[item.id] = ref)}
-                renderRightActions={(progress, dragX) => 
-                  renderRightActions(progress, dragX, item.id, item.title)
-                }
-                overshootRight={false}
-              >
-                <TouchableOpacity
-                  style={[
-                    dropdownStyles.chatItem,
-                    index === (sessions || []).length - 1 && { borderBottomWidth: 0 } 
-                  ]}
-                  onPress={() => onSetChat(item.id)}
+        <Animated.View style={[dropdownStyles.container, containerStyle]} onStartShouldSetResponder={() => true}>
+          <View style={dropdownStyles.header}>
+            <Text style={dropdownStyles.dropdownTitle}>History</Text>
+            <TouchableOpacity onPress={handleClose}>
+              <Icon name="x" size={20} color={COLORS.darkGray} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={dropdownStyles.scroll} showsVerticalScrollIndicator={false}>
+            {(sessions || []).length === 0 ? (
+              <View style={dropdownStyles.emptyHistory}>
+                <Text style={dropdownStyles.emptyHistoryText}>No past conversations</Text>
+              </View>
+            ) : (
+              (sessions || []).map((item, index) => (
+                <Swipeable
+                  key={item.id}
+                  ref={(ref) => { swipeableRefs.current[item.id] = ref; }}
+                  renderRightActions={(progress, dragX) =>
+                    renderRightActions(progress, dragX, item.id, item.title)
+                  }
+                  overshootRight={false}
                 >
-                  <Icon name="message-square" size={18} color={COLORS.accent} style={{ marginRight: 12 }} />
-                  <Text style={dropdownStyles.chatTitle} numberOfLines={1}>
-                    {item.title}
-                  </Text>
-                </TouchableOpacity>
-              </Swipeable>
-            ))}
+                  <TouchableOpacity
+                    style={[
+                      dropdownStyles.chatItem,
+                      index === (sessions || []).length - 1 && { borderBottomWidth: 0 }
+                    ]}
+                    onPress={() => onSetChat(item.id)}
+                  >
+                    <View style={dropdownStyles.chatIconCircle}>
+                      <Icon name="message-circle" size={14} color={COLORS.accent} />
+                    </View>
+                    <Text style={dropdownStyles.chatTitle} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    <Icon name="chevron-right" size={16} color="#DDD" />
+                  </TouchableOpacity>
+                </Swipeable>
+              ))
+            )}
           </ScrollView>
-          <TouchableOpacity
-            style={dropdownStyles.newChatButton}
-            onPress={onCreateNew}
-          >
-            <Icon name="plus" size={20} color={COLORS.accent} />
-            <Text style={dropdownStyles.newChatText}>New Chat</Text>
-          </TouchableOpacity>
-        </View>
+
+          <View style={dropdownStyles.footer}>
+            <TouchableOpacity
+              style={dropdownStyles.newChatButton}
+              onPress={onCreateNew}
+            >
+              <Icon name="plus-circle" size={18} color={COLORS.white} />
+              <Text style={dropdownStyles.newChatText}>Start New Chat</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
       </TouchableOpacity>
     </Modal>
   );
@@ -168,28 +226,35 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
     currentChatMessages,
     onSendMessage,
     onSaveAdvice,
-    onDeleteChatSession, 
+    onDeleteChatSession,
     onEditMessage,
     streamingMessage, // <--- Destructure new prop
   } = props;
 
-  const [input, setInput] = useState(''); 
+  const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [isHistoryVisible, setIsHistoryVisible] = useState(false); 
+  const [isHistoryVisible, setIsHistoryVisible] = useState(false);
   const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null);
-  const [editingMessage, setEditingMessage] = useState<Message | null>(null); 
-  const [editText, setEditText] = useState(''); 
-  const [cursorVisible, setCursorVisible] = useState(true); // NEW: For blinking cursor
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [editText, setEditText] = useState('');
+  const [cursorVisible, setCursorVisible] = useState(true);
+  const quickSuggestions = [
+    "Check my balance",
+    "Any saving tips?",
+    "Recent expenses?",
+    "Am I overspending?",
+    "Budget advice"
+  ];
   const flatListRef = useRef<FlatList>(null);
-  
+
   const lastMessageCountRef = useRef(currentChatMessages.length);
-  const isEditingRef = useRef(false); 
+  const isEditingRef = useRef(false);
 
   useEffect(() => {
     const prefillMessage = route.params?.prefillMessage;
     const linkedChatId = route.params?.chatId;
     const linkedMessageId = route.params?.messageId;
-    
+
     const sessions = chatSessions || [];
 
     if (prefillMessage && !linkedChatId) {
@@ -198,22 +263,22 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
       };
       createAndNavigate();
     } else if (linkedChatId) {
-      onSetCurrentChatId(linkedChatId); 
+      onSetCurrentChatId(linkedChatId);
       if (linkedMessageId) {
-        setHighlightMessageId(linkedMessageId); 
+        setHighlightMessageId(linkedMessageId);
       }
     } else if (!currentChatId && sessions.length === 0) {
       onCreateNewChat();
     } else if (!currentChatId && sessions.length > 0) {
       onSetCurrentChatId(sessions[0].id);
     }
-  }, [route.params, chatSessions, currentChatId]); 
+  }, [route.params, chatSessions, currentChatId]);
 
   useEffect(() => {
     if (editingMessage) {
-      setEditText(editingMessage.text); 
+      setEditText(editingMessage.text);
     } else {
-      setEditText(''); 
+      setEditText('');
     }
   }, [editingMessage]);
 
@@ -235,7 +300,7 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
     Keyboard.dismiss();
     setEditingMessage(null);
     setEditText('');
-    
+
     if (newText !== oldText) {
       setIsTyping(true);
       isEditingRef.current = true;
@@ -261,17 +326,17 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
       setIsTyping(true);
       // Auto-scroll to bottom while streaming
       flatListRef.current?.scrollToEnd({ animated: true });
-    } 
+    }
     // 2. If no streaming message, check if a new REAL message arrived
     else if (currentChatMessages.length > 0) {
       const lastMessage = currentChatMessages[currentChatMessages.length - 1];
-      
+
       // If the last message is from bot and is new (count increased), stop typing
       if (lastMessage.sender === 'bot' && currentChatMessages.length > lastMessageCountRef.current) {
         setIsTyping(false);
         isEditingRef.current = false;
       }
-      
+
       lastMessageCountRef.current = currentChatMessages.length;
     }
   }, [currentChatMessages, streamingMessage]);
@@ -309,204 +374,238 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
 
   const chatTitle =
     (chatSessions || []).find((s) => s.id === currentChatId)?.title || 'New Chat';
-  
+
   const lastUserMessage = [...currentChatMessages].filter(m => m.sender === 'user').pop();
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-      
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.headerButton}>
-          <Icon name="arrow-left" size={24} color={COLORS.accent} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {chatTitle}
-        </Text>
-        <TouchableOpacity 
-          onPress={() => setIsHistoryVisible(true)} 
-          style={styles.headerButton}
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeAreaContent} edges={['top', 'left', 'right', 'bottom']}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onBack} style={styles.headerButton}>
+            <Icon name="arrow-left" size={24} color={COLORS.accent} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {chatTitle}
+          </Text>
+          <TouchableOpacity
+            onPress={() => setIsHistoryVisible(true)}
+            style={styles.headerButton}
+          >
+            <Icon name="clock" size={22} color={COLORS.accent} />
+          </TouchableOpacity>
+        </View>
+
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
-          <Icon name="list" size={24} color={COLORS.accent} />
-        </TouchableOpacity>
-      </View>
+          <ImageBackground
+            source={require('../../assets/wallpaper.png')}
+            style={styles.chatBackground}
+            imageStyle={styles.chatWallpaperStyle}
+            resizeMode="repeat"
+          >
+            <FlatList
+              ref={flatListRef}
+              data={currentChatMessages}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.messageList}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => {
+                const isLastUserMessage = item.sender === 'user' && item.id === lastUserMessage?.id;
+                const isEditing = editingMessage?.id === item.id;
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 65 : 0}
-      >
-        <FlatList
-          ref={flatListRef}
-          data={currentChatMessages}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.messageList}
-          renderItem={({ item, index }) => {
-            const isLastUserMessage = item.sender === 'user' && item.id === lastUserMessage?.id;
-            const isEditing = editingMessage?.id === item.id;
+                return (
+                  <View style={styles.messageWrapper}>
+                    {isEditing ? (
+                      <View style={[styles.messageBubble, styles.userBubble, styles.editingBubble]}>
+                        <TextInput
+                          style={[styles.userMessageText, styles.inlineEditInput]}
+                          value={editText}
+                          onChangeText={setEditText}
+                          autoFocus={true}
+                          multiline
+                        />
+                        <View style={styles.inlineEditActions}>
+                          <TouchableOpacity
+                            style={[styles.inlineEditButton, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
+                            onPress={() => setEditingMessage(null)}
+                          >
+                            <Icon name="x" size={16} color={COLORS.white} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.inlineEditButton, { backgroundColor: COLORS.white }]}
+                            onPress={handleConfirmEdit}
+                          >
+                            <Icon name="check" size={16} color={COLORS.accent} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ) : (
+                      <View
+                        style={[
+                          styles.messageBubble,
+                          item.sender === 'user' ? styles.userBubble : styles.botBubble,
+                          item.id === highlightMessageId && styles.highlightedBubble,
+                        ]}
+                      >
+                        <Text style={item.sender === 'user' ? styles.userMessageText : styles.botMessageText}>
+                          {item.text}
+                        </Text>
+                      </View>
+                    )}
 
-            return (
-              <View style={{ marginBottom: 10 }}>
-                {isEditing ? (
-                  <View style={[styles.messageBubble, styles.userBubble]}>
-                    <TextInput
-                      style={[styles.userMessageText, styles.inlineEditInput]}
-                      value={editText}
-                      onChangeText={setEditText}
-                      autoFocus={true}
-                      multiline
-                    />
-                    <View style={styles.inlineEditActions}>
-                      <TouchableOpacity
-                        style={[styles.inlineEditButton, { backgroundColor: COLORS.darkGray }]}
-                        onPress={() => setEditingMessage(null)}
-                      >
-                        <Icon name="x" size={16} color={COLORS.white} />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.inlineEditButton, { backgroundColor: COLORS.success }]}
-                        onPress={handleConfirmEdit}
-                      >
-                        <Icon name="check" size={16} color={COLORS.white} />
-                      </TouchableOpacity>
-                    </View>
+                    {!isEditing && (
+                      <View style={[
+                        styles.actionBar,
+                        item.sender === 'user' ? styles.userActionBar : styles.botActionBar
+                      ]}>
+                        {item.sender === 'bot' && (
+                          <View style={styles.actionGroup}>
+                            <TouchableOpacity
+                              style={styles.miniActionButton}
+                              onPress={() => onSaveAdvice(item.text, currentChatId!, item.id)}
+                            >
+                              <Icon name="bookmark" size={14} color={COLORS.darkGray} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.miniActionButton}
+                              onPress={() => Clipboard.setString(item.text)}
+                            >
+                              <Icon name="copy" size={14} color={COLORS.darkGray} />
+                            </TouchableOpacity>
+                          </View>
+                        )}
+
+                        {item.sender === 'user' && (
+                          <View style={styles.actionGroup}>
+                            <TouchableOpacity
+                              style={styles.miniActionButton}
+                              onPress={() => Clipboard.setString(item.text)}
+                            >
+                              <Icon name="copy" size={14} color={COLORS.darkGray} />
+                            </TouchableOpacity>
+                            {isLastUserMessage && !isTyping && (
+                              <TouchableOpacity
+                                style={styles.miniActionButton}
+                                onPress={() => setEditingMessage(item)}
+                              >
+                                <Icon name="edit-3" size={14} color={COLORS.darkGray} />
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                );
+              }}
+              ListFooterComponent={
+                isTyping ? (
+                  <View style={styles.messageWrapper}>
+                    {streamingMessage ? (
+                      <View style={[styles.messageBubble, styles.botBubble, styles.streamingBubble]}>
+                        <Text style={styles.botMessageText}>
+                          {streamingMessage}
+                          {cursorVisible && <Text style={{ color: COLORS.accent, fontWeight: 'bold' }}>|</Text>}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={[styles.messageBubble, styles.botBubble, styles.typingBubble]}>
+                        <ActivityIndicator size="small" color={COLORS.accent} />
+                      </View>
+                    )}
                   </View>
                 ) : (
-                  <View
-                    style={[
-                      styles.messageBubble,
-                      item.sender === 'user' ? styles.userBubble : styles.botBubble,
-                      item.id === highlightMessageId && styles.highlightedBubble,
-                    ]}
-                  >
-                    <Text style={item.sender === 'user' ? styles.userMessageText : styles.botMessageText}>
-                      {item.text}
+                  <View style={{ height: 20 }} />
+                )
+              }
+              ListEmptyComponent={
+                !isTyping ? (
+                  <View style={styles.emptyContainer}>
+                    <Image
+                      source={require('../../assets/chatbot_mascot.png')}
+                      style={styles.emptyMascot}
+                      resizeMode="contain"
+                    />
+                    <Text style={styles.emptyText}>Beruang AI Assistant</Text>
+                    <Text style={styles.emptySubtext}>
+                      Ask me anything about your finances. I'm here to help you save and manage your money better.
                     </Text>
                   </View>
-                )}
-
-                {!isEditing && (
-                  <View style={[
-                    styles.actionBar,
-                    item.sender === 'user' ? styles.userActionBar : styles.botActionBar
-                  ]}>
-                    {item.sender === 'bot' && (
-                      <>
-                        <TouchableOpacity 
-                          style={styles.actionButton}
-                          onPress={() => onSaveAdvice(item.text, currentChatId!, item.id)}
-                        >
-                          <Icon name="bookmark" size={16} color={COLORS.darkGray} />
-                          <Text style={styles.actionText}>Save</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={styles.actionButton}
-                          onPress={() => Clipboard.setString(item.text)}
-                        >
-                          <Icon name="copy" size={16} color={COLORS.darkGray} />
-                          <Text style={styles.actionText}>Copy</Text>
-                        </TouchableOpacity>
-                      </>
-                    )}
-
-                    {item.sender === 'user' && (
-                      <>
-                        <TouchableOpacity 
-                          style={styles.actionButton}
-                          onPress={() => Clipboard.setString(item.text)}
-                        >
-                          <Icon name="copy" size={16} color={COLORS.darkGray} />
-                          <Text style={styles.actionText}>Copy</Text>
-                        </TouchableOpacity>
-                        {isLastUserMessage && !isTyping && ( 
-                          <TouchableOpacity 
-                            style={styles.actionButton}
-                            onPress={() => setEditingMessage(item)}
-                          >
-                            <Icon name="edit-2" size={16} color={COLORS.darkGray} />
-                            <Text style={styles.actionText}>Edit</Text>
-                          </TouchableOpacity>
-                        )}
-                      </>
-                    )}
-                  </View>
-                )}
-              </View>
-            );
-          }}
-          // --- UPDATED FOOTER TO SHOW STREAMING WITH BLINKING CURSOR ---
-          ListFooterComponent={
-            isTyping ? (
-              <View style={{ marginBottom: 10 }}>
-                {streamingMessage ? (
-                   // Show streaming text bubble with blinking cursor
-                   <View style={[styles.messageBubble, styles.botBubble]}>
-                     <Text style={styles.botMessageText}>
-                       {streamingMessage}
-                       {cursorVisible && <Text style={{color: COLORS.accent}}> |</Text>}
-                     </Text>
-                   </View>
-                ) : (
-                   // Show loading spinner (connecting...)
-                   <View style={[styles.messageBubble, styles.botBubble]}>
-                     <ActivityIndicator size="small" color={COLORS.accent} />
-                   </View>
-                )}
-              </View>
-            ) : null
-          }
-          ListEmptyComponent={
-            !isTyping ? ( 
-              <View style={styles.emptyContainer}>
-                <Icon name="message-square" size={60} color={COLORS.darkGray} />
-                <Text style={styles.emptyText}>Start a conversation</Text>
-                <Text style={styles.emptySubtext}>
-                  Ask me about your budget, savings, or spending habits.
-                </Text>
-              </View>
-            ) : null
-          }
-        />
-
-        {!editingMessage && (
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={input}
-              onChangeText={setInput}
-              placeholder="Ask a financial question..."
-              placeholderTextColor={COLORS.darkGray}
-              editable={!isTyping && !!currentChatId}
+                ) : null
+              }
             />
-            <TouchableOpacity
-              style={[
-                styles.sendButton,
-                (isTyping || !currentChatId) && { opacity: 0.5 },
-              ]}
-              onPress={handleSend}
-              disabled={isTyping || !currentChatId}
-            >
-              <Icon name="send" size={24} color={COLORS.white} />
-            </TouchableOpacity>
-          </View>
-        )}
-      </KeyboardAvoidingView>
 
-      {isHistoryVisible && (
-        <ChatHistoryDropdown
-          sessions={chatSessions} 
-          onSetChat={handleSetChat}
-          onCreateNew={handleCreateNew}
-          onClose={() => setIsHistoryVisible(false)}
-          onDeleteChat={onDeleteChatSession} 
-        />
-      )}
-    </SafeAreaView>
+            {!editingMessage && (
+              <View style={styles.inputWrapper}>
+                {!input.trim() && !isTyping && (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.suggestionsScroll}
+                    contentContainerStyle={styles.suggestionsContent}
+                  >
+                    {quickSuggestions.map((text, i) => (
+                      <TouchableOpacity
+                        key={i}
+                        style={styles.suggestionBubble}
+                        onPress={() => setInput(text)}
+                      >
+                        <Text style={styles.suggestionText}>{text}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={styles.input}
+                    value={input}
+                    onChangeText={setInput}
+                    placeholder="Type your message..."
+                    placeholderTextColor={COLORS.darkGray}
+                    editable={!isTyping && !!currentChatId}
+                    multiline
+                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.sendButton,
+                      (!input.trim() || isTyping || !currentChatId) && styles.sendButtonDisabled,
+                    ]}
+                    onPress={handleSend}
+                    disabled={!input.trim() || isTyping || !currentChatId}
+                  >
+                    <Icon name="send" size={20} color={COLORS.white} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </ImageBackground>
+        </KeyboardAvoidingView>
+
+        {isHistoryVisible && (
+          <ChatHistoryDropdown
+            sessions={chatSessions}
+            onSetChat={handleSetChat}
+            onCreateNew={handleCreateNew}
+            onClose={() => setIsHistoryVisible(false)}
+            onDeleteChat={onDeleteChatSession}
+          />
+        )}
+      </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+  },
+  safeAreaContent: {
     flex: 1,
     backgroundColor: COLORS.white,
   },
@@ -514,245 +613,343 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    paddingTop: 20, 
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    height: 65,
+    borderBottomColor: '#F0F0F0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    zIndex: 10,
   },
   headerButton: {
-    padding: 5,
     width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8F9FA',
+    justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '800',
     color: COLORS.accent,
+    marginHorizontal: 10,
+    letterSpacing: 0.5,
+  },
+  chatBackground: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+  },
+  chatWallpaperStyle: {
+    opacity: 0.08, // Super low opacity for subtle doodle effect
   },
   messageList: {
-    flexGrow: 1, 
-    padding: 10,
+    flexGrow: 1,
+    paddingHorizontal: 15,
+    paddingTop: 15,
+    paddingBottom: 20,
+  },
+  messageWrapper: {
+    marginBottom: 16,
   },
   messageBubble: {
-    maxWidth: '80%',
-    padding: 15,
+    maxWidth: '85%',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'transparent', 
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
   },
   userBubble: {
     backgroundColor: COLORS.accent,
     alignSelf: 'flex-end',
-    borderBottomRightRadius: 5,
+    borderBottomRightRadius: 4,
   },
   botBubble: {
     backgroundColor: COLORS.primary,
     alignSelf: 'flex-start',
-    borderBottomLeftRadius: 5,
+    borderBottomLeftRadius: 4,
+  },
+  editingBubble: {
+    width: '85%',
+  },
+  typingBubble: {
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    width: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  streamingBubble: {
+    maxWidth: '85%',
   },
   highlightedBubble: {
+    borderWidth: 2,
     borderColor: COLORS.info,
-    shadowColor: COLORS.info,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 10,
-    elevation: 5,
   },
   userMessageText: {
     color: COLORS.white,
-    fontSize: 16,
+    fontSize: 15,
+    lineHeight: 22,
   },
   botMessageText: {
     color: COLORS.accent,
-    fontSize: 16,
+    fontSize: 15,
+    lineHeight: 22,
   },
   actionBar: {
+    marginTop: 4,
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
-    opacity: 0.8, 
-    maxWidth: '80%',
   },
   botActionBar: {
     alignSelf: 'flex-start',
-    paddingLeft: 15,
+    marginLeft: 4,
   },
   userActionBar: {
     alignSelf: 'flex-end',
-    paddingRight: 15,
-    justifyContent: 'flex-end',
+    marginRight: 4,
   },
-  actionButton: {
+  actionGroup: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 15,
-    backgroundColor: COLORS.lightGray,
-    marginLeft: 8,
+    gap: 8,
   },
-  actionText: {
-    fontSize: 12,
-    color: COLORS.darkGray,
-    marginLeft: 5,
-    fontWeight: '600',
+  miniActionButton: {
+    padding: 6,
+    borderRadius: 12,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: '#EEE',
+  },
+  inputWrapper: {
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)', // Semi-transparent to show wallpaper
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
   },
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    backgroundColor: COLORS.white,
+    alignItems: 'flex-end',
+    backgroundColor: '#F5F7F8',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E8EDF0',
   },
   input: {
     flex: 1,
-    height: 50,
-    backgroundColor: COLORS.lightGray,
-    borderRadius: 25,
-    paddingHorizontal: 20,
-    fontSize: 16,
+    minHeight: 40,
+    maxHeight: 100,
+    fontSize: 15,
     color: COLORS.accent,
-  },
-  cancelEditButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.danger,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   sendButton: {
-    marginLeft: 10,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: COLORS.accent,
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: 10,
+    marginBottom: 2,
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#CCC',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    marginTop: Dimensions.get('window').height * 0.2,
+    padding: 30,
+    marginTop: 60,
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: COLORS.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    elevation: 4,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  emptyMascot: {
+    width: 200,
+    height: 200,
+    marginBottom: 10,
   },
   emptyText: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     color: COLORS.accent,
-    marginTop: 15,
+    marginBottom: 10,
   },
   emptySubtext: {
-    fontSize: 14,
+    fontSize: 15,
     color: COLORS.darkGray,
     textAlign: 'center',
-    marginTop: 5,
+    lineHeight: 22,
   },
   inlineEditInput: {
-    padding: 0,
-    margin: 0,
-    color: COLORS.white,
-    fontSize: 16,
+    minHeight: 40,
+    textAlignVertical: 'top',
   },
   inlineEditActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 10,
+    marginTop: 12,
+    gap: 10,
   },
   inlineEditButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 10,
-  }
+  },
+  suggestionsScroll: {
+    marginBottom: 12,
+  },
+  suggestionsContent: {
+    paddingHorizontal: 5,
+    gap: 8,
+  },
+  suggestionBubble: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F0F2F5',
+    borderWidth: 1,
+    borderColor: '#E1E4E8',
+  },
+  suggestionText: {
+    fontSize: 13,
+    color: COLORS.accent,
+    fontWeight: '600',
+  },
 });
 
 const dropdownStyles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     zIndex: 10,
   },
   container: {
     position: 'absolute',
-    top: 65, 
+    top: 85,
     right: 15,
-    width: 300, 
-    maxHeight: 400,
+    width: 280,
+    maxHeight: 450,
     backgroundColor: COLORS.white,
-    borderRadius: 15,
+    borderRadius: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 20,
     zIndex: 20,
-    borderTopWidth: 0,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
   dropdownTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '800',
     color: COLORS.accent,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.lightGray,
   },
   scroll: {
-    maxHeight: 280,
-    paddingVertical: 5, 
+    maxHeight: 300,
+  },
+  emptyHistory: {
+    padding: 30,
+    alignItems: 'center',
+  },
+  emptyHistoryText: {
+    color: COLORS.darkGray,
+    fontSize: 14,
+    fontWeight: '500',
   },
   chatItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.white,
-    padding: 15,
-    borderBottomWidth: 1, 
-    borderBottomColor: COLORS.lightGray,
-    marginHorizontal: 10, 
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F9F9F9',
   },
-  deleteButton: {
-    backgroundColor: COLORS.danger,
+  chatIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.primary + '30', // 30% opacity
     justifyContent: 'center',
-    alignItems: 'flex-end',
-    paddingRight: 25,
-    width: 80,
-    flex: 1,
-    marginTop: 5,
-    marginBottom: 6,
-    marginRight: 10,
-    borderRadius: 10,
+    alignItems: 'center',
+    marginRight: 12,
   },
   chatTitle: {
     fontSize: 15,
     color: COLORS.accent,
-    fontWeight: '500', 
+    fontWeight: '600',
     flex: 1,
+  },
+  footer: {
+    padding: 16,
+    backgroundColor: '#FAFAFA',
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
   },
   newChatButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.lightGray,
-    backgroundColor: COLORS.lightGray,
-    borderBottomLeftRadius: 15,
-    borderBottomRightRadius: 15,
+    justifyContent: 'center',
+    padding: 14,
+    backgroundColor: COLORS.accent,
+    borderRadius: 16,
+    gap: 10,
+    elevation: 2,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   newChatText: {
     fontSize: 15,
-    fontWeight: 'bold', 
-    color: COLORS.accent,
-    marginLeft: 10,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  deleteButton: {
+    backgroundColor: COLORS.danger,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 70,
+    marginVertical: 4,
+    marginRight: 8,
+    borderRadius: 12,
   },
 });
