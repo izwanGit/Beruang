@@ -28,10 +28,22 @@ const { width } = Dimensions.get('window');
 type ProfileScreenProps = {
   onNavigate: (screen: Screen) => void;
   user: User;
+  transactions: Array<any>;
   onUpdateUser: (updatedData: Partial<User>) => void;
   onLogout: () => void;
   navigation?: NativeStackNavigationProp<RootStackParamList>;
 };
+
+// Stat Card Component
+const StatCard = ({ label, value, icon, color }: { label: string; value: string; icon: string; color: string }) => (
+  <View style={styles.statCard}>
+    <View style={[styles.statIconContainer, { backgroundColor: color + '20' }]}>
+      <Icon name={icon} size={16} color={color} />
+    </View>
+    <Text style={styles.statValue}>{value}</Text>
+    <Text style={styles.statLabel}>{label}</Text>
+  </View>
+);
 
 // Reusable row for settings with enhanced aesthetics
 const SettingRow = ({
@@ -40,37 +52,52 @@ const SettingRow = ({
   onPress,
   color = COLORS.accent,
   isLast = false,
+  description,
 }: {
   icon: string;
   text: string;
   onPress: () => void;
   color?: string;
   isLast?: boolean;
+  description?: string;
 }) => (
   <TouchableOpacity
     style={[styles.settingRow, isLast && { borderBottomWidth: 0 }]}
     onPress={onPress}
     activeOpacity={0.7}
   >
-    <View style={[styles.settingIconContainer, { backgroundColor: color + '15' }]}>
-      <Icon name={icon} size={18} color={color} />
+    <View style={[styles.settingIconContainer, { backgroundColor: color + '10' }]}>
+      <Icon name={icon} size={20} color={color} />
     </View>
-    <Text style={[styles.settingText, { color: color }]}>{text}</Text>
-    {color === COLORS.accent && (
-      <Icon name="chevron-right" size={20} color={COLORS.darkGray} />
-    )}
+    <View style={styles.settingTextContainer}>
+      <Text style={[styles.settingText, { color: color === COLORS.accent ? '#1A1A1A' : color }]}>{text}</Text>
+      {description && <Text style={styles.settingDescription}>{description}</Text>}
+    </View>
+    <Icon name="chevron-right" size={18} color="#C1C1C1" />
   </TouchableOpacity>
 );
 
 export const ProfileScreen = ({
   onNavigate,
   user,
+  transactions,
   onUpdateUser,
   onLogout,
   navigation,
 }: ProfileScreenProps) => {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
+
+  // Calculate real savings rate
+  const freshIncome = transactions
+    .filter(t => t.type === 'income' && !t.isCarriedOver && t.date.startsWith(new Date().toISOString().substring(0, 7)))
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const savedAmount = transactions
+    .filter(t => t.type === 'expense' && t.category === 'savings' && t.date.startsWith(new Date().toISOString().substring(0, 7)))
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const savingsRate = freshIncome > 0 ? Math.round((savedAmount / freshIncome) * 100) : 0;
 
   const handleSaveProfile = (updatedData: Partial<User>) => {
     onUpdateUser(updatedData);
@@ -107,7 +134,7 @@ export const ProfileScreen = ({
       <SafeAreaView style={styles.safeAreaContent} edges={['top', 'left', 'right']}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
 
-        {/* --- Header (Matching Expenses Page) --- */}
+        {/* --- Reverted Standard Header --- */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => onNavigate('Home')} style={styles.headerButton}>
             <Icon name="arrow-left" size={24} color={COLORS.accent} />
@@ -119,129 +146,129 @@ export const ProfileScreen = ({
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-          {/* --- Profile Top Section --- */}
-          <View style={styles.profileHero}>
-            <TouchableOpacity
-              onPress={() => setAvatarModalVisible(true)}
-              style={styles.avatarWrapper}
-              activeOpacity={0.9}
-            >
-              <View style={styles.avatarContainer}>
-                {isBearAvatar(user.avatar) ? (
-                  <Image
-                    source={BEAR_AVATARS[user.avatar]}
-                    style={styles.avatarImage}
-                  />
-                ) : (
-                  <MaterialCommunityIcon name={user.avatar || 'bear'} size={70} color={COLORS.accent} />
-                )}
-                <View style={styles.editBadge}>
-                  <Icon name="camera" size={14} color={COLORS.white} />
+          {/* --- Updated Hero Section with COLORS.primary --- */}
+          <View style={styles.heroWrapper}>
+            <View style={styles.heroBackground}>
+              <View style={styles.heroContent}>
+                <TouchableOpacity
+                  onPress={() => setAvatarModalVisible(true)}
+                  style={styles.avatarWrapper}
+                  activeOpacity={0.9}
+                >
+                  <View style={[styles.avatarMain, { borderColor: COLORS.primary, borderWidth: 3 }]}>
+                    {isBearAvatar(user.avatar) ? (
+                      <Image source={BEAR_AVATARS[user.avatar]} style={styles.avatarImg} />
+                    ) : (
+                      <MaterialCommunityIcon name={user.avatar || 'bear'} size={60} color={COLORS.accent} />
+                    )}
+                    <View style={[styles.proBadge, { backgroundColor: COLORS.primary }]}>
+                      <Icon name="check" size={10} color={COLORS.accent} />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+
+                <Text style={styles.userName}>{user.name || 'Beruang User'}</Text>
+                <Text style={styles.userHandle}>@{user.name?.toLowerCase().replace(/\s/g, '') || 'beruang'}</Text>
+
+                <View style={styles.badgeRow}>
+                  <View style={[styles.statusBadge, { backgroundColor: COLORS.primary }]}>
+                    <Text style={[styles.statusBadgeText, { color: COLORS.accent, fontWeight: '900' }]}>
+                      {user.occupation?.toUpperCase() || 'FINANCER'}
+                    </Text>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: COLORS.yellow }]}>
+                    <Text style={[styles.statusBadgeText, { color: COLORS.accent, fontWeight: '900' }]}>PRO MEMBER</Text>
+                  </View>
                 </View>
-              </View>
-            </TouchableOpacity>
-
-            <View style={styles.heroTextContainer}>
-              <Text style={styles.nameText}>{user.name || 'Beruang User'}</Text>
-              <View style={styles.occupationBadge}>
-                <Text style={styles.occupationText}>{user.occupation || 'Finance Enthusiast'}</Text>
-              </View>
-            </View>
-
-            {/* Level Progress Indicator (Visual) */}
-            <View style={styles.levelProgressContainer}>
-              <View style={styles.levelHeader}>
-                <Text style={styles.levelLabel}>SAVER LEVEL 4</Text>
-                <Text style={styles.experienceText}>1,250 / 2,000 XP</Text>
-              </View>
-              <View style={styles.progressBarBackground}>
-                <View style={[styles.progressBarFill, { width: '62.5%' }]} />
               </View>
             </View>
           </View>
 
-          {/* --- User Details Section --- */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>General Information</Text>
+          <View style={styles.mainContent}>
+            {/* --- Stat Cards (Using primary for some) --- */}
+            <View style={styles.statsContainer}>
+              <StatCard label="Savings Rate" value={`${savingsRate}%`} icon="trending-up" color="#4CAF50" />
+              <StatCard label="Monthly Income" value={`RM${Math.round(user.monthlyIncome / 1000)}k`} icon="dollar-sign" color="#2196F3" />
+              <StatCard label="XP Level" value="Lvl 4" icon="star" color={COLORS.secondary} />
+            </View>
+
+            {/* --- Level Progress (Using primary) --- */}
             <View style={styles.premiumCard}>
-              <View style={styles.infoRow}>
-                <View style={[styles.infoIconWrapper, { backgroundColor: '#E3F2FD' }]}>
-                  <Icon name="calendar" size={18} color="#1E88E5" />
+              <View style={styles.levelHeader}>
+                <View>
+                  <Text style={styles.cardHeading}>Financial Mastery</Text>
+                  <Text style={styles.cardSubheading}>1,250 / 2,000 XP to Level 5</Text>
                 </View>
-                <Text style={styles.infoLabel}>Age</Text>
-                <Text style={styles.infoValueText}>{user.age || 'N/A'} years old</Text>
+                <View style={[styles.medalContainer, { backgroundColor: COLORS.primary + '30' }]}>
+                  <MaterialCommunityIcon name="medal" size={24} color={COLORS.accent} />
+                </View>
               </View>
-
-              <View style={styles.infoRow}>
-                <View style={[styles.infoIconWrapper, { backgroundColor: '#F3E5F5' }]}>
-                  <Icon name="map-pin" size={18} color="#8E24AA" />
+              <View style={styles.progressContainer}>
+                <View style={[styles.progressBg, { backgroundColor: COLORS.primary + '20' }]}>
+                  <View style={[styles.progressFill, { width: '62.5%', backgroundColor: COLORS.primary }]} />
                 </View>
-                <Text style={styles.infoLabel}>State</Text>
-                <Text style={styles.infoValueText}>{user.state || 'N/A'}</Text>
               </View>
+            </View>
 
-              <View style={styles.infoRow}>
-                <View style={[styles.infoIconWrapper, { backgroundColor: '#FFF3E0' }]}>
-                  <Icon name="briefcase" size={18} color="#FB8C00" />
-                </View>
-                <Text style={styles.infoLabel}>Occupation</Text>
-                <Text style={styles.infoValueText}>{user.occupation || 'N/A'}</Text>
+            {/* --- Information Section --- */}
+            <Text style={styles.sectionLabel}>ACCOUNT DETAILS</Text>
+            <View style={styles.actionCard}>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Employment</Text>
+                <Text style={styles.detailValue}>{user.occupation || 'Not Set'}</Text>
               </View>
-
-              <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
-                <View style={[styles.infoIconWrapper, { backgroundColor: '#E8F5E9' }]}>
-                  <Icon name="dollar-sign" size={18} color="#43A047" />
-                </View>
-                <Text style={styles.infoLabel}>Monthly Income</Text>
-                <Text style={[styles.infoValueText, { fontWeight: 'bold', color: COLORS.success }]}>
+              <View style={styles.detailDivider} />
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Location</Text>
+                <Text style={styles.detailValue}>{user.state || 'Malaysia'}</Text>
+              </View>
+              <View style={styles.detailDivider} />
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Monthly Income</Text>
+                <Text style={[styles.detailValue, { color: COLORS.accent, fontWeight: '800' }]}>
                   RM {user.monthlyIncome.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
                 </Text>
               </View>
             </View>
-          </View>
 
-          {/* --- App Settings & Support --- */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Account & Settings</Text>
-            <View style={styles.premiumCard}>
+            {/* --- Settings Options --- */}
+            <Text style={styles.sectionLabel}>PREFERENCES & SECURITY</Text>
+            <View style={styles.actionCard}>
               <SettingRow
                 icon="refresh-cw"
-                text="Retake Financial Assessment"
+                text="Retake Assessment"
+                description="Update your financial profile and goals"
                 onPress={handleRetakeQuestionnaire}
+                color={COLORS.accent}
               />
               <SettingRow
-                icon="shield"
-                text="Privacy & Security"
+                icon="lock"
+                text="Privacy Settings"
+                description="Manage your data and security"
                 onPress={() => Alert.alert('Coming Soon', 'Security settings are under development.')}
               />
               <SettingRow
                 icon="bell"
                 text="Notifications"
+                description="Control your alerts and reminders"
                 onPress={() => Alert.alert('Coming Soon', 'Notification settings are under development.')}
-              />
-              <SettingRow
-                icon="help-circle"
-                text="Help Center"
-                onPress={() => Alert.alert('Coming Soon', 'Support center is under development.')}
                 isLast={true}
               />
             </View>
 
-            <TouchableOpacity
-              style={styles.logoutButton}
-              onPress={onLogout}
-              activeOpacity={0.8}
-            >
-              <Icon name="log-out" size={20} color={COLORS.danger} />
-              <Text style={styles.logoutText}>Sign Out</Text>
+            <TouchableOpacity style={styles.logOutBtn} onPress={onLogout} activeOpacity={0.8}>
+              <Icon name="log-out" size={18} color="#FF5252" />
+              <Text style={styles.logOutText}>Sign Out</Text>
             </TouchableOpacity>
-          </View>
 
-          <Text style={styles.versionText}>Beruang App v1.0 • Made With Passion</Text>
+            <Text style={styles.versionInfo}>
+              Beruang v1.0.4 • Made With Passion
+            </Text>
+          </View>
         </ScrollView>
       </SafeAreaView>
 
-      {/* --- Bottom Navigation --- */}
+      {/* --- Reverted Standard Bottom Navigation --- */}
       <SafeAreaView style={styles.bottomNavSafeArea} edges={['bottom']}>
         <View style={styles.bottomNav}>
           <TouchableOpacity
@@ -312,208 +339,259 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   scrollContainer: {
-    paddingBottom: 100,
+    paddingBottom: 20,
   },
-  profileHero: {
+  heroWrapper: {
     backgroundColor: COLORS.white,
-    paddingTop: 30,
-    paddingBottom: 25,
-    paddingHorizontal: 25,
-    alignItems: 'center',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
-    shadowRadius: 15,
-    elevation: 5,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
-  avatarWrapper: {
-    marginBottom: 15,
-  },
-  avatarContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: COLORS.primary + '33',
-    justifyContent: 'center',
+  heroBackground: {
+    backgroundColor: COLORS.accent,
+    borderRadius: 30,
+    paddingVertical: 35,
     alignItems: 'center',
-    borderWidth: 4,
-    borderColor: COLORS.primary,
-    position: 'relative',
     shadowColor: COLORS.accent,
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.15,
-    shadowRadius: 10,
+    shadowRadius: 15,
     elevation: 8,
   },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 60,
+  heroContent: {
+    alignItems: 'center',
   },
-  editBadge: {
-    position: 'absolute',
-    bottom: 5,
-    right: 5,
-    backgroundColor: COLORS.accent,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  avatarWrapper: {
+    marginBottom: 16,
+  },
+  avatarMain: {
+    width: 100,
+    height: 100,
+    borderRadius: 35,
+    backgroundColor: COLORS.white,
+    padding: 3,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.white,
   },
-  heroTextContainer: {
+  avatarImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 32,
+  },
+  proBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 3,
+    borderColor: COLORS.accent,
+  },
+  userName: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: COLORS.white,
+    marginBottom: 4,
+  },
+  userHandle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
+    marginBottom: 20,
+    fontWeight: '600',
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  statusBadge: {
+    paddingHorizontal: 15,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  mainContent: {
+    paddingHorizontal: 20,
+    marginTop: 20,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 20,
   },
-  nameText: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: COLORS.accent,
-    marginBottom: 6,
-  },
-  occupationBadge: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+  statCard: {
+    width: (width - 60) / 3,
+    backgroundColor: COLORS.white,
     borderRadius: 20,
+    padding: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  occupationText: {
-    fontSize: 13,
+  statIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statValue: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#1A1A1A',
+  },
+  statLabel: {
+    fontSize: 10,
+    color: '#9E9E9E',
     fontWeight: '700',
-    color: COLORS.accent,
-    opacity: 0.9,
+    marginTop: 2,
   },
-  levelProgressContainer: {
-    width: '100%',
-    backgroundColor: '#F8F9FA',
-    padding: 15,
-    borderRadius: 15,
-    marginTop: 10,
+  premiumCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 4,
   },
   levelHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  levelLabel: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: COLORS.accent,
-    letterSpacing: 1,
-  },
-  experienceText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.darkGray,
-  },
-  progressBarBackground: {
-    height: 8,
-    backgroundColor: '#E9ECEF',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: COLORS.success,
-    borderRadius: 4,
-  },
-  section: {
-    marginTop: 30,
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.darkGray,
-    marginBottom: 12,
-    marginLeft: 5,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  premiumCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    padding: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  infoRow: {
-    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 15,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F8F9FA',
+    marginBottom: 16,
   },
-  infoIconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+  cardHeading: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#1A1A1A',
+  },
+  cardSubheading: {
+    fontSize: 13,
+    color: '#757575',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  medalContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
   },
-  infoLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.darkGray,
-    flex: 1,
+  progressContainer: {
+    marginTop: 10,
   },
-  infoValueText: {
-    fontSize: 15,
+  progressBg: {
+    height: 10,
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 5,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#9E9E9E',
+    marginBottom: 12,
+    marginLeft: 4,
+    letterSpacing: 1.2,
+  },
+  actionCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 24,
+    overflow: 'hidden',
+    marginBottom: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 18,
+  },
+  detailLabel: {
+    fontSize: 14,
     fontWeight: '700',
-    color: COLORS.accent,
+    color: '#757575',
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1A1A1A',
+  },
+  detailDivider: {
+    height: 1,
+    backgroundColor: '#F5F5F5',
+    marginHorizontal: 18,
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F8F9FA',
+    borderBottomColor: '#F5F5F5',
   },
   settingIconContainer: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
+    marginRight: 16,
   },
-  settingText: {
-    fontSize: 16,
-    fontWeight: '600',
+  settingTextContainer: {
     flex: 1,
   },
-  logoutButton: {
+  settingText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  settingDescription: {
+    fontSize: 12,
+    color: '#9E9E9E',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  logOutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFF5F5',
-    marginTop: 25,
-    paddingVertical: 16,
+    paddingVertical: 18,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#FFE3E3',
+    backgroundColor: '#FFEEF0',
+    marginTop: 10,
+    marginBottom: 30,
   },
-  logoutText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.danger,
-    marginLeft: 10,
+  logOutText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FF5252',
+    marginLeft: 8,
   },
-  versionText: {
+  versionInfo: {
     textAlign: 'center',
-    fontSize: 12,
-    color: COLORS.darkGray,
-    marginTop: 35,
-    fontWeight: '500',
+    fontSize: 11,
+    color: '#BDBDBD',
+    fontWeight: '600',
   },
   bottomNavSafeArea: {
     backgroundColor: COLORS.white,

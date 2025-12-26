@@ -1214,6 +1214,7 @@ export default function App() {
                       }
                     }}
                     user={userProfile!}
+                    transactions={transactions}
                     onUpdateUser={handleUpdateUser}
                     onLogout={handleLogout}
                     navigation={navigation}
