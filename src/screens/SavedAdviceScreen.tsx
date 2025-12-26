@@ -12,14 +12,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 // --- ★★★ App.tsx now defines these types, so we import them ★★★ ---
-import { Advice } from '../../App'; 
+import { Advice } from '../../App';
 import { COLORS } from '../constants/colors';
+import Markdown from 'react-native-markdown-display';
 
 // --- ★★★ MODIFIED Props ★★★ ---
 type SavedAdviceScreenProps = {
   onBack: () => void;
-  savedAdvices: Advice[]; 
-  onGoToChat: (chatId: string, messageId: string) => void; 
+  savedAdvices: Advice[];
+  onGoToChat: (chatId: string, messageId: string) => void;
   onDeleteAdvice: (adviceId: string) => void; // <-- ADDED
 };
 
@@ -33,17 +34,17 @@ const AdviceCard = ({
   onGoToChat: (chatId: string, messageId: string) => void;
   onDelete: (adviceId: string) => void;
 }) => {
-  
+
   const handleDeletePress = () => {
     Alert.alert(
       "Delete Advice",
       "Are you sure you want to delete this saved advice?",
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive", 
-          onPress: () => onDelete(advice.id) 
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => onDelete(advice.id)
         }
       ]
     );
@@ -52,26 +53,26 @@ const AdviceCard = ({
   return (
     <View style={styles.card}>
       <View style={styles.bubble}>
-        <Text style={styles.bubbleText}>{advice.text}</Text>
+        <Markdown style={markdownStyles}>{advice.text}</Markdown>
       </View>
       <View style={styles.cardFooter}>
         <Text style={styles.dateText}>Saved on {advice.date}</Text>
-        
-        <View style={styles.actionsContainer}>
-            <TouchableOpacity 
-                style={styles.actionButton} 
-                onPress={() => onGoToChat(advice.chatId, advice.messageId)}
-            >
-                <Text style={styles.linkText}>Go to Chat</Text>
-                <Icon name="arrow-right" size={14} color={COLORS.accent} style={{marginLeft: 4}}/>
-            </TouchableOpacity>
 
-            <TouchableOpacity 
-                style={[styles.actionButton, { marginLeft: 15 }]} 
-                onPress={handleDeletePress}
-            >
-                 <Icon name="trash-2" size={18} color={COLORS.danger} />
-            </TouchableOpacity>
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => onGoToChat(advice.chatId, advice.messageId)}
+          >
+            <Text style={styles.linkText}>Go to Chat</Text>
+            <Icon name="arrow-right" size={14} color={COLORS.accent} style={{ marginLeft: 4 }} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, { marginLeft: 15 }]}
+            onPress={handleDeletePress}
+          >
+            <Icon name="trash-2" size={18} color={COLORS.danger} />
+          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -83,8 +84,8 @@ const AdviceCard = ({
 // ========================================================================
 export const SavedAdviceScreen = ({
   onBack,
-  savedAdvices, 
-  onGoToChat, 
+  savedAdvices,
+  onGoToChat,
   onDeleteAdvice, // <-- ★★★ ADDED ★★★
 }: SavedAdviceScreenProps) => {
 
@@ -151,11 +152,44 @@ export const SavedAdviceScreen = ({
   );
 };
 
+const markdownStyles = StyleSheet.create({
+  body: {
+    color: COLORS.accent,
+    fontSize: 15,
+    lineHeight: 24,
+  },
+  paragraph: {
+    marginTop: 0,
+    marginBottom: 10,
+    flexWrap: 'wrap',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+  },
+  strong: {
+    fontWeight: 'bold',
+    color: COLORS.accent,
+  },
+  em: {
+    fontStyle: 'italic',
+  },
+  text: {
+    color: COLORS.accent,
+    fontSize: 15,
+    lineHeight: 24,
+  },
+  code_inline: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 4,
+    paddingHorizontal: 4,
+  },
+});
+
 // --- Styles for SavedAdviceScreen ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white, 
+    backgroundColor: COLORS.white,
   },
   header: {
     flexDirection: 'row',
@@ -206,11 +240,11 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   bubble: {
-    backgroundColor: COLORS.primary, 
+    backgroundColor: COLORS.primary,
     borderRadius: 15,
-    borderBottomLeftRadius: 0, 
+    borderBottomLeftRadius: 0,
     padding: 15,
-    alignSelf: 'flex-start', 
+    alignSelf: 'flex-start',
     maxWidth: '100%',
   },
   bubbleText: {
@@ -230,12 +264,12 @@ const styles = StyleSheet.create({
     color: COLORS.darkGray,
   },
   actionsContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   actionButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   linkText: {
     fontSize: 12,

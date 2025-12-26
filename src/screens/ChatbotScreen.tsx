@@ -24,6 +24,7 @@ import {
 import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
+import Markdown from 'react-native-markdown-display';
 import { COLORS } from '../constants/colors';
 
 import { RouteProp } from '@react-navigation/native';
@@ -452,9 +453,11 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
                           item.id === highlightMessageId && styles.highlightedBubble,
                         ]}
                       >
-                        <Text style={item.sender === 'user' ? styles.userMessageText : styles.botMessageText}>
-                          {item.text}
-                        </Text>
+                        {item.sender === 'user' ? (
+                          <Text style={styles.userMessageText}>{item.text}</Text>
+                        ) : (
+                          <Markdown style={markdownStyles}>{item.text}</Markdown>
+                        )}
                       </View>
                     )}
 
@@ -508,10 +511,9 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
                   <View style={styles.messageWrapper}>
                     {streamingMessage ? (
                       <View style={[styles.messageBubble, styles.botBubble, styles.streamingBubble]}>
-                        <Text style={styles.botMessageText}>
-                          {streamingMessage}
-                          {cursorVisible && <Text style={{ color: COLORS.accent, fontWeight: 'bold' }}>|</Text>}
-                        </Text>
+                        <Markdown style={markdownStyles}>
+                          {streamingMessage + (cursorVisible ? ' |' : '')}
+                        </Markdown>
                       </View>
                     ) : (
                       <View style={[styles.messageBubble, styles.botBubble, styles.typingBubble]}>
@@ -599,6 +601,53 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
     </View>
   );
 };
+
+const markdownStyles = StyleSheet.create({
+  body: {
+    color: COLORS.accent,
+    fontSize: 15,
+    lineHeight: 24,
+  },
+  paragraph: {
+    marginTop: 0,
+    marginBottom: 10,
+    flexWrap: 'wrap',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+  },
+  strong: {
+    fontWeight: 'bold',
+    color: COLORS.accent,
+  },
+  em: {
+    fontStyle: 'italic',
+  },
+  text: {
+    color: COLORS.accent,
+    fontSize: 15,
+    lineHeight: 24,
+  },
+  bullet_list: {
+    marginBottom: 0,
+  },
+  ordered_list: {
+    marginBottom: 0,
+  },
+  code_inline: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 4,
+    paddingHorizontal: 4,
+  },
+  bullet_list_icon: {
+    marginLeft: 10,
+    marginRight: 10,
+    color: COLORS.accent,
+  },
+  bullet_list_content: {
+    flex: 1,
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
