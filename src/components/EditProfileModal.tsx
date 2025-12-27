@@ -49,7 +49,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   };
 
   const level = calculateLevel(user.totalXP || 0);
-  const effectiveAvatar = (user.avatar === 'bear' || isBearAvatar(user.avatar))
+  const effectiveAvatar = user.avatar === 'bear'
     ? getAvatarForLevel(level)
     : user.avatar;
 

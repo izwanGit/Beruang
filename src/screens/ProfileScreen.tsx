@@ -13,6 +13,7 @@ import {
   Modal,
   Pressable,
   Share,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
@@ -394,11 +395,19 @@ export const ProfileScreen = ({
         <SafeAreaView style={styles.viewerContainer}>
           <StatusBar barStyle="light-content" backgroundColor="#000" />
           <View style={styles.viewerHeader}>
-            <TouchableOpacity onPress={() => setViewerVisible(false)} style={styles.viewerCloseBtn}>
+            <TouchableOpacity
+              onPress={() => setViewerVisible(false)}
+              style={styles.viewerCloseBtn}
+              hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            >
               <Icon name="x" size={28} color={COLORS.white} />
             </TouchableOpacity>
             <Text style={styles.viewerTitle}>Profile Bear</Text>
-            <TouchableOpacity onPress={handleDownload} style={styles.viewerCloseBtn}>
+            <TouchableOpacity
+              onPress={handleDownload}
+              style={styles.viewerCloseBtn}
+              hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            >
               <Icon name="download" size={24} color={COLORS.white} />
             </TouchableOpacity>
           </View>
@@ -416,7 +425,13 @@ export const ProfileScreen = ({
           </View>
 
           <View style={styles.viewerFooter}>
-            <Text style={styles.viewerLevel}>Level {level} Grizzly</Text>
+            <Text style={styles.viewerLevel}>
+              {user.avatar === 'bear'
+                ? `Level ${level} Grizzly`
+                : isBearAvatar(user.avatar)
+                  ? `Level ${user.avatar.split('_')[2]} Bear`
+                  : `Level ${level} Master`}
+            </Text>
             <TouchableOpacity
               style={styles.changeBtnSquare}
               onPress={() => {
@@ -862,11 +877,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   viewerHeader: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 30, // Increased for iOS to clear notch comfortably
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    zIndex: 10,
+    paddingHorizontal: 20,
+    zIndex: 999,
+    elevation: 10,
   },
   viewerTitle: {
     color: COLORS.white,

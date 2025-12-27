@@ -1002,8 +1002,8 @@ export default function App() {
 
     if (newLevel > oldLevel) {
       showMessage(`🎉 Level Up! You reached Level ${newLevel}!`);
-      // Auto-evolve if using a bear avatar
-      if (userProfile.avatar === 'bear' || isBearAvatar(userProfile.avatar)) {
+      // Auto-evolve ONLY if they are using the generic 'bear' string
+      if (userProfile.avatar === 'bear') {
         await updateDoc(doc(db, 'users', userId), {
           avatar: getAvatarForLevel(newLevel)
         });

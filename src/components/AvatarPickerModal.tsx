@@ -13,7 +13,7 @@ import {
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../constants/colors';
 import { BEAR_AVATARS, DEFAULT_AVATARS } from '../constants/avatars';
-import { calculateLevel } from '../utils/gamificationUtils';
+import { calculateLevel, getAvatarForLevel } from '../utils/gamificationUtils';
 
 type AvatarPickerModalProps = {
   visible: boolean;
@@ -32,6 +32,11 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
 }) => {
   const currentLevel = calculateLevel(userXP);
   const bearAvatarKeys = Object.keys(BEAR_AVATARS);
+
+  // Highlight the level-based bear if they are in 'auto-evolve' mode
+  const effectiveCurrentAvatar = currentAvatar === 'bear'
+    ? getAvatarForLevel(currentLevel)
+    : currentAvatar;
 
   const handleSelectBear = (key: string, requiredLevel: number) => {
     if (currentLevel >= requiredLevel) {
@@ -66,7 +71,7 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
                     key={key}
                     style={[
                       styles.avatarCell,
-                      currentAvatar === key && styles.avatarCellSelected,
+                      effectiveCurrentAvatar === key && styles.avatarCellSelected,
                       isLocked && styles.avatarCellLocked,
                     ]}
                     onPress={() => handleSelectBear(key, requiredLevel)}
