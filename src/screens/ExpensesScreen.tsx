@@ -17,7 +17,14 @@ import {
   Animated,
   Dimensions,
   ActivityIndicator,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
+
+// Enable LayoutAnimation for Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -39,23 +46,27 @@ type ExpensesScreenProps = {
 type SortOption = 'dateDesc' | 'dateAsc' | 'amountHigh' | 'amountLow';
 
 const categoryIcons: Record<string, { icon: string; color: string }> = {
-  'Financial Services': { icon: 'calculator', color: COLORS.danger },
-  'Food & Beverage': { icon: 'silverware-fork-knife', color: '#FF69B4' },
-  Transportation: { icon: 'train', color: '#9370DB' },
-  Telecommunication: { icon: 'phone', color: '#4169E1' },
-  Entertainment: { icon: 'filmstrip', color: '#FFA500' },
-  Shopping: { icon: 'shopping', color: '#32CD32' },
-  Others: { icon: 'dots-horizontal', color: COLORS.darkGray },
+  'Financial Services': { icon: 'bank', color: COLORS.accent },
+  'Food & Beverage': { icon: 'silverware-fork-knife', color: COLORS.accent },
+  Transportation: { icon: 'car', color: COLORS.accent },
+  Telecommunication: { icon: 'wifi', color: COLORS.accent },
+  Entertainment: { icon: 'popcorn', color: COLORS.accent },
+  Shopping: { icon: 'shopping', color: COLORS.accent },
+  Others: { icon: 'dots-horizontal', color: COLORS.accent },
 };
 
 const categoryColors = [
-  '#FF6384',
-  '#36A2EB',
-  '#FFCE56',
-  '#4BC0C0',
-  '#9966FF',
-  '#FF9F40',
-  '#C9CBCF',
+  '#FF6384', // Pink
+  '#36A2EB', // Blue
+  '#FFCE56', // Yellow
+  '#4BC0C0', // Teal
+  '#9966FF', // Purple
+  '#FF9F40', // Orange
+  '#FF6384', // Red-ish
+  '#C9CBCF', // Silver
+  '#4D5360', // Dark Grey
+  '#8E44AD', // Amethyst
+  '#27AE60', // Nephritis
 ];
 
 const getSubCategoryGroups = (expenseList: Array<any>) => {
@@ -115,6 +126,11 @@ export const ExpensesScreen = ({
     months.push({ label: monthNames[m], value: m + 1 });
   }
 
+  const switchTab = (tab: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setActiveTab(tab);
+  };
+
   const currentYear = currentDate.getFullYear();
   const allMonthlyTransactions = transactions.filter((t) => {
     const txDate = new Date(t.date);
@@ -143,7 +159,7 @@ export const ExpensesScreen = ({
   // --- FILTER TRANSACTIONS ---
   const latestTransactions = allMonthlyTransactions.filter((t) => {
     // Show normal expenses
-    if (t.type === 'expense' && (t.category === 'needs' || t.category === 'wants' || t.category === 'others')) {
+    if (t.type === 'expense' && (t.category === 'needs' || t.category === 'wants' || (t.category as string) === 'others')) {
       return true;
     }
     // Show ALL Income (But we will hide 'Carried Over' in the render loop)
@@ -154,7 +170,7 @@ export const ExpensesScreen = ({
   });
 
   const expenses = allMonthlyTransactions.filter(
-    (t) => t.type === 'expense' && (t.category === 'needs' || t.category === 'wants' || t.category === 'others')
+    (t) => t.type === 'expense' && (t.category === 'needs' || t.category === 'wants' || (t.category as string) === 'others')
   );
 
   const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
@@ -176,6 +192,7 @@ export const ExpensesScreen = ({
   let totalForChart;
   let subCategoryGroups;
 
+  // --- CHART DATA PREPARATION ---
   if (activeTab === 'needs') {
     subCategoryGroups = getSubCategoryGroups(needsExpenses);
     totalForChart = needsForMonth;
@@ -187,10 +204,30 @@ export const ExpensesScreen = ({
     totalForChart = totalExpenses;
   }
 
+  // Use a diverse "many colors" palette for the wheels as requested
   chartData = Object.entries(subCategoryGroups).map(
-    ([sub, { amount }], index) => ({
+    ([sub, data]: [string, any], index) => ({
       name: sub,
-      population: amount,
+      population: data.amount,
+      color: categoryColors[index % categoryColors.length],
+    }),
+  );
+
+  // Specific chart data for Needs/Wants tabs (using same approach)
+  const needsSubGroups = getSubCategoryGroups(needsExpenses);
+  const needsChartData = Object.entries(needsSubGroups).map(
+    ([sub, data]: [string, any], index) => ({
+      name: sub,
+      population: data.amount,
+      color: categoryColors[index % categoryColors.length],
+    }),
+  );
+
+  const wantsSubGroups = getSubCategoryGroups(wantsExpenses);
+  const wantsChartData = Object.entries(wantsSubGroups).map(
+    ([sub, data]: [string, any], index) => ({
+      name: sub,
+      population: data.amount,
       color: categoryColors[index % categoryColors.length],
     }),
   );
@@ -343,36 +380,27 @@ export const ExpensesScreen = ({
     const spentPercentage = total > 0 ? Math.min((spent / total) * 100, 100) : 0;
     const remaining = total - spent;
     return (
-      <View style={expensesStyles.budgetCategory}>
-        <View style={expensesStyles.budgetCategoryHeader}>
-          <Text style={expensesStyles.budgetCategoryName}>{title}</Text>
-          <Text style={expensesStyles.budgetCategoryAmount}>
-            RM {spent.toFixed(2)} / RM {total.toFixed(2)}
-          </Text>
+      <View style={[expensesStyles.budgetBanner, { borderLeftWidth: 8, borderLeftColor: color }]}>
+        <View style={expensesStyles.budgetBannerHeader}>
+          <View>
+            <Text style={expensesStyles.budgetBannerTitle}>{title}</Text>
+            <Text style={expensesStyles.budgetBannerSub}>{remaining >= 0 ? `RM ${remaining.toFixed(2)} remaining` : `Over by RM ${Math.abs(remaining).toFixed(2)}`}</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={expensesStyles.budgetBannerAmount}>RM {spent.toFixed(0)}</Text>
+            <Text style={expensesStyles.budgetBannerTotal}>of RM {total.toFixed(0)}</Text>
+          </View>
         </View>
-        <View style={expensesStyles.progressBarBackground}>
+        <View style={expensesStyles.bannerProgressBg}>
           <View
             style={[
-              expensesStyles.progressBar,
+              expensesStyles.bannerProgressFill,
               {
                 width: `${spentPercentage}%`,
-                backgroundColor: color,
+                backgroundColor: color, // Themed progress fill
               },
             ]}
           />
-        </View>
-        <View style={expensesStyles.budgetRemainingContainer}>
-          <Text style={expensesStyles.budgetRemainingText}>
-            {remaining >= 0 ? 'Remaining:' : 'Overspent:'}
-          </Text>
-          <Text
-            style={[
-              expensesStyles.budgetRemainingAmount,
-              { color: remaining >= 0 ? COLORS.success : COLORS.danger },
-            ]}
-          >
-            RM {Math.abs(remaining).toFixed(2)}
-          </Text>
         </View>
       </View>
     );
@@ -408,97 +436,115 @@ export const ExpensesScreen = ({
         </Text>
       );
     }
-    return sortedList.map((item) => (
-      <TouchableOpacity
-        key={item.id}
-        style={transactionItemStyles.transactionItem}
-        onPress={() => openEditModal(item)}
-        activeOpacity={0.7}
-      >
-        <View
-          style={[
-            transactionItemStyles.transactionIcon,
-            { backgroundColor: COLORS.primary },
-          ]}
-        >
-          <Icon name={item.icon} size={22} color={COLORS.accent} />
-        </View>
-        <View style={transactionItemStyles.transactionDetails}>
-          <Text style={transactionItemStyles.transactionName}>{item.name}</Text>
-          <Text style={transactionItemStyles.transactionDate}>
-            {new Date(item.date).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })}{' '}
-            • {item.subCategory}
-          </Text>
-        </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text
-            style={[
-              transactionItemStyles.transactionAmount,
-              {
-                color:
-                  item.type === 'income'
-                    ? COLORS.success
-                    : COLORS.danger,
-              },
-            ]}
+    return sortedList.map((item) => {
+      const subCat = item.subCategory || 'Others';
+      const iconInfo = categoryIcons[subCat] || categoryIcons['Others'];
+
+      return (
+        <View key={item.id} style={expensesStyles.transactionCard}>
+          <TouchableOpacity
+            style={expensesStyles.transactionMainContent}
+            onPress={() => openEditModal(item)}
+            activeOpacity={0.7}
           >
-            {item.type === 'income' ? '+' : '-'} RM{' '}
-            {item.amount.toFixed(2)}
-          </Text>
-          <Icon name="edit-2" size={12} color={COLORS.darkGray} style={{ marginTop: 4 }} />
+            <View style={expensesStyles.transactionIconContainer}>
+              <MaterialCommunityIcon
+                name={iconInfo.icon}
+                size={22}
+                color={COLORS.accent}
+              />
+            </View>
+            <View style={expensesStyles.transactionDetails}>
+              <Text style={expensesStyles.transactionName} numberOfLines={1}>{item.name}</Text>
+              <Text style={expensesStyles.transactionMeta}>
+                {subCat} • {new Date(item.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
+              </Text>
+            </View>
+            <Text
+              style={[
+                expensesStyles.transactionAmount,
+                { color: item.type === 'income' ? COLORS.success : COLORS.accent },
+              ]}
+            >
+              {item.type === 'income' ? '+' : '-'}RM{item.amount.toFixed(2)}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={expensesStyles.editButton}
+            onPress={() => openEditModal(item)}
+            activeOpacity={0.6}
+          >
+            <Icon name="edit-2" size={14} color={COLORS.accent} />
+          </TouchableOpacity>
         </View>
-      </TouchableOpacity>
-    ));
+      );
+    });
   };
 
   const renderSubCategorySelector = () => {
     const subCategories = Object.keys(categoryIcons);
     return (
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={expensesStyles.chipScrollView}>
-        {subCategories.map((subCat) => (
-          <TouchableOpacity
-            key={subCat}
-            style={[
-              expensesStyles.chip,
-              editSubCategory === subCat && expensesStyles.chipActive
-            ]}
-            onPress={() => setEditSubCategory(subCat)}
-            disabled={isSaving}
-          >
-            <MaterialCommunityIcon
-              name={categoryIcons[subCat].icon}
-              size={16}
-              color={editSubCategory === subCat ? COLORS.white : COLORS.darkGray}
-              style={{ marginRight: 6 }}
-            />
-            <Text style={[
-              expensesStyles.chipText,
-              editSubCategory === subCat && expensesStyles.chipTextActive
-            ]}>
-              {subCat}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {subCategories.map((subCat) => {
+          const isActive = editSubCategory === subCat;
+          return (
+            <TouchableOpacity
+              key={subCat}
+              style={[
+                expensesStyles.chip,
+                isActive && expensesStyles.chipActive
+              ]}
+              onPress={() => setEditSubCategory(subCat)}
+              disabled={isSaving}
+            >
+              <MaterialCommunityIcon
+                name={categoryIcons[subCat].icon}
+                size={16}
+                color={isActive ? COLORS.white : COLORS.accent}
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[
+                expensesStyles.chipText,
+                isActive && expensesStyles.chipTextActive
+              ]}>
+                {subCat}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
     );
   };
 
+  // --- RENDER FUNCTIONS ---
+  const renderSearchSection = () => (
+    <View style={expensesStyles.searchSection}>
+      <View style={expensesStyles.searchContainer}>
+        <Icon name="search" size={20} color={COLORS.darkGray} style={{ opacity: 0.6 }} />
+        <TextInput
+          style={expensesStyles.searchInputPremium}
+          placeholder="Search transactions..."
+          placeholderTextColor={COLORS.darkGray}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Icon name="x-circle" size={18} color={COLORS.darkGray} />
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+
   const renderTransactionHeader = () => (
     <View style={expensesStyles.transactionHeader}>
-      <Text style={expensesStyles.transactionsTitle}>Transactions</Text>
-      <TextInput
-        style={expensesStyles.searchInput}
-        placeholder="Search..."
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-      />
+      <View>
+        <Text style={expensesStyles.transactionsTitle}>Recent Transactions</Text>
+        <Text style={expensesStyles.transactionsSubtitle}>Track your latest movement</Text>
+      </View>
       <TouchableOpacity style={expensesStyles.sortButton} onPress={openSortModal}>
-        <Icon name="filter" size={18} color={COLORS.accent} />
-        <Text style={expensesStyles.sortButtonText}>Sort</Text>
+        <Icon name="sliders" size={18} color={COLORS.accent} />
       </TouchableOpacity>
     </View>
   );
@@ -508,11 +554,11 @@ export const ExpensesScreen = ({
       <SafeAreaView style={expensesStyles.safeAreaContent} edges={['top', 'left', 'right']}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
         <View style={expensesStyles.header}>
-          <TouchableOpacity onPress={onBack} style={expensesStyles.backButton}>
-            <Icon name="arrow-left" size={24} color={COLORS.accent} />
+          <TouchableOpacity onPress={onBack}>
+            <Icon name="arrow-left" size={24} color="#333" />
           </TouchableOpacity>
           <Text style={expensesStyles.headerTitle}>Expenses</Text>
-          <View style={{ width: 40 }} />
+          <View style={{ width: 24 }} />
         </View>
         <ScrollView contentContainerStyle={expensesStyles.scrollContainer}>
           {/* Month Tabs */}
@@ -538,37 +584,117 @@ export const ExpensesScreen = ({
             ))}
           </View>
 
-          {/* --- CHART CONTAINER --- */}
-          <View style={expensesStyles.chartContainer}>
-            <DonutChart data={chartData} total={totalForChart} />
-            <TouchableOpacity onPress={handleAskAI} style={expensesStyles.aiChartButton}>
-              <MaterialCommunityIcon name="robot-outline" size={24} color={COLORS.accent} />
-            </TouchableOpacity>
-          </View>
+          {/* --- DASHBOARD AREA --- */}
+          {activeTab === 'latest' ? (
+            /* CENTERED DONUT FOR LATEST */
+            <View style={expensesStyles.dashboardCard}>
+              <DonutChart
+                data={chartData}
+                total={totalForChart}
+                radius={85}
+                strokeWidth={22}
+                showCenterText={true}
+                centerLabel="THIS MONTH SPENDING"
+              />
+              {/* AI Button */}
+              <TouchableOpacity onPress={handleAskAI} style={expensesStyles.aiButtonSubtle}>
+                <MaterialCommunityIcon name="auto-fix" size={12} color="#666" style={{ marginRight: 4 }} />
+                <Text style={expensesStyles.aiButtonSubtleText}>Get Analysis</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            /* SIDE-BY-SIDE FOR NEEDS/WANTS */
+            <View style={expensesStyles.dashboardCard}>
+              <View style={expensesStyles.splitContent}>
+                <View style={expensesStyles.chartSide}>
+                  <DonutChart
+                    data={activeTab === 'needs' ? needsChartData : wantsChartData}
+                    total={activeTab === 'needs' ? needsForMonth : wantsForMonth}
+                    radius={70}
+                    strokeWidth={18}
+                    showCenterText={true}
+                    centerLabel={activeTab === 'needs' ? 'NEEDS SPENT' : 'WANTS SPENT'}
+                  />
+                </View>
+                <View style={expensesStyles.statsSide}>
+                  <Text style={[
+                    expensesStyles.statsLabel,
+                    { color: activeTab === 'needs' ? '#42a5f5' : '#ff7043' }
+                  ]}>
+                    {activeTab === 'needs' ? 'NEEDS' : 'WANTS'} BUDGET
+                  </Text>
+                  <Text style={expensesStyles.statsValue}>
+                    RM {(activeTab === 'needs' ? needsBudget : wantsBudget).toFixed(2)}
+                  </Text>
+                  <Text style={expensesStyles.statsValueSmall}>
+                    {activeTab === 'needs' ? '50%' : '30%'} of income
+                  </Text>
+                  <View style={expensesStyles.statsDivider} />
+                  <Text style={expensesStyles.statsLabel}>REMAINING</Text>
+                  <Text style={[
+                    expensesStyles.statsRemaining,
+                    {
+                      color: (activeTab === 'needs'
+                        ? (needsBudget - needsForMonth)
+                        : (wantsBudget - wantsForMonth)) >= 0
+                        ? COLORS.success
+                        : COLORS.danger
+                    }
+                  ]}>
+                    RM {(activeTab === 'needs'
+                      ? (needsBudget - needsForMonth)
+                      : (wantsBudget - wantsForMonth)).toFixed(2)}
+                  </Text>
+                </View>
+              </View>
+              {/* Progress Bar */}
+              <View style={expensesStyles.progressSection}>
+                <View style={expensesStyles.progressLabels}>
+                  <Text style={expensesStyles.progressLabelSpent}>
+                    {Math.min(100, Math.round(((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) * 100))}% Spent
+                  </Text>
+                  <Text style={expensesStyles.progressLabelRemaining}>
+                    {Math.max(0, 100 - Math.round(((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) * 100))}% Left
+                  </Text>
+                </View>
+                <View style={expensesStyles.progressBarBg}>
+                  <View
+                    style={[
+                      expensesStyles.progressBarFill,
+                      {
+                        width: `${Math.min(100, ((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) * 100)}%`,
+                        backgroundColor: ((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) > 0.9 ? COLORS.danger : COLORS.primary
+                      }
+                    ]}
+                  />
+                </View>
+              </View>
+            </View>
+          )}
 
-          {/* Horizontal Scroll */}
+          {/* Horizontal Scroll (Legend) - Clean Style */}
           {totalForChart > 0 && (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               style={expensesStyles.categoriesScroll}
+              contentContainerStyle={{ paddingRight: 20 }}
             >
-              {Object.entries(subCategoryGroups).map(([sub, { amount }]) => {
+              {Object.entries(subCategoryGroups).map(([sub, group]) => {
                 const { icon } = categoryIcons[sub] || { icon: 'dots-horizontal' };
                 const color = colorMap[sub] || categoryIcons[sub]?.color || COLORS.darkGray;
+                const { amount } = group as { amount: number };
 
                 return (
-                  <View key={sub} style={expensesStyles.categoryItem}>
-                    <View
-                      style={[
-                        expensesStyles.categoryIcon,
-                        { backgroundColor: color + '33' },
-                      ]}
-                    >
-                      <MaterialCommunityIcon name={icon} size={24} color={color} />
+                  <View key={sub} style={expensesStyles.legendChip}>
+                    <View style={[
+                      expensesStyles.legendIconCircle,
+                      { backgroundColor: color }
+                    ]}>
+                      <MaterialCommunityIcon name={icon} size={18} color={COLORS.white} />
                     </View>
-                    <Text style={expensesStyles.categoryName}>{sub}</Text>
-                    <Text style={expensesStyles.categoryAmount}>
+                    <Text style={expensesStyles.legendName} numberOfLines={1}>{sub}</Text>
+                    <Text style={expensesStyles.legendAmount}>
                       -RM {amount.toFixed(2)}
                     </Text>
                   </View>
@@ -584,7 +710,7 @@ export const ExpensesScreen = ({
                 expensesStyles.tab,
                 activeTab === 'latest' && expensesStyles.activeTab,
               ]}
-              onPress={() => setActiveTab('latest')}
+              onPress={() => switchTab('latest')}
             >
               <Text
                 style={[
@@ -600,7 +726,7 @@ export const ExpensesScreen = ({
                 expensesStyles.tab,
                 activeTab === 'needs' && expensesStyles.activeTab,
               ]}
-              onPress={() => setActiveTab('needs')}
+              onPress={() => switchTab('needs')}
             >
               <Text
                 style={[
@@ -616,7 +742,7 @@ export const ExpensesScreen = ({
                 expensesStyles.tab,
                 activeTab === 'wants' && expensesStyles.activeTab,
               ]}
-              onPress={() => setActiveTab('wants')}
+              onPress={() => switchTab('wants')}
             >
               <Text
                 style={[
@@ -632,46 +758,19 @@ export const ExpensesScreen = ({
           {/* Tab Content */}
           {activeTab === 'latest' ? (
             <View>
+              {renderSearchSection()}
               {renderTransactionHeader()}
               {renderTransactionsList(latestTransactions)}
             </View>
           ) : activeTab === 'needs' ? (
             <View>
-              <View style={expensesStyles.budgetContainer}>
-                {/* ★★★ FIXED: Using totalIncomeForMonth ★★★ */}
-                {totalIncomeForMonth > 0 ? (
-                  <BudgetCategoryView
-                    title="Needs (50%)"
-                    spent={needsForMonth}
-                    total={needsBudget}
-                    color="#42a5f5"
-                  />
-                ) : (
-                  <Text style={expensesStyles.merchantsText}>
-                    No income recorded for {monthNames[selectedMonth - 1]} to calculate budget.
-                  </Text>
-                )}
-              </View>
+              {renderSearchSection()}
               {renderTransactionHeader()}
               {renderTransactionsList(needsExpenses)}
             </View>
           ) : ( // activeTab === 'wants'
             <View>
-              <View style={expensesStyles.budgetContainer}>
-                {/* ★★★ FIXED: Using totalIncomeForMonth ★★★ */}
-                {totalIncomeForMonth > 0 ? (
-                  <BudgetCategoryView
-                    title="Wants (30%)"
-                    spent={wantsForMonth}
-                    total={wantsBudget}
-                    color="#ff7043"
-                  />
-                ) : (
-                  <Text style={expensesStyles.merchantsText}>
-                    No income recorded for {monthNames[selectedMonth - 1]} to calculate budget.
-                  </Text>
-                )}
-              </View>
+              {renderSearchSection()}
               {renderTransactionHeader()}
               {renderTransactionsList(wantsExpenses)}
             </View>
@@ -734,9 +833,25 @@ export const ExpensesScreen = ({
                     </TouchableOpacity>
                   </View>
                 </View>
+                <View style={expensesStyles.modalHero}>
+                  <Text style={expensesStyles.modalHeroLabel}>TOTAL AMOUNT</Text>
+                  <View style={expensesStyles.modalHeroAmountRow}>
+                    <Text style={expensesStyles.modalHeroCurrency}>RM</Text>
+                    <TextInput
+                      style={expensesStyles.modalHeroInput}
+                      value={editAmount}
+                      onChangeText={setEditAmount}
+                      keyboardType="numeric"
+                      placeholder="0.00"
+                      placeholderTextColor="rgba(255,255,255,0.4)"
+                      editable={!isSaving}
+                    />
+                  </View>
+                </View>
+
                 <View style={expensesStyles.formContainer}>
                   <View style={expensesStyles.inputGroup}>
-                    <Text style={expensesStyles.inputLabel}>DESCRIPTION</Text>
+                    <Text style={expensesStyles.inputLabel}>WHAT WAS THIS FOR?</Text>
                     <TextInput
                       style={expensesStyles.textInput}
                       value={editDescription}
@@ -746,37 +861,26 @@ export const ExpensesScreen = ({
                       editable={!isSaving}
                     />
                   </View>
-                  <View style={expensesStyles.inputGroup}>
-                    <Text style={expensesStyles.inputLabel}>AMOUNT (RM)</Text>
-                    <TextInput
-                      style={expensesStyles.textInput}
-                      value={editAmount}
-                      onChangeText={setEditAmount}
-                      keyboardType="numeric"
-                      placeholder="0.00"
-                      placeholderTextColor={COLORS.darkGray}
-                      editable={!isSaving}
-                    />
-                  </View>
+
                   {editingTransaction?.type === 'expense' && (
                     <View style={expensesStyles.inputGroup}>
-                      <Text style={expensesStyles.inputLabel}>CATEGORY TYPE</Text>
-                      <View style={expensesStyles.segmentedControl}>
+                      <Text style={expensesStyles.inputLabel}>SPENDING CATEGORY</Text>
+                      <View style={expensesStyles.segmentedControlPremium}>
                         <TouchableOpacity
-                          style={[expensesStyles.segmentBtn, editCategory === 'needs' && expensesStyles.segmentBtnActive]}
+                          style={[expensesStyles.segmentBtnP, editCategory === 'needs' && expensesStyles.segmentBtnActiveP]}
                           onPress={() => setEditCategory('needs')}
-                          activeOpacity={0.8}
                           disabled={isSaving}
                         >
-                          <Text style={[expensesStyles.segmentText, editCategory === 'needs' && expensesStyles.segmentTextActive]}>Needs</Text>
+                          <Icon name="shield" size={16} color={editCategory === 'needs' ? COLORS.white : COLORS.darkGray} style={{ marginRight: 6 }} />
+                          <Text style={[expensesStyles.segmentTextP, editCategory === 'needs' && expensesStyles.segmentTextActiveP]}>Needs</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                          style={[expensesStyles.segmentBtn, editCategory === 'wants' && expensesStyles.segmentBtnActive]}
+                          style={[expensesStyles.segmentBtnP, editCategory === 'wants' && expensesStyles.segmentBtnActiveP]}
                           onPress={() => setEditCategory('wants')}
-                          activeOpacity={0.8}
                           disabled={isSaving}
                         >
-                          <Text style={[expensesStyles.segmentText, editCategory === 'wants' && expensesStyles.segmentTextActive]}>Wants</Text>
+                          <Icon name="heart" size={16} color={editCategory === 'wants' ? COLORS.white : COLORS.darkGray} style={{ marginRight: 6 }} />
+                          <Text style={[expensesStyles.segmentTextP, editCategory === 'wants' && expensesStyles.segmentTextActiveP]}>Wants</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -820,7 +924,7 @@ export const ExpensesScreen = ({
               <Text style={[expensesStyles.modalTitle, { textAlign: 'center', marginTop: 10 }]}>Sort By</Text>
             </View>
 
-            <View style={{ gap: 12 }}>
+            <View style={{ gap: 12, paddingHorizontal: 20 }}>
               <TouchableOpacity
                 style={[expensesStyles.sortOption, sortOption === 'dateDesc' && expensesStyles.sortOptionActive]}
                 onPress={() => handleSortSelect('dateDesc')}
@@ -850,6 +954,7 @@ export const ExpensesScreen = ({
                 {sortOption === 'amountLow' && <Icon name="check" size={20} color={COLORS.accent} />}
               </TouchableOpacity>
             </View>
+            <View style={{ height: 40 }} />
           </Animated.View>
         </View>
       </Modal>
@@ -861,7 +966,7 @@ export const ExpensesScreen = ({
 const expensesStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: '#FAFAFA',
   },
   safeAreaContent: {
     flex: 1,
@@ -871,178 +976,457 @@ const expensesStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: '#F0F0F0',
   },
-  backButton: {
-    padding: 5,
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8F9FA',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '800',
     color: COLORS.accent,
-  },
-  sortButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.lightGray,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  sortButtonText: {
-    marginLeft: 6,
-    color: COLORS.accent,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  scrollContainer: {
-    padding: 20,
-    paddingBottom: 40,
+    letterSpacing: 0.5,
   },
   monthTabs: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 20,
+    justifyContent: 'center',
+    paddingVertical: 12,
+    backgroundColor: COLORS.white,
+    paddingBottom: 20,
   },
   monthTab: {
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginHorizontal: 4,
+    backgroundColor: 'rgba(200, 219, 190, 0.3)', // Subtle sage
   },
   activeMonthTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: COLORS.accent,
+    backgroundColor: COLORS.accent, // Dark Earth active month
   },
   monthText: {
-    fontSize: 14,
-    color: COLORS.darkGray,
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.accent,
+    opacity: 0.6,
   },
   activeMonthText: {
-    fontWeight: 'bold',
-    color: COLORS.accent,
+    color: COLORS.white,
+    fontWeight: '800',
+    opacity: 1,
   },
   chartContainer: {
     alignItems: 'center',
+    marginTop: 20,
     marginBottom: 20,
     position: 'relative',
+  },
+  headerAiButton: {
+    backgroundColor: 'rgba(200, 219, 190, 0.4)',
+    padding: 10,
+    borderRadius: 16,
+  },
+  aiInsightsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: COLORS.accent + '30',
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  aiInsightsIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  aiInsightsText: {
+    flex: 1,
+  },
+  aiInsightsTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.accent,
+    marginBottom: 2,
+  },
+  aiInsightsSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#888',
+  },
+  aiButtonSubtle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F0F0',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  aiButtonSubtleText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#666',
+  },
+  dashboardCard: {
+    backgroundColor: COLORS.white,
+    marginHorizontal: 16,
+    marginTop: 15,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.2,
+    borderColor: 'rgba(0,0,0,0.05)',
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 8,
+    height: 290,
+    overflow: 'visible',
+  },
+  progressSection: {
+    width: '100%',
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  progressLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  progressLabelSpent: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.accent,
+  },
+  progressLabelRemaining: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#999',
+  },
+  progressBarBg: {
+    height: 8,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  splitContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  chartSide: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statsSide: {
+    flex: 1,
+    paddingLeft: 24,
+    paddingRight: 16,
+    justifyContent: 'center',
+  },
+  categoriesScroll: {
+    paddingHorizontal: 16,
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  legendChip: {
+    alignItems: 'center',
+    marginRight: 16,
+    minWidth: 65,
+  },
+  legendIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+    borderWidth: 2,
+    borderColor: COLORS.white,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
+    elevation: 4,
+  },
+  legendName: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  legendAmount: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#E57373',
+  },
+  categoryItem: {
+    alignItems: 'center',
+    marginRight: 12,
+    backgroundColor: COLORS.white,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    minWidth: 80,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
     elevation: 2,
   },
-  aiChartButton: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: COLORS.white,
-    padding: 12,
-    borderRadius: 30,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+  categoryIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  categoryName: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: COLORS.darkGray,
+    opacity: 0.7,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  categoryAmount: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.accent,
   },
   tabContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    backgroundColor: '#F0F0F0',
+    marginHorizontal: 16,
     marginBottom: 20,
-    backgroundColor: COLORS.lightGray,
-    borderRadius: 25,
+    marginTop: 10,
+    borderRadius: 16,
     padding: 4,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 20,
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
   },
   activeTab: {
     backgroundColor: COLORS.white,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
   },
   tabText: {
     fontSize: 14,
-    color: COLORS.darkGray,
+    fontWeight: '600',
+    color: '#888',
   },
   activeTabText: {
-    fontWeight: 'bold',
     color: COLORS.accent,
+    fontWeight: '700',
   },
-  categoriesScroll: {
-    marginBottom: 20,
-  },
-  categoryItem: {
+  heroDashboard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 20,
-    width: 80,
+    backgroundColor: COLORS.white,
+    marginHorizontal: 16,
+    marginTop: 15,
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+    borderRadius: 32,
+    borderWidth: 1.2,
+    borderColor: 'rgba(0,0,0,0.05)',
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 8,
+    position: 'relative',
+    minHeight: 250,
   },
-  categoryIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  categoryName: {
-    fontSize: 12,
-    color: COLORS.accent,
-    textAlign: 'center',
-    marginTop: 5,
-  },
-  categoryAmount: {
-    fontSize: 12,
-    color: COLORS.danger,
-    fontWeight: 'bold',
-  },
-  merchantsText: {
-    fontSize: 16,
+  statsLabel: {
+    fontSize: 10,
+    fontWeight: '900',
     color: COLORS.darkGray,
-    textAlign: 'center',
+    letterSpacing: 1,
+    marginBottom: 4,
+    opacity: 0.6,
+  },
+  statsValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.accent,
+    letterSpacing: -0.3,
+  },
+  statsValueSmall: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.darkGray,
+    marginTop: 2,
+    opacity: 0.5,
+  },
+  statsDivider: {
+    height: 1,
+    backgroundColor: '#F5F5F5',
+    marginVertical: 14,
+    width: '100%',
+  },
+  statsValues: {
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  statsRemaining: {
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  aiButtonPill: {
+    position: 'absolute',
+    bottom: -15,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.accent,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 22,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
+    borderWidth: 2,
+    borderColor: COLORS.white,
+  },
+  aiButtonText: {
+    color: COLORS.white,
+    fontSize: 11,
+    fontWeight: '800',
+    marginLeft: 6,
+    letterSpacing: 0.5,
   },
   budgetContainer: {
-    backgroundColor: COLORS.white,
-    borderRadius: 15,
-    padding: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    marginTop: 10,
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  budgetCategory: {
-    marginBottom: 15,
+  budgetBanner: {
+    backgroundColor: COLORS.white,
+    borderRadius: 24,
+    padding: 24,
+    marginTop: 10,
+    marginBottom: 25,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.12, // Clearer, deeper shadow
+    shadowRadius: 16,
+    elevation: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,0,0,0.05)', // Subtle but visible stroke
+  },
+  budgetBannerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  budgetBannerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.accent,
+  },
+  budgetBannerSub: {
+    fontSize: 13,
+    color: COLORS.darkGray,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  budgetBannerAmount: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: COLORS.accent,
+  },
+  budgetBannerTotal: {
+    fontSize: 12,
+    color: COLORS.darkGray,
+    opacity: 0.6,
+    fontWeight: '600',
+  },
+  bannerProgressBg: {
+    height: 10,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  bannerProgressFill: {
+    height: '100%',
+    borderRadius: 5,
   },
   budgetCategoryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    alignItems: 'center',
+    marginBottom: 16,
   },
   budgetCategoryName: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '700',
     color: COLORS.accent,
   },
   budgetCategoryAmount: {
-    fontSize: 14,
-    color: COLORS.darkGray,
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.accent,
   },
   progressBarBackground: {
     height: 12,
-    backgroundColor: COLORS.lightGray,
+    backgroundColor: '#F0F0F0',
     borderRadius: 6,
     overflow: 'hidden',
-    marginTop: 5,
+    marginBottom: 12,
   },
   progressBar: {
     height: '100%',
@@ -1052,19 +1436,409 @@ const expensesStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    marginTop: 10,
   },
   budgetRemainingText: {
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.darkGray,
-    marginRight: 8,
+    marginRight: 6,
   },
   budgetRemainingAmount: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  transactionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 15,
+  },
+  transactionsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.accent,
+    letterSpacing: 0.3,
+  },
+  transactionsSubtitle: {
+    fontSize: 13,
+    color: COLORS.darkGray,
+    marginTop: 2,
+  },
+  sortButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: COLORS.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.lightGray,
+  },
+  searchSection: {
+    paddingHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary + '40', // Theme color border
+  },
+  searchInputPremium: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 15,
+    color: COLORS.accent,
+    fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  transactionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    paddingVertical: 12,
+    paddingLeft: 14,
+    paddingRight: 8,
+    borderRadius: 16,
+    borderWidth: 1.2,
+    borderColor: COLORS.primary + '50',
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  transactionMainContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  transactionIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    backgroundColor: COLORS.primary,
+  },
+  transactionDetails: {
+    flex: 1,
+    marginRight: 8,
+  },
+  transactionName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 3,
+  },
+  transactionMeta: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#999',
+  },
+  categoryPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginRight: 8,
+    backgroundColor: COLORS.primary,
+  },
+  categoryPillText: {
+    fontSize: 10,
+    color: COLORS.accent,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  transactionDate: {
+    fontSize: 12,
+    color: COLORS.darkGray,
+    fontWeight: '600',
+  },
+  transactionAmount: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  editButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: COLORS.primary + '40',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  merchantsText: {
+    fontSize: 15,
+    color: COLORS.darkGray,
+    textAlign: 'center',
+    marginTop: 40,
+    marginBottom: 40,
+    lineHeight: 22,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  modalContent: {
+    backgroundColor: '#FAFAFA',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    maxHeight: '90%',
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  modalHeader: {
+    paddingTop: 16,
+    paddingHorizontal: 24,
+    marginBottom: 10,
+  },
+  modalHandle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 5,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 3,
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    letterSpacing: -0.5,
+  },
+  closeButton: {
+    padding: 8,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 50,
+  },
+  modalHero: {
+    backgroundColor: COLORS.accent, // Dark Earth Hero for Modal
+    paddingTop: 0,
+    paddingBottom: 30,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    marginBottom: 20,
+  },
+  modalHeroLabel: {
+    color: COLORS.primary,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 2,
+    marginBottom: 10,
+  },
+  modalHeroAmountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modalHeroCurrency: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: COLORS.white,
+    marginRight: 8,
+    opacity: 0.6,
+  },
+  modalHeroInput: {
+    fontSize: 42,
+    fontWeight: '900',
+    color: COLORS.white,
+    padding: 0,
+  },
+  formContainer: {
+    paddingHorizontal: 24,
+  },
+  inputGroup: {
+    marginBottom: 26,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.darkGray,
+    marginBottom: 10,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  textInput: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    fontSize: 17,
+    color: COLORS.accent,
+    fontWeight: '700',
+    borderWidth: 1.5,
+    borderColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.lightGray,
+    borderRadius: 14,
+    padding: 4,
+  },
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 12,
+  },
+  segmentBtnActive: {
+    backgroundColor: COLORS.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  segmentText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.darkGray,
+  },
+  segmentTextActive: {
+    color: COLORS.accent,
+  },
+  segmentedControlPremium: {
+    flexDirection: 'row',
+    backgroundColor: '#F0F0F0',
+    borderRadius: 16,
+    padding: 4,
+    height: 56,
+  },
+  segmentBtnP: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+  },
+  segmentBtnActiveP: {
+    backgroundColor: COLORS.accent,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  segmentTextP: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.darkGray,
+  },
+  segmentTextActiveP: {
+    color: COLORS.white,
+  },
+  chipScrollView: {
+    flexDirection: 'row',
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.lightGray,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 25,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  chipActive: {
+    backgroundColor: COLORS.accent,
+    borderColor: COLORS.accent,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.darkGray,
+    marginLeft: 6,
+  },
+  chipTextActive: {
+    color: COLORS.white,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    paddingHorizontal: 24,
+    marginTop: 24,
+    marginBottom: 16,
+    gap: 12,
+  },
+  deleteButton: {
+    width: 52,
+    height: 52,
+    backgroundColor: '#FEE',
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FCC',
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: COLORS.accent,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 52,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  saveButtonText: {
+    color: COLORS.white,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  sortOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  sortOptionActive: {
+    backgroundColor: '#F0F9FF',
+    borderColor: COLORS.accent,
+  },
+  sortOptionText: {
     fontSize: 16,
-    fontWeight: 'bold',
+    color: COLORS.darkGray,
+    fontWeight: '500',
+  },
+  sortOptionTextActive: {
+    color: COLORS.accent,
+    fontWeight: '700',
   },
   bottomNavSafeArea: {
     backgroundColor: COLORS.white,
+    borderTopWidth: 1,
+    borderTopColor: '#F5F5F5',
   },
   bottomNav: {
     flexDirection: 'row',
@@ -1091,211 +1865,7 @@ const expensesStyles = StyleSheet.create({
     marginTop: 2,
     fontWeight: 'bold',
   },
-  // --- UPDATED MODAL STYLES ---
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 25,
-    paddingBottom: 40,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 20,
-    maxHeight: SCREEN_HEIGHT * 0.85,
-  },
-  modalHeader: {
-    marginBottom: 25,
-  },
-  modalHandle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: COLORS.lightGray,
-    marginBottom: 10,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: COLORS.accent,
-  },
-  closeButton: {
-    padding: 5,
-    backgroundColor: COLORS.lightGray,
-    borderRadius: 20,
-  },
-  formContainer: {
-    marginBottom: 20,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.darkGray,
-    marginBottom: 8,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  textInput: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: COLORS.accent,
-    fontWeight: '500',
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-  },
-  // Segmented Control Styles
-  segmentedControl: {
-    flexDirection: 'row',
-    backgroundColor: '#F1F3F5',
-    borderRadius: 12,
-    padding: 4,
-  },
-  segmentBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  segmentBtnActive: {
-    backgroundColor: COLORS.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  segmentText: {
-    fontSize: 14,
-    color: COLORS.darkGray,
-    fontWeight: '600',
-  },
-  segmentTextActive: {
-    color: COLORS.accent,
-    fontWeight: '700',
-  },
-  // Chip Styles
-  chipScrollView: {
-    flexDirection: 'row',
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F1F3F5',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  chipActive: {
-    backgroundColor: COLORS.accent,
-    borderColor: COLORS.accent,
-  },
-  chipText: {
-    fontSize: 13,
-    color: COLORS.darkGray,
-    fontWeight: '500',
-  },
-  chipTextActive: {
-    color: COLORS.white,
-    fontWeight: '600',
-  },
-  // Button Styles
-  actionButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 15,
-    marginTop: 10,
-  },
-  saveButton: {
-    flex: 1,
-    backgroundColor: COLORS.accent,
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    shadowColor: COLORS.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  saveButtonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  deleteButton: {
-    width: 52,
-    height: 52,
-    backgroundColor: '#FFE5E5',
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'column',
-  },
-  deleteButtonText: {
-    display: 'none',
-  },
-  // Sort Modal Styles
-  sortOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-  },
-  sortOptionActive: {
-    backgroundColor: '#E9F7EF',
-    borderWidth: 1,
-    borderColor: COLORS.accent,
-  },
-  sortOptionText: {
-    fontSize: 16,
-    color: COLORS.darkGray,
-    fontWeight: '500',
-  },
-  sortOptionTextActive: {
-    color: COLORS.accent,
-    fontWeight: '700',
-  },
-  // Transaction Header Styles
-  transactionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 15,
-    marginBottom: 20,
-  },
-  transactionsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.accent,
-  },
-  searchInput: {
-    flex: 1,
-    marginHorizontal: 16,
-    backgroundColor: COLORS.lightGray,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 14,
+  scrollContainer: {
+    paddingBottom: 100,
   },
 });

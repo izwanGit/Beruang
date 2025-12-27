@@ -1,8 +1,11 @@
 // src/components/DonutChart.tsx
 import React, { useRef, useEffect } from 'react';
-import { Animated } from 'react-native';
-import Svg, { Path, Circle, G, Text as SvgText } from 'react-native-svg';
+import { Animated, Easing, View, Text } from 'react-native';
+import Svg, { Path, Circle, G } from 'react-native-svg';
 import { COLORS } from '../constants/colors';
+
+// --- Custom Donut Chart Component ---
+import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 // --- Custom Donut Chart Component ---
 const AnimatedPath = Animated.createAnimatedComponent(Path);
@@ -12,30 +15,26 @@ type DonutChartProps = {
   total: number;
   radius?: number;
   strokeWidth?: number;
+  showCenterText?: boolean;
+  centerIcon?: string;
+  centerLabel?: string;
 };
 
 export const DonutChart: React.FC<DonutChartProps> = ({
   data,
   total,
-  radius = 100,
-  strokeWidth = 20,
+  radius = 90,
+  strokeWidth = 24,
+  showCenterText = true,
+  centerIcon,
+  centerLabel = 'THIS MONTH SPENDING',
 }) => {
-  const center = radius + strokeWidth / 2;
+  const center = radius + strokeWidth;
   const circumference = 2 * Math.PI * radius;
   const progress = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    progress.setValue(0); // Reset animation
-    Animated.timing(progress, {
-      toValue: 1,
-      duration: 1500,
-      useNativeDriver: false,
-    }).start();
-  }, [data, total]); // Re-run animation when data changes
-
-  let cumulative = 0;
-
-  const polarToCartesian = (cx, cy, r, degrees) => {
+  // Helper for type safety
+  const polarToCartesian = (cx: number, cy: number, r: number, degrees: number) => {
     const radians = ((degrees - 90) * Math.PI) / 180.0;
     return {
       x: cx + r * Math.cos(radians),
@@ -43,96 +42,79 @@ export const DonutChart: React.FC<DonutChartProps> = ({
     };
   };
 
-  const arcPath = (cx, cy, r, startAngle, endAngle, isLargeArc) => {
+  const arcPath = (cx: number, cy: number, r: number, startAngle: number, endAngle: number, isLargeArc: boolean) => {
     const start = polarToCartesian(cx, cy, r, endAngle);
     const end = polarToCartesian(cx, cy, r, startAngle);
     const largeArcFlag = isLargeArc ? 1 : 0;
     return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`;
   };
 
-  if (total === 0) {
-    return (
-      <Svg
-        height={center * 2}
-        width={center * 2}
-        viewBox={`0 0 ${center * 2} ${center * 2}`}
-      >
+  useEffect(() => {
+    progress.setValue(0);
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: 1000,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [data, total]);
+
+  let cumulative = 0;
+
+  // --- RENDERING ---
+  const renderContent = () => {
+    if (total === 0) {
+      // Empty State
+      return (
         <G rotation="-90" origin={`${center}, ${center}`}>
           <Circle
             cx={center}
             cy={center}
             r={radius}
             fill="transparent"
-            stroke={COLORS.primary}
+            stroke={COLORS.lightGray}
             strokeWidth={strokeWidth}
+            opacity={0.5}
           />
         </G>
-        <SvgText
-          x={center}
-          y={center - 23}
-          textAnchor="middle"
-          alignmentBaseline="middle"
-          fontSize="12"
-          fill={COLORS.darkGray}
-        >
-          This month's
-        </SvgText>
-        <SvgText
-          x={center}
-          y={center - 3}
-          textAnchor="middle"
-          alignmentBaseline="middle"
-          fontSize="12"
-          fill={COLORS.darkGray}
-        >
-          spending
-        </SvgText>
-        <SvgText
-          x={center}
-          y={center + 20}
-          textAnchor="middle"
-          alignmentBaseline="middle"
-          fontSize="18"
-          fontWeight="bold"
-          fill={COLORS.accent}
-        >
-          RM 0.00
-        </SvgText>
-      </Svg>
-    );
-  }
+      );
+    }
 
-  return (
-    <Svg
-      height={center * 2}
-      width={center * 2}
-      viewBox={`0 0 ${center * 2} ${center * 2}`}
-    >
+    return (
       <G rotation="-90" origin={`${center}, ${center}`}>
-        {/* Background ring */}
+        {/* Background track */}
         <Circle
           cx={center}
           cy={center}
           r={radius}
           fill="transparent"
-          stroke={COLORS.primary}
+          stroke={COLORS.lightGray}
           strokeWidth={strokeWidth}
+          opacity={0.3}
         />
+
         {data.map((slice, index) => {
           const sliceAngle = (slice.population / total) * 360;
           const startAngle = cumulative;
           const endAngle = startAngle + sliceAngle;
+          // Check for full circle case to prevent visual glitch
           const isLargeArc = sliceAngle > 180;
+
           const d = arcPath(center, center, radius, startAngle, endAngle, isLargeArc);
+
           const sliceCirc = (sliceAngle / 360) * circumference;
+
+          // Animate the stroke dash
           const dashOffset = progress.interpolate({
             inputRange: [0, 1],
             outputRange: [sliceCirc, 0],
           });
+
           cumulative += sliceAngle;
+
           return (
             <AnimatedPath
-              key={index}
+              key={`slice-${index}`}
               d={d}
               fill="transparent"
               stroke={slice.color}
@@ -144,38 +126,50 @@ export const DonutChart: React.FC<DonutChartProps> = ({
           );
         })}
       </G>
-      {/* Center text */}
-      <SvgText
-        x={center}
-        y={center - 23}
-        textAnchor="middle"
-        alignmentBaseline="middle"
-        fontSize="12"
-        fill={COLORS.darkGray}
+    );
+  };
+
+  return (
+    <View style={{ width: center * 2, height: center * 2, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg
+        height={center * 2}
+        width={center * 2}
+        viewBox={`0 0 ${center * 2} ${center * 2}`}
       >
-        This month's
-      </SvgText>
-      <SvgText
-        x={center}
-        y={center - 3}
-        textAnchor="middle"
-        alignmentBaseline="middle"
-        fontSize="12"
-        fill={COLORS.darkGray}
-      >
-        spending
-      </SvgText>
-      <SvgText
-        x={center - 25}
-        y={center + 20}
-        textAnchor="middle"
-        alignmentBaseline="middle"
-        fontSize="18"
-        fontWeight="bold"
-        fill={COLORS.accent}
-      >
-        RM    {total.toFixed(2)}
-      </SvgText>
-    </Svg>
+        {renderContent()}
+      </Svg>
+
+      {/* --- CENTER OVERLAY --- */}
+      <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
+        {centerIcon && (
+          <MaterialCommunityIcon name={centerIcon} size={radius * 0.8} color={COLORS.primary} style={{ opacity: 0.15 }} />
+        )}
+        {showCenterText && (
+          <>
+            <Text
+              style={{
+                fontSize: radius > 80 ? 8 : 7,
+                fontWeight: '700',
+                color: COLORS.darkGray,
+                letterSpacing: 0.5,
+                marginBottom: 2,
+                opacity: 0.5,
+              }}
+            >
+              {centerLabel}
+            </Text>
+            <Text
+              style={{
+                fontSize: radius > 80 ? 18 : 15,
+                fontWeight: '800',
+                color: COLORS.accent,
+              }}
+            >
+              RM {total.toFixed(2)}
+            </Text>
+          </>
+        )}
+      </View>
+    </View>
   );
 };
