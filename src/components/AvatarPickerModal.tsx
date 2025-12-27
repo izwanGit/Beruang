@@ -8,16 +8,19 @@ import {
   StyleSheet,
   ScrollView,
   Image,
+  Alert,
 } from 'react-native';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../constants/colors';
 import { BEAR_AVATARS, DEFAULT_AVATARS } from '../constants/avatars';
+import { calculateLevel } from '../utils/gamificationUtils';
 
 type AvatarPickerModalProps = {
   visible: boolean;
   onClose: () => void;
   onSelect: (avatar: string) => void;
   currentAvatar: string;
+  userXP: number; // Added userXP
 };
 
 export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
@@ -25,8 +28,21 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
   onClose,
   onSelect,
   currentAvatar,
+  userXP,
 }) => {
+  const currentLevel = calculateLevel(userXP);
   const bearAvatarKeys = Object.keys(BEAR_AVATARS);
+
+  const handleSelectBear = (key: string, requiredLevel: number) => {
+    if (currentLevel >= requiredLevel) {
+      onSelect(key);
+    } else {
+      Alert.alert(
+        'Locked Avatar',
+        `Save more and reach Level ${requiredLevel} to unlock this Bear!`
+      );
+    }
+  };
 
   return (
     <Modal
@@ -39,20 +55,35 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
         <View style={styles.container}>
           <Text style={styles.title}>Choose an Avatar</Text>
           <ScrollView contentContainerStyle={styles.avatarGrid}>
-            <Text style={styles.sectionTitle}>Level Avatars</Text>
+            <Text style={styles.sectionTitle}>Bear Progression (Lvl {currentLevel})</Text>
             <View style={styles.gridRow}>
-              {bearAvatarKeys.map((key) => (
-                <TouchableOpacity
-                  key={key}
-                  style={[
-                    styles.avatarCell,
-                    currentAvatar === key && styles.avatarCellSelected,
-                  ]}
-                  onPress={() => onSelect(key)}
-                >
-                  <Image source={BEAR_AVATARS[key]} style={styles.bearImage} />
-                </TouchableOpacity>
-              ))}
+              {bearAvatarKeys.map((key) => {
+                const requiredLevel = parseInt(key.split('_')[2]);
+                const isLocked = currentLevel < requiredLevel;
+
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={[
+                      styles.avatarCell,
+                      currentAvatar === key && styles.avatarCellSelected,
+                      isLocked && styles.avatarCellLocked,
+                    ]}
+                    onPress={() => handleSelectBear(key, requiredLevel)}
+                  >
+                    <Image
+                      source={BEAR_AVATARS[key]}
+                      style={[styles.bearImage, isLocked && { opacity: 0.3 }]}
+                    />
+                    {isLocked && (
+                      <View style={styles.lockBadge}>
+                        <MaterialCommunityIcon name="lock" size={14} color={COLORS.white} />
+                        <Text style={styles.lockText}>{requiredLevel}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Default Icons</Text>
@@ -138,10 +169,29 @@ const styles = StyleSheet.create({
     borderColor: COLORS.accent,
     backgroundColor: COLORS.primary,
   },
+  avatarCellLocked: {
+    backgroundColor: '#E0E0E0',
+  },
   bearImage: {
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
+  },
+  lockBadge: {
+    position: 'absolute',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    bottom: 5,
+  },
+  lockText: {
+    color: COLORS.white,
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginLeft: 2,
   },
   button: {
     padding: 14,

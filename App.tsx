@@ -53,6 +53,8 @@ import { ProfileScreen } from './src/screens/ProfileScreen';
 
 // Import finance utilities
 import { calculateMonthlyStats, formatBudgetForRAG } from './src/utils/financeUtils';
+import { XP_REWARDS, calculateLevel, getAvatarForLevel } from './src/utils/gamificationUtils';
+import { isBearAvatar } from './src/constants/avatars';
 
 // Import URL config (HARDCODED VERSION)
 import { CHAT_STREAM_URL, CHAT_URL } from './src/config/urls';
@@ -112,6 +114,7 @@ export type User = {
   lastCheckedMonth?: string;
   allocatedSavingsTarget?: number;
   hasSetInitialBalance?: boolean;
+  totalXP?: number;
 };
 
 export type Transaction = {
@@ -244,6 +247,7 @@ export default function App() {
             lastCheckedMonth: getMonthKey(new Date().toISOString()),
             allocatedSavingsTarget: 0,
             hasSetInitialBalance: false,
+            totalXP: 0,
           });
         }
 
@@ -533,6 +537,25 @@ export default function App() {
 
       await batch.commit();
 
+      // --- XP LOGIC ---
+      let xpToAdd = 0;
+      if (Array.isArray(transaction)) {
+        transaction.forEach(t => {
+          xpToAdd += XP_REWARDS.TRANSACTION_LOGGED;
+          if (t.category === 'savings') {
+            xpToAdd += Math.floor(Math.abs(t.amount) * XP_REWARDS.SAVING_RM1);
+          }
+        });
+      } else {
+        xpToAdd += XP_REWARDS.TRANSACTION_LOGGED;
+        if (transaction.category === 'savings') {
+          xpToAdd += Math.floor(Math.abs(transaction.amount) * XP_REWARDS.SAVING_RM1);
+        }
+      }
+      if (xpToAdd > 0) {
+        handleAwardXP(xpToAdd);
+      }
+
       // Sync budget after adding transaction
       setTimeout(() => syncMonthlyBudget(), 100);
 
@@ -796,6 +819,7 @@ export default function App() {
       }
     }).finally(() => {
       setStreamingResponse('');
+      handleAwardXP(XP_REWARDS.CHAT_SESSION);
     });
   };
 
@@ -961,6 +985,29 @@ export default function App() {
     } catch (e) {
       console.error('Error updating profile: ', e);
       showMessage('Error updating profile.');
+    }
+  };
+
+  const handleAwardXP = async (xp: number) => {
+    const userId = getUserId();
+    if (!userId || !userProfile) return;
+    const currentXP = userProfile.totalXP || 0;
+    const newXP = currentXP + xp;
+
+    // Check if level up
+    const oldLevel = calculateLevel(currentXP);
+    const newLevel = calculateLevel(newXP);
+
+    await updateDoc(doc(db, 'users', userId), { totalXP: newXP });
+
+    if (newLevel > oldLevel) {
+      showMessage(`🎉 Level Up! You reached Level ${newLevel}!`);
+      // Auto-evolve if using a bear avatar
+      if (userProfile.avatar === 'bear' || isBearAvatar(userProfile.avatar)) {
+        await updateDoc(doc(db, 'users', userId), {
+          avatar: getAvatarForLevel(newLevel)
+        });
+      }
     }
   };
 

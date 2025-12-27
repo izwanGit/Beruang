@@ -9,10 +9,13 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../constants/colors';
 import { User } from '../../App';
+import { BEAR_AVATARS, isBearAvatar } from '../constants/avatars';
+import { calculateLevel, getAvatarForLevel } from '../utils/gamificationUtils';
 
 type EditProfileModalProps = {
   visible: boolean;
@@ -20,6 +23,7 @@ type EditProfileModalProps = {
   onClose: () => void;
   onSave: (updatedData: Partial<User>) => void;
   onAvatarPress: () => void;
+  onRetakeAssessment: () => void; // Added
 };
 
 export const EditProfileModal: React.FC<EditProfileModalProps> = ({
@@ -28,6 +32,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   onClose,
   onSave,
   onAvatarPress,
+  onRetakeAssessment,
 }) => {
   const [name, setName] = useState(user.name);
   const [occupation, setOccupation] = useState(user.occupation);
@@ -40,8 +45,14 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   }, [user, visible]);
 
   const handleSave = () => {
-    onSave({ name, occupation });
+    onSave({ name });
   };
+
+  const level = calculateLevel(user.totalXP || 0);
+  const effectiveAvatar = (user.avatar === 'bear' || isBearAvatar(user.avatar))
+    ? getAvatarForLevel(level)
+    : user.avatar;
+
 
   return (
     <Modal
@@ -65,41 +76,54 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           <View style={styles.content}>
             {/* --- Avatar Edit --- */}
             <TouchableOpacity style={styles.avatarSection} onPress={onAvatarPress} activeOpacity={0.8}>
-              <View style={styles.avatarCircle}>
-                <MaterialCommunityIcon name={user.avatar || 'account'} size={40} color={COLORS.accent} />
+              <View style={[styles.avatarCircle, { borderColor: COLORS.primary, borderWidth: 2 }]}>
+                {isBearAvatar(effectiveAvatar) ? (
+                  <View style={{ width: '100%', height: '100%', borderRadius: 28, overflow: 'hidden' }}>
+                    <Image source={BEAR_AVATARS[effectiveAvatar]} style={{ width: '100%', height: '100%' }} />
+                  </View>
+                ) : (
+                  <MaterialCommunityIcon name={effectiveAvatar || 'account'} size={40} color={COLORS.accent} />
+                )}
                 <View style={styles.editIconBadge}>
-                  <MaterialCommunityIcon name="pencil" size={12} color={COLORS.white} />
+                  <MaterialCommunityIcon name="camera" size={12} color={COLORS.white} />
                 </View>
               </View>
-              <Text style={styles.avatarLink}>Change Profile Picture</Text>
+              <Text style={styles.avatarLink}>Update Appearance</Text>
             </TouchableOpacity>
 
             {/* --- Inputs --- */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Full Name</Text>
+              <Text style={styles.label}>Display Name</Text>
               <TextInput
                 style={styles.input}
                 value={name}
                 onChangeText={setName}
-                placeholder="Enter your name"
+                placeholder="How should we call you?"
                 placeholderTextColor="#BDBDBD"
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Occupation</Text>
-              <TextInput
-                style={styles.input}
-                value={occupation}
-                onChangeText={setOccupation}
-                placeholder="Enter your profession"
-                placeholderTextColor="#BDBDBD"
-              />
+            <View style={styles.infoBox}>
+              <MaterialCommunityIcon name="information-outline" size={16} color="#666" />
+              <Text style={styles.infoText}>
+                Other details like Occupation and State are managed via the Financial Assessment.
+              </Text>
             </View>
 
             {/* --- Action Buttons --- */}
             <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.9}>
               <Text style={styles.saveBtnText}>Save Changes</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.retakeBtn}
+              onPress={() => {
+                onClose();
+                onRetakeAssessment();
+              }}
+            >
+              <MaterialCommunityIcon name="refresh" size={18} color={COLORS.accent} />
+              <Text style={styles.retakeBtnText}>Retake Financial Assessment</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
@@ -221,6 +245,38 @@ const styles = StyleSheet.create({
     color: '#9E9E9E',
     fontWeight: '700',
     fontSize: 15,
+  },
+  infoBox: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  infoText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 8,
+    flex: 1,
+    lineHeight: 16,
+    fontWeight: '500',
+  },
+  retakeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    marginTop: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: COLORS.accent,
+  },
+  retakeBtnText: {
+    color: COLORS.accent,
+    fontWeight: '800',
+    fontSize: 14,
+    marginLeft: 8,
   },
 });
 

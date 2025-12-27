@@ -10,6 +10,9 @@ import {
   Alert,
   Image,
   Dimensions,
+  Modal,
+  Pressable,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
@@ -22,6 +25,7 @@ import { EditProfileModal } from '../components/EditProfileModal';
 import { AvatarPickerModal } from '../components/AvatarPickerModal';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
+import { calculateLevel, calculateLevelProgress, getAvatarForLevel } from '../utils/gamificationUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -87,6 +91,8 @@ export const ProfileScreen = ({
 }: ProfileScreenProps) => {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
+  const [xpInfoVisible, setXpInfoVisible] = useState(false);
+  const [viewerVisible, setViewerVisible] = useState(false);
 
   // Calculate real savings rate
   const freshIncome = transactions
@@ -98,6 +104,17 @@ export const ProfileScreen = ({
     .reduce((sum, t) => sum + t.amount, 0);
 
   const savingsRate = freshIncome > 0 ? Math.round((savedAmount / freshIncome) * 100) : 0;
+
+  // Gamification Calculations
+  const currentXP = user.totalXP || 0;
+  const level = calculateLevel(currentXP);
+  const progress = calculateLevelProgress(currentXP);
+
+  // Determine effective avatar (Auto-evolve only if generic 'bear' is set)
+  const effectiveAvatar = user.avatar === 'bear'
+    ? getAvatarForLevel(level)
+    : user.avatar;
+
 
   const handleSaveProfile = (updatedData: Partial<User>) => {
     onUpdateUser(updatedData);
@@ -113,6 +130,21 @@ export const ProfileScreen = ({
     navigation?.navigate('Onboarding', { isRetake: true, initialData: user });
   };
 
+  const handleDownload = async () => {
+    try {
+      // In a real app we'd save local file to CameraRoll. 
+      // For the demo, we use the Share API which allows "Save Image" or "Save to Files"
+      await Share.share({
+        message: `Check out my Level ${level} Bear on Beruang! 🐻✨`,
+        title: 'Beruang Avatar',
+      });
+    } catch (error) {
+      Alert.alert('Download Error', 'Could not save the image at this time.');
+    }
+  };
+
+
+
   return (
     <View style={styles.container}>
       {/* --- Modals --- */}
@@ -121,13 +153,18 @@ export const ProfileScreen = ({
         user={user}
         onClose={() => setEditModalVisible(false)}
         onSave={handleSaveProfile}
-        onAvatarPress={() => setAvatarModalVisible(true)}
+        onAvatarPress={() => {
+          setEditModalVisible(false);
+          setTimeout(() => setAvatarModalVisible(true), 400); // Increased for stability
+        }}
+        onRetakeAssessment={handleRetakeQuestionnaire}
       />
       <AvatarPickerModal
         visible={avatarModalVisible}
         onClose={() => setAvatarModalVisible(false)}
         onSelect={handleSelectAvatar}
         currentAvatar={user.avatar}
+        userXP={user.totalXP || 0}
       />
 
       {/* --- Main Screen --- */}
@@ -151,18 +188,18 @@ export const ProfileScreen = ({
             <View style={styles.heroBackground}>
               <View style={styles.heroContent}>
                 <TouchableOpacity
-                  onPress={() => setAvatarModalVisible(true)}
+                  onPress={() => setViewerVisible(true)}
                   style={styles.avatarWrapper}
                   activeOpacity={0.9}
                 >
                   <View style={[styles.avatarMain, { borderColor: COLORS.primary, borderWidth: 3 }]}>
-                    {isBearAvatar(user.avatar) ? (
-                      <Image source={BEAR_AVATARS[user.avatar]} style={styles.avatarImg} />
+                    {isBearAvatar(effectiveAvatar) ? (
+                      <Image source={BEAR_AVATARS[effectiveAvatar]} style={styles.avatarImg} />
                     ) : (
-                      <MaterialCommunityIcon name={user.avatar || 'bear'} size={60} color={COLORS.accent} />
+                      <MaterialCommunityIcon name={effectiveAvatar || 'bear'} size={60} color={COLORS.accent} />
                     )}
                     <View style={[styles.proBadge, { backgroundColor: COLORS.primary }]}>
-                      <Icon name="check" size={10} color={COLORS.accent} />
+                      <Icon name="maximize-2" size={10} color={COLORS.accent} />
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -189,15 +226,25 @@ export const ProfileScreen = ({
             <View style={styles.statsContainer}>
               <StatCard label="Savings Rate" value={`${savingsRate}%`} icon="trending-up" color="#4CAF50" />
               <StatCard label="Monthly Income" value={`RM${Math.round(user.monthlyIncome / 1000)}k`} icon="dollar-sign" color="#2196F3" />
-              <StatCard label="XP Level" value="Lvl 4" icon="star" color={COLORS.secondary} />
+              <StatCard label="XP Level" value={`Lvl ${level}`} icon="star" color={COLORS.secondary} />
             </View>
 
             {/* --- Level Progress (Using primary) --- */}
             <View style={styles.premiumCard}>
               <View style={styles.levelHeader}>
-                <View>
-                  <Text style={styles.cardHeading}>Financial Mastery</Text>
-                  <Text style={styles.cardSubheading}>1,250 / 2,000 XP to Level 5</Text>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={styles.cardHeading}>Financial Mastery</Text>
+                    <TouchableOpacity
+                      onPress={() => setXpInfoVisible(true)}
+                      style={{ marginLeft: 6, padding: 4 }}
+                    >
+                      <Icon name="info" size={14} color={COLORS.accent} />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.cardSubheading}>
+                    {level >= 13 ? 'Max Level Reached!' : `${progress.currentLevelXP} / ${progress.goalXP} XP to Level ${level + 1}`}
+                  </Text>
                 </View>
                 <View style={[styles.medalContainer, { backgroundColor: COLORS.primary + '30' }]}>
                   <MaterialCommunityIcon name="medal" size={24} color={COLORS.accent} />
@@ -205,7 +252,7 @@ export const ProfileScreen = ({
               </View>
               <View style={styles.progressContainer}>
                 <View style={[styles.progressBg, { backgroundColor: COLORS.primary + '20' }]}>
-                  <View style={[styles.progressFill, { width: '62.5%', backgroundColor: COLORS.primary }]} />
+                  <View style={[styles.progressFill, { width: `${progress.percentage}%`, backgroundColor: COLORS.primary }]} />
                 </View>
               </View>
             </View>
@@ -267,6 +314,122 @@ export const ProfileScreen = ({
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {/* --- XP GUIDE MODAL (The Mobile "Hover" equivalent) --- */}
+      <Modal
+        visible={xpInfoVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setXpInfoVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setXpInfoVisible(false)}
+        >
+          <View style={styles.xpInfoContainer}>
+            <View style={styles.xpInfoHeader}>
+              <MaterialCommunityIcon name="shield-star" size={32} color={COLORS.accent} />
+              <Text style={styles.xpInfoTitle}>How to Rank Up</Text>
+            </View>
+
+            <View style={styles.xpInfoScroll}>
+              <View style={styles.xpItem}>
+                <View style={styles.xpIconBox}>
+                  <Icon name="save" size={18} color={COLORS.accent} />
+                </View>
+                <View style={styles.xpTextContent}>
+                  <Text style={styles.xpItemLabel}>Move to Savings</Text>
+                  <Text style={styles.xpItemValue}>+2 XP per RM 1.00</Text>
+                </View>
+              </View>
+
+              <View style={styles.xpItem}>
+                <View style={styles.xpIconBox}>
+                  <Icon name="message-circle" size={18} color={COLORS.accent} />
+                </View>
+                <View style={styles.xpTextContent}>
+                  <Text style={styles.xpItemLabel}>Chat with YuLaoshi</Text>
+                  <Text style={styles.xpItemValue}>+100 XP per session</Text>
+                </View>
+              </View>
+
+              <View style={styles.xpItem}>
+                <View style={styles.xpIconBox}>
+                  <Icon name="plus-square" size={18} color={COLORS.accent} />
+                </View>
+                <View style={styles.xpTextContent}>
+                  <Text style={styles.xpItemLabel}>Log Transactions</Text>
+                  <Text style={styles.xpItemValue}>+50 XP per entry</Text>
+                </View>
+              </View>
+
+              <View style={styles.xpItem}>
+                <View style={styles.xpIconBox}>
+                  <Icon name="check-circle" size={18} color={COLORS.accent} />
+                </View>
+                <View style={styles.xpTextContent}>
+                  <Text style={styles.xpItemLabel}>Daily Check-in</Text>
+                  <Text style={styles.xpItemValue}>+20 XP per day</Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.xpCloseBtn}
+              onPress={() => setXpInfoVisible(false)}
+            >
+              <Text style={styles.xpCloseText}>Got it!</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* --- FULL SCREEN IMAGE VIEWER --- */}
+      <Modal
+        visible={viewerVisible}
+        transparent={false}
+        animationType="fade"
+        onRequestClose={() => setViewerVisible(false)}
+      >
+        <SafeAreaView style={styles.viewerContainer}>
+          <StatusBar barStyle="light-content" backgroundColor="#000" />
+          <View style={styles.viewerHeader}>
+            <TouchableOpacity onPress={() => setViewerVisible(false)} style={styles.viewerCloseBtn}>
+              <Icon name="x" size={28} color={COLORS.white} />
+            </TouchableOpacity>
+            <Text style={styles.viewerTitle}>Profile Bear</Text>
+            <TouchableOpacity onPress={handleDownload} style={styles.viewerCloseBtn}>
+              <Icon name="download" size={24} color={COLORS.white} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.viewerImageWrapper}>
+            {isBearAvatar(effectiveAvatar) ? (
+              <Image
+                source={BEAR_AVATARS[effectiveAvatar]}
+                style={styles.viewerFullImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <MaterialCommunityIcon name={effectiveAvatar || 'account'} size={200} color={COLORS.primary} />
+            )}
+          </View>
+
+          <View style={styles.viewerFooter}>
+            <Text style={styles.viewerLevel}>Level {level} Grizzly</Text>
+            <TouchableOpacity
+              style={styles.changeBtnSquare}
+              onPress={() => {
+                setViewerVisible(false);
+                setTimeout(() => setAvatarModalVisible(true), 400);
+              }}
+            >
+              <Icon name="edit-2" size={18} color={COLORS.white} />
+              <Text style={styles.changeBtnText}>Change Avatar</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
 
       {/* --- Reverted Standard Bottom Navigation --- */}
       <SafeAreaView style={styles.bottomNavSafeArea} edges={['bottom']}>
@@ -620,5 +783,136 @@ const styles = StyleSheet.create({
     color: COLORS.accent,
     marginTop: 2,
     fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  xpInfoContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 15,
+    elevation: 10,
+  },
+  xpInfoHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  xpInfoTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: COLORS.accent,
+    marginTop: 8,
+  },
+  xpInfoScroll: {
+    gap: 16,
+    marginBottom: 24,
+  },
+  xpItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary + '15',
+    padding: 12,
+    borderRadius: 16,
+  },
+  xpIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary + '40',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  xpTextContent: {
+    flex: 1,
+  },
+  xpItemLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.accent,
+  },
+  xpItemValue: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  xpCloseBtn: {
+    backgroundColor: COLORS.accent,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  xpCloseText: {
+    color: COLORS.white,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  viewerContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  viewerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    zIndex: 10,
+  },
+  viewerTitle: {
+    color: COLORS.white,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  viewerCloseBtn: {
+    padding: 8,
+  },
+  viewerImageWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  viewerFullImage: {
+    width: width * 0.9,
+    height: width * 0.9,
+    borderRadius: 40,
+    backgroundColor: '#F9F7F2', // Matches the Bear's cream/white background
+  },
+  viewerFooter: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  viewerLevel: {
+    color: '#AAA',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 20,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+  },
+  changeBtnSquare: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  changeBtnText: {
+    color: COLORS.white,
+    fontWeight: '800',
+    fontSize: 15,
+    marginLeft: 10,
   },
 });
