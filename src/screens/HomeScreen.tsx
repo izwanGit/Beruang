@@ -137,10 +137,7 @@ export const HomeScreen = ({
   const currentMonthName = new Date().toLocaleDateString('en-US', { month: 'long' });
 
   return (
-    <SafeAreaView
-      style={homeStyles.container}
-      edges={['right', 'bottom', 'left']}
-    >
+    <View style={homeStyles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.accent} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* --- Header --- */}
@@ -336,40 +333,46 @@ export const HomeScreen = ({
       </ScrollView>
 
       {/* --- Bottom Tab Navigator --- */}
-      <View style={homeStyles.bottomNav}>
-        <TouchableOpacity
-          style={homeStyles.navItem}
-          onPress={() => onNavigate('Home')}
-        >
-          <Icon name="home" size={26} color={COLORS.accent} />
-          <Text style={homeStyles.navTextActive}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={homeStyles.navItem}
-          onPress={() => onNavigate('Expenses')}
-        >
-          <Icon name="pie-chart" size={26} color={COLORS.darkGray} />
-          <Text style={homeStyles.navText}>Expenses</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={homeStyles.navItem}
-          onPress={() => onNavigate('Chatbot')}
-        >
-          <Icon name="message-square" size={26} color={COLORS.darkGray} />
-          <Text style={homeStyles.navText}>Chatbot</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={homeStyles.navItem} onPress={() => onNavigate('Profile')}>
-          <Icon name="user" size={26} color={COLORS.darkGray} />
-          <Text style={homeStyles.navText}>Profile</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+      <SafeAreaView style={homeStyles.bottomNavSafeArea} edges={['bottom']}>
+        <View style={homeStyles.bottomNav}>
+          <TouchableOpacity
+            style={homeStyles.navItem}
+            onPress={() => onNavigate('Home')}
+          >
+            <Icon name="home" size={26} color={COLORS.accent} />
+            <Text style={homeStyles.navTextActive}>Home</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={homeStyles.navItem}
+            onPress={() => onNavigate('Expenses')}
+          >
+            <Icon name="pie-chart" size={26} color={COLORS.darkGray} />
+            <Text style={homeStyles.navText}>Expenses</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={homeStyles.navItem}
+            onPress={() => onNavigate('Chatbot')}
+          >
+            <Icon name="message-square" size={26} color={COLORS.darkGray} />
+            <Text style={homeStyles.navText}>Chatbot</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={homeStyles.navItem} onPress={() => onNavigate('Profile')}>
+            <Icon name="user" size={26} color={COLORS.darkGray} />
+            <Text style={homeStyles.navText}>Profile</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 };
 
 // --- Styles for HomeScreen ---
 const homeStyles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+  },
+  safeAreaContent: {
     flex: 1,
     backgroundColor: COLORS.white,
   },
@@ -694,7 +697,7 @@ const homeStyles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
-    elevation: 8,
+    elevation: 10,
     height: 65,
   },
   navItem: {

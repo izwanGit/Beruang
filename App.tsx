@@ -1215,7 +1215,7 @@ export default function App() {
       <NavigationContainer>
         <Stack.Navigator
           initialRouteName={initialRoute}
-          screenOptions={{ headerShown: false, animation: 'none' }}
+          screenOptions={{ headerShown: false, animation: 'fade' }}
         >
           {!firebaseUser ? (
             <>

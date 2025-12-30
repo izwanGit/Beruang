@@ -966,7 +966,7 @@ export const ExpensesScreen = ({
 const expensesStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F8F9FA',
   },
   safeAreaContent: {
     flex: 1,
@@ -1837,8 +1837,6 @@ const expensesStyles = StyleSheet.create({
   },
   bottomNavSafeArea: {
     backgroundColor: COLORS.white,
-    borderTopWidth: 1,
-    borderTopColor: '#F5F5F5',
   },
   bottomNav: {
     flexDirection: 'row',
