@@ -1,6 +1,6 @@
 // App.tsx
 import 'react-native-gesture-handler'; // MUST BE THE VERY FIRST LINE
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -200,6 +200,7 @@ export default function App() {
 
   // --- NEW: Monthly Budgets State ---
   const [monthlyBudgets, setMonthlyBudgets] = useState<{ [key: string]: MonthlyBudget }>({});
+  const isRebalancing = useRef(false);
 
   // --- 1. Auth Listener ---
   useEffect(() => {
@@ -311,7 +312,7 @@ export default function App() {
       const budgetsData: { [key: string]: MonthlyBudget } = {};
       snapshot.docs.forEach(doc => {
         const data = doc.data() as MonthlyBudget;
-        budgetsData[data.monthKey] = { id: doc.id, ...data };
+        budgetsData[data.monthKey] = { ...data, id: doc.id };
       });
       setMonthlyBudgets(budgetsData);
     });
@@ -416,8 +417,15 @@ export default function App() {
 
     try {
       const budgetData = calculateMonthlyStats(transactions, userProfile);
-      const currentMonthKey = budgetData.month;
 
+      // 🛑 Check for global overspending rules before syncing
+      const rebalanced = await checkAndBalanceBudgets(budgetData);
+      if (rebalanced) {
+        console.log('🔄 Budget rebalanced, skipping sync until next snapshot.');
+        return;
+      }
+
+      const currentMonthKey = budgetData.month;
       const budgetRef = doc(db, 'users', userId, 'monthlyBudgets', currentMonthKey);
       const now = serverTimestamp();
 
@@ -452,6 +460,117 @@ export default function App() {
     } catch (e) {
       console.error('Error syncing monthly budget:', e);
     }
+  };
+
+  // --- NEW FUNCTION: Global Budget Rebalancing ---
+  const checkAndBalanceBudgets = async (stats: any) => {
+    const userId = getUserId();
+    if (!userId || !userProfile || transactions.length === 0 || isRebalancing.current) return false;
+
+    const { needs, wants } = stats.budget;
+    const currentMonthKey = stats.month;
+
+    // Filter current month expenses
+    const currentMonthExpenses = transactions.filter(
+      (t) => t.type === 'expense' && getMonthKey(t.date) === currentMonthKey
+    );
+
+    // RULE 1: Needs > Budget, Needs exceeded, but Wants has room
+    if (needs.spent > (needs.target + 0.01) && wants.remaining > 0.01) {
+      const excess = needs.spent - needs.target;
+      const amountToMove = Math.min(excess, wants.remaining);
+
+      // Find the latest 'needs' transaction to move/split
+      const needsTrans = currentMonthExpenses
+        .filter(t => t.category === 'needs')
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      if (needsTrans.length > 0) {
+        isRebalancing.current = true;
+        try {
+          const trans = needsTrans[0];
+          const batch = writeBatch(db);
+
+          if (trans.amount > amountToMove + 0.01) {
+            // Split
+            batch.update(doc(db, 'users', userId, 'transactions', trans.id), {
+              amount: trans.amount - amountToMove,
+            });
+            const newId = `${trans.id}_needs_overflow`;
+            batch.set(doc(db, 'users', userId, 'transactions', newId), {
+              ...trans,
+              id: newId,
+              amount: amountToMove,
+              category: 'wants',
+              name: `${trans.name} (Needs Overflow)`,
+              createdAt: serverTimestamp(),
+            });
+          } else {
+            // Move whole
+            batch.update(doc(db, 'users', userId, 'transactions', trans.id), {
+              category: 'wants',
+              name: `${trans.name} (Needs Overflow)`,
+            });
+          }
+          await batch.commit();
+          handleAwardXP(XP_REWARDS.OVERSPENDING_PENALTY);
+          showMessage("Budget Shield: Your 'Needs' spending exceeded the budget. Excess has been moved to 'Wants' and XP penalized! 🐻");
+          return true;
+        } catch (e) {
+          console.error("Error rebalancing Needs: ", e);
+        } finally {
+          isRebalancing.current = false;
+        }
+      }
+    }
+    // RULE 2: Wants > Budget, Wants exceeded, but Needs has room
+    else if (wants.spent > (wants.target + 0.01) && needs.remaining > 0.01) {
+      const excess = wants.spent - wants.target;
+      const amountToMove = Math.min(excess, needs.remaining);
+
+      const wantsTrans = currentMonthExpenses
+        .filter(t => t.category === 'wants')
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      if (wantsTrans.length > 0) {
+        isRebalancing.current = true;
+        try {
+          const trans = wantsTrans[0];
+          const batch = writeBatch(db);
+
+          if (trans.amount > amountToMove + 0.01) {
+            // Split
+            batch.update(doc(db, 'users', userId, 'transactions', trans.id), {
+              amount: trans.amount - amountToMove,
+            });
+            const newId = `${trans.id}_wants_overflow`;
+            batch.set(doc(db, 'users', userId, 'transactions', newId), {
+              ...trans,
+              id: newId,
+              amount: amountToMove,
+              category: 'needs',
+              name: `${trans.name} (Wants Overflow)`,
+              createdAt: serverTimestamp(),
+            });
+          } else {
+            // Move whole
+            batch.update(doc(db, 'users', userId, 'transactions', trans.id), {
+              category: 'needs',
+              name: `${trans.name} (Wants Overflow)`,
+            });
+          }
+          await batch.commit();
+          handleAwardXP(XP_REWARDS.OVERSPENDING_PENALTY);
+          showMessage("Budget Shield: Your 'Wants' spending exceeded the budget. Excess has been moved to 'Needs' and XP penalized! 🐻");
+          return true;
+        } catch (e) {
+          console.error("Error rebalancing Wants: ", e);
+        } finally {
+          isRebalancing.current = false;
+        }
+      }
+    }
+    return false;
   };
 
   // --- ALLOCATION LOGIC FIXED (50/30/20 vs Save All) ---

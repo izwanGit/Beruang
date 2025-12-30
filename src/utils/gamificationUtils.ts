@@ -53,4 +53,5 @@ export const XP_REWARDS = {
     SAVING_RM1: 2, // 2 XP per RM 1 saved
     CHAT_SESSION: 100,
     DAILY_CHECKIN: 20,
+    OVERSPENDING_PENALTY: -200, // Drastically decrease
 };
