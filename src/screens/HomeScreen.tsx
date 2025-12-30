@@ -8,12 +8,26 @@ import {
   ScrollView,
   StatusBar,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
+import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../constants/colors';
 import { transactionItemStyles } from '../styles/transactionItemStyles';
 import { calculateMonthlyStats } from '../utils/financeUtils';
+import { calculateLevel } from '../utils/gamificationUtils';
+import { BEAR_AVATARS, isBearAvatar } from '../constants/avatars';
+
+const categoryIcons: Record<string, { icon: string; color: string }> = {
+  'Financial Services': { icon: 'bank', color: COLORS.accent },
+  'Food & Beverage': { icon: 'silverware-fork-knife', color: COLORS.accent },
+  Transportation: { icon: 'car', color: COLORS.accent },
+  Telecommunication: { icon: 'wifi', color: COLORS.accent },
+  Entertainment: { icon: 'popcorn', color: COLORS.accent },
+  Shopping: { icon: 'shopping', color: COLORS.accent },
+  Others: { icon: 'dots-horizontal', color: COLORS.accent },
+};
 
 export type Screen =
   | 'Login'
@@ -32,6 +46,8 @@ type HomeScreenProps = {
   onNavigate: (screen: Screen) => void;
   transactions: Array<any>;
   userName: string;
+  userAvatar: string;
+  userXP: number;
   allocatedSavingsTarget: number;
 };
 
@@ -39,11 +55,13 @@ export const HomeScreen = ({
   onNavigate,
   transactions,
   userName,
+  userAvatar,
+  userXP,
   allocatedSavingsTarget,
 }: HomeScreenProps) => {
   // Calculate all budget data using financeUtils
   const budgetData = calculateMonthlyStats(transactions, { allocatedSavingsTarget });
-  
+
   const {
     income,
     budget,
@@ -51,13 +69,10 @@ export const HomeScreen = ({
   } = budgetData;
 
   const newMonthlyIncome = income.fresh;
-  const allMonthlyIncome = income.total;
   const needsTotal = budget.needs.spent;
   const wantsTotal = budget.wants.spent;
   const totalExpenses = totals.totalExpenses;
   const actualSavings20Percent = budget.savings20.saved;
-  const monthlySavedLeftover = budget.leftover.saved;
-  const allMonthlySavings = totals.savedThisMonth;
   const cumulativeTotalSavings = totals.savedAllTime;
   const needsTarget = budget.needs.target;
   const wantsTarget = budget.wants.target;
@@ -65,8 +80,8 @@ export const HomeScreen = ({
   const remainingToSave20Percent = budget.savings20.pending;
   const pendingLeftoverToSave = budget.leftover.pending;
   const totalPendingToSave = remainingToSave20Percent + pendingLeftoverToSave;
-  const currentBalance = totals.walletBalance;
   const displayBalance = totals.displayBalance;
+  const level = calculateLevel(userXP);
 
   // --- Mini Budget Bar Component ---
   type MiniBudgetCategoryProps = {
@@ -112,33 +127,59 @@ export const HomeScreen = ({
   const recentTransactions = filteredTransactions.slice(0, 3);
   const hasMoreTransactions = filteredTransactions.length > 3;
 
+  const handleVerifyPress = () => {
+    Alert.alert(
+      "Verified Account 🛡️",
+      "Your financial records are secured with Beruang's 256-bit encryption. Your data is for your eyes only."
+    );
+  };
+
+  const currentMonthName = new Date().toLocaleDateString('en-US', { month: 'long' });
+
   return (
     <SafeAreaView
       style={homeStyles.container}
       edges={['right', 'bottom', 'left']}
     >
       <StatusBar barStyle="light-content" backgroundColor={COLORS.accent} />
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* --- Header --- */}
         <View style={homeStyles.header}>
           <View>
             <Text style={homeStyles.greeting}>Hello, {userName}!</Text>
             <Text style={homeStyles.headerDate}>Welcome back to Beruang</Text>
           </View>
-          <TouchableOpacity>
-            <Icon name="bell" size={24} color={COLORS.white} />
+          <TouchableOpacity
+            style={homeStyles.avatarContainer}
+            onPress={() => onNavigate('Profile')}
+          >
+            <View style={homeStyles.avatarRing}>
+              {isBearAvatar(userAvatar) ? (
+                <Image source={BEAR_AVATARS[userAvatar]} style={homeStyles.avatarImage} />
+              ) : (
+                <MaterialCommunityIcon name={userAvatar as any || 'account'} size={28} color={COLORS.white} />
+              )}
+            </View>
+            <View style={homeStyles.levelBadge}>
+              <Text style={homeStyles.levelBadgeText}>{level}</Text>
+            </View>
           </TouchableOpacity>
         </View>
 
         {/* --- Balance Card --- */}
         <View style={homeStyles.balanceCard}>
-          <Text style={homeStyles.balanceLabel}>Total Balance</Text>
+          <View style={homeStyles.balanceHeader}>
+            <Text style={homeStyles.balanceLabel}>{currentMonthName} Balance</Text>
+            <TouchableOpacity onPress={handleVerifyPress}>
+              <MaterialCommunityIcon name="shield-check-outline" size={20} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
           <Text style={homeStyles.balanceAmount}>
-            RM {displayBalance.toFixed(2)}
+            RM {displayBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </Text>
           <View style={homeStyles.incomeExpenseContainer}>
             <View style={homeStyles.incomeExpenseBox}>
-              <Icon name="arrow-down" size={20} color={COLORS.success} />
+              <Icon name="arrow-up" size={20} color={COLORS.success} />
               <View style={{ marginLeft: 8 }}>
                 <Text style={homeStyles.incomeExpenseLabel}>Income</Text>
                 <Text style={homeStyles.incomeExpenseAmount}>
@@ -147,7 +188,7 @@ export const HomeScreen = ({
               </View>
             </View>
             <View style={homeStyles.incomeExpenseBox}>
-              <Icon name="arrow-up" size={20} color={COLORS.danger} />
+              <Icon name="arrow-down" size={20} color={COLORS.danger} />
               <View style={{ marginLeft: 8 }}>
                 <Text style={homeStyles.incomeExpenseLabel}>Expense</Text>
                 <Text style={homeStyles.incomeExpenseAmount}>
@@ -166,7 +207,7 @@ export const HomeScreen = ({
               onPress={() => onNavigate('AddMoney')}
             >
               <View style={homeStyles.iconCircle}>
-                <Icon name="plus" size={24} color={COLORS.white} />
+                <Icon name="plus" size={18} color={COLORS.white} />
               </View>
               <Text style={homeStyles.actionText}>Add money</Text>
             </TouchableOpacity>
@@ -176,17 +217,17 @@ export const HomeScreen = ({
               onPress={() => onNavigate('AddTransaction')}
             >
               <View style={homeStyles.iconCircle}>
-                <Icon name="plus-circle" size={24} color={COLORS.white} />
+                <Icon name="plus-circle" size={18} color={COLORS.white} />
               </View>
               <Text style={homeStyles.actionText}>Add Transaction</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={homeStyles.actionButton}
               onPress={() => onNavigate('SavedAdvice')}
             >
               <View style={homeStyles.iconCircle}>
-                <Icon name="bookmark" size={24} color={COLORS.white} />
+                <Icon name="bookmark" size={18} color={COLORS.white} />
               </View>
               <Text style={homeStyles.actionText}>Saved Advice</Text>
             </TouchableOpacity>
@@ -195,25 +236,25 @@ export const HomeScreen = ({
           {/* --- Savings & Budget Section --- */}
           <View style={homeStyles.splitBoxContainer}>
             {/* Left Box: Savings */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[homeStyles.splitBox, homeStyles.splitBoxLeft]}
               onPress={() => onNavigate('Savings')}
             >
               <Text style={homeStyles.splitBoxTitle}>Total Savings</Text>
               <Text style={homeStyles.splitBoxAmountSmall}>
-                RM {cumulativeTotalSavings.toFixed(2)}
+                RM {cumulativeTotalSavings.toLocaleString()}
               </Text>
 
               {totalPendingToSave > 0 && (
-                <Text style={homeStyles.pendingText}>
+                <Text style={[homeStyles.pendingText, { color: COLORS.info }]}>
                   To Save: RM {totalPendingToSave.toFixed(2)}
                 </Text>
               )}
 
-              <View style={{ flex: 1 }} /> 
-              <Text style={homeStyles.splitBoxLink}>View Graph</Text>
+              <View style={{ flex: 1 }} />
+              <Text style={homeStyles.splitBoxLink}>Check Progress →</Text>
             </TouchableOpacity>
-            
+
             {/* Right Box: Budget Breakdown */}
             <View style={[homeStyles.splitBox, homeStyles.splitBoxRight]}>
               <Text style={homeStyles.splitBoxTitle}>Budget Breakdown</Text>
@@ -238,55 +279,53 @@ export const HomeScreen = ({
             </View>
           </View>
         </View>
-        
+
         {/* --- Recent Transactions --- */}
         <View style={homeStyles.section}>
           <Text style={homeStyles.sectionTitle}>Recent Transactions</Text>
 
           {recentTransactions.length > 0 ? (
             recentTransactions
-              .map((item) => (
-                <View key={item.id} style={transactionItemStyles.transactionItem}>
-                  <View
-                    style={[
-                      transactionItemStyles.transactionIcon,
-                      { backgroundColor: COLORS.primary },
-                    ]}
-                  >
-                    <Icon name={item.icon} size={22} color={COLORS.accent} />
-                  </View>
-                  <View style={transactionItemStyles.transactionDetails}>
-                    <Text style={transactionItemStyles.transactionName}>{item.name}</Text>
+              .map((item) => {
+                const subCat = item.subCategory || 'Others';
+                const iconInfo = categoryIcons[subCat] || categoryIcons['Others'];
 
-                    <Text style={transactionItemStyles.transactionDate}>
-                      {new Date(item.date).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}{' '}
-                      • {item.subCategory}
-                    </Text>
+                return (
+                  <View key={item.id} style={homeStyles.transactionCard}>
+                    <View style={homeStyles.transactionMainContent}>
+                      <View style={homeStyles.transactionIconContainer}>
+                        <MaterialCommunityIcon
+                          name={iconInfo.icon}
+                          size={22}
+                          color={COLORS.accent}
+                        />
+                      </View>
+                      <View style={homeStyles.transactionDetails}>
+                        <Text style={homeStyles.transactionName} numberOfLines={1}>
+                          {item.name}
+                        </Text>
+                        <Text style={homeStyles.transactionMeta}>
+                          {subCat} • {new Date(item.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
+                        </Text>
+                      </View>
+                      <Text
+                        style={[
+                          homeStyles.transactionAmountDisplay,
+                          { color: item.type === 'income' ? COLORS.success : COLORS.accent },
+                        ]}
+                      >
+                        {item.type === 'income' ? '+' : '-'}RM{Math.abs(item.amount).toFixed(2)}
+                      </Text>
+                    </View>
                   </View>
-                  <Text
-                    style={[
-                      transactionItemStyles.transactionAmount,
-                      {
-                        color:
-                          item.type === 'income' ? COLORS.success : 
-                          (item.amount < 0 ? COLORS.danger : COLORS.accent),
-                      },
-                    ]}
-                  >
-                    {item.type === 'income' ? '+' : (item.amount > 0 ? '-' : '')} RM {Math.abs(item.amount).toFixed(2)}
-                  </Text>
-                </View>
-              ))
+                );
+              })
           ) : (
             <Text style={homeStyles.noTransactionsText}>No transactions yet.</Text>
           )}
-          
+
           {hasMoreTransactions && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={homeStyles.viewMoreButton}
               onPress={() => onNavigate('Expenses')}
             >
@@ -319,7 +358,6 @@ export const HomeScreen = ({
           <Icon name="message-square" size={26} color={COLORS.darkGray} />
           <Text style={homeStyles.navText}>Chatbot</Text>
         </TouchableOpacity>
-        {/* --- MODIFIED: onPress now navigates to 'Profile' --- */}
         <TouchableOpacity style={homeStyles.navItem} onPress={() => onNavigate('Profile')}>
           <Icon name="user" size={26} color={COLORS.darkGray} />
           <Text style={homeStyles.navText}>Profile</Text>
@@ -338,7 +376,7 @@ const homeStyles = StyleSheet.create({
   header: {
     backgroundColor: COLORS.accent,
     paddingHorizontal: 20,
-    paddingTop: 75,
+    paddingTop: 65,
     paddingBottom: 60,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -355,13 +393,59 @@ const homeStyles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.primary,
   },
+  avatarContainer: {
+    position: 'relative',
+  },
+  avatarRing: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  avatarImage: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+  },
+  levelBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    backgroundColor: COLORS.yellow,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: COLORS.accent,
+  },
+  levelBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: COLORS.accent,
+  },
   balanceCard: {
     backgroundColor: COLORS.secondary,
     borderRadius: 20,
     padding: 20,
     marginHorizontal: 20,
     marginTop: -40,
-    elevation: 5,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+  },
+  balanceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
   },
   balanceLabel: {
     color: COLORS.primary,
@@ -391,38 +475,63 @@ const homeStyles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  iconIndicator: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  actionSection: {
+    paddingHorizontal: 20,
+    marginTop: 20,
+  },
   section: {
     paddingHorizontal: 20,
     marginTop: 20,
-    marginBottom: 0,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.accent,
-    marginBottom: 15, 
+    marginBottom: 15,
   },
-  viewMoreText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.accent,
+  actionBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: COLORS.primary, // Sage Green Background
+    paddingVertical: 12,
+    marginBottom: 20,
+    borderRadius: 20,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  viewMoreButton: {
-    padding: 10,
+  actionButton: {
     alignItems: 'center',
-    marginTop: 10,
+    flex: 1,
   },
-  noTransactionsText: {
-    textAlign: 'center',
-    color: COLORS.darkGray,
-    paddingVertical: 20,
-    fontStyle: 'italic',
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18, // Perfect circle
+    backgroundColor: COLORS.accent, // Dark Brown Circle
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  actionText: {
+    fontSize: 11,
+    color: COLORS.accent,
+    fontWeight: '700',
   },
   splitBoxContainer: {
     flexDirection: 'row',
@@ -434,25 +543,35 @@ const homeStyles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: 15,
     padding: 15,
-    elevation: 2,
+    elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowRadius: 5,
     height: 190,
   },
   splitBoxLeft: {
     marginRight: 10,
-    flexDirection: 'column',
   },
   splitBoxRight: {
     marginLeft: 10,
+  },
+  splitBoxHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   splitBoxTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.accent,
     marginBottom: 8,
+  },
+  splitBoxPercent: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.darkGray,
   },
   splitBoxAmountSmall: {
     fontSize: 22,
@@ -500,6 +619,73 @@ const homeStyles = StyleSheet.create({
     height: '100%',
     borderRadius: 4,
   },
+  noTransactionsText: {
+    textAlign: 'center',
+    color: COLORS.darkGray,
+    paddingVertical: 20,
+    fontStyle: 'italic',
+  },
+  viewMoreButton: {
+    padding: 15,
+    alignItems: 'center',
+  },
+  viewMoreText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.accent,
+  },
+  transactionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    marginBottom: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    borderWidth: 1.2,
+    borderColor: COLORS.primary + '50',
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  transactionMainContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  transactionIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    backgroundColor: COLORS.primary,
+  },
+  transactionDetails: {
+    flex: 1,
+    marginRight: 8,
+  },
+  transactionName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 3,
+  },
+  transactionMeta: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#999',
+  },
+  transactionAmountDisplay: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  bottomNavSafeArea: {
+    backgroundColor: COLORS.white,
+  },
   bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -508,7 +694,7 @@ const homeStyles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
-    elevation: 10,
+    elevation: 8,
     height: 65,
   },
   navItem: {
@@ -524,36 +710,5 @@ const homeStyles = StyleSheet.create({
     color: COLORS.accent,
     marginTop: 2,
     fontWeight: 'bold',
-  },
-  actionBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 10,
-    marginBottom: 20,
-    borderRadius: 15,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-  },
-  actionButton: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.accent,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  actionText: {
-    fontSize: 12,
-    color: COLORS.accent,
-    marginTop: 4,
-    fontWeight: '500',
   },
 });

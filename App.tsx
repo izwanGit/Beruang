@@ -1273,6 +1273,8 @@ export default function App() {
                     }}
                     transactions={transactions}
                     userName={userProfile?.name || 'User'}
+                    userAvatar={userProfile?.avatar || 'bear'}
+                    userXP={userProfile?.totalXP || 0}
                     allocatedSavingsTarget={
                       userProfile?.allocatedSavingsTarget || 0
                     }
