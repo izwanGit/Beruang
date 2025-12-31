@@ -17,7 +17,6 @@ import { COLORS } from '../constants/colors';
 type AddMoneyScreenProps = {
   onBack: () => void;
   showMessage: (message: string) => void;
-  // --- MODIFIED: Can now accept a single transaction or an array ---
   onAddTransaction: (transaction: any | any[]) => void;
 };
 
@@ -28,35 +27,40 @@ export const AddMoneyScreen = ({
 }: AddMoneyScreenProps) => {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  // --- NEW: State for allocation ---
-  const [allocationMonths, setAllocationMonths] = useState('1');
+  const [allocationMonths, setAllocationMonths] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 
-  // --- NEW: Helper function to add months to a date ---
   const addMonths = (date: Date, months: number): Date => {
     const d = new Date(date);
     d.setMonth(d.getMonth() + months);
-    // Handle edge cases like Feb 30th -> Mar 2nd
     if (d.getDate() !== date.getDate()) {
-      d.setDate(0); // Go to last day of previous month
+      d.setDate(0);
     }
     return d;
   };
 
+  const handleManualMonthChange = (val: string) => {
+    const num = parseInt(val, 10);
+    if (!isNaN(num)) {
+      setAllocationMonths(Math.max(1, Math.min(60, num)));
+    } else if (val === '') {
+      setAllocationMonths(1);
+    }
+  };
+
+  const incrementMonth = () => setAllocationMonths(prev => Math.min(60, prev + 1));
+  const decrementMonth = () => setAllocationMonths(prev => Math.max(1, prev - 1));
+
   const handleSaveIncome = async () => {
     if (!amount || !description) {
-      showMessage('Please fill in all fields');
+      showMessage('Please fill in both amount and description');
       return;
     }
     const amountNum = parseFloat(amount);
-    const numMonths = parseInt(allocationMonths, 10) || 1;
+    const numMonths = allocationMonths;
 
     if (isNaN(amountNum) || amountNum <= 0) {
       showMessage('Please enter a valid amount');
-      return;
-    }
-    if (isNaN(numMonths) || numMonths <= 0) {
-      showMessage('Please enter a valid number of months');
       return;
     }
 
@@ -68,9 +72,7 @@ export const AddMoneyScreen = ({
       const transactionsToCreate = [];
 
       if (numMonths === 1) {
-        // --- Logic for a single transaction ---
         const newTransaction = {
-          // ❌ REMOVED: id: Date.now().toString(),
           icon: 'dollar-sign',
           name: description,
           date: baseDate.toISOString().split('T')[0],
@@ -78,11 +80,10 @@ export const AddMoneyScreen = ({
           type: 'income',
           category: 'income',
           subCategory: 'Income',
-          isCarriedOver: false, // This is new, budgetable income
+          isCarriedOver: false,
         };
         transactionsToCreate.push(newTransaction);
       } else {
-        // --- Logic for multiple, allocated transactions ---
         const amountPerMonth = amountNum / numMonths;
         let totalAllocated = 0;
 
@@ -90,7 +91,6 @@ export const AddMoneyScreen = ({
           const transactionDate = addMonths(baseDate, i);
           let currentMonthAmount = amountPerMonth;
 
-          // On the last month, add any remainder from division to avoid losing cents
           if (i === numMonths - 1) {
             currentMonthAmount = amountNum - totalAllocated;
           } else {
@@ -98,35 +98,30 @@ export const AddMoneyScreen = ({
           }
 
           const newTransaction = {
-            // ❌ REMOVED: id: `${Date.now().toString()}-${i}`,
             icon: 'dollar-sign',
-            // Add (1/6), (2/6), etc. to the name
             name: `${description} (${i + 1}/${numMonths})`,
             date: transactionDate.toISOString().split('T')[0],
             amount: parseFloat(currentMonthAmount.toFixed(2)),
             type: 'income',
             category: 'income',
             subCategory: 'Income',
-            isCarriedOver: false, // This is new, budgetable income for that month
+            isCarriedOver: false,
           };
           transactionsToCreate.push(newTransaction);
         }
       }
 
-      // Call the main add transaction function (which accepts an array)
       onAddTransaction(transactionsToCreate);
 
-      // Reset form and show success
       setAmount('');
       setDescription('');
-      setAllocationMonths('1');
+      setAllocationMonths(1);
       const successMessage =
         numMonths === 1
           ? 'Income added successfully!'
-          : `Income allocated successfully over ${numMonths} months!`;
+          : `Income allocated over ${numMonths} months!`;
       showMessage(successMessage);
 
-      // Go back after a short delay
       setTimeout(() => {
         onBack();
       }, 1500);
@@ -138,204 +133,307 @@ export const AddMoneyScreen = ({
   };
 
   return (
-    <SafeAreaView style={addMoneyStyles.container}>
+    <View style={addMoneyStyles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-      {/* --- Header --- */}
-      <View style={addMoneyStyles.header}>
-        <TouchableOpacity onPress={onBack} style={addMoneyStyles.backButton}>
-          <Icon name="arrow-left" size={24} color={COLORS.accent} />
-        </TouchableOpacity>
-        <Text style={addMoneyStyles.headerTitle}>Add Money</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      {/* --- Form --- */}
-      <ScrollView contentContainerStyle={addMoneyStyles.scrollContainer}>
-        <View style={addMoneyStyles.section}>
-          <Text style={addMoneyStyles.sectionTitle}>Add Income</Text>
-          {/* --- Amount Input --- */}
-          <View style={addMoneyStyles.inputView}>
-            <Text style={addMoneyStyles.currencySymbol}>RM</Text>
-            <TextInput
-              placeholder="0.00"
-              placeholderTextColor={COLORS.darkGray}
-              style={addMoneyStyles.amountInput}
-              keyboardType="numeric"
-              value={amount}
-              onChangeText={setAmount}
-              editable={!isLoading}
-            />
-          </View>
-          {/* --- Description Input --- */}
-          <TextInput
-            placeholder="Description (e.g., Student Loan, Salary)"
-            placeholderTextColor={COLORS.darkGray}
-            style={addMoneyStyles.descriptionInput}
-            value={description}
-            onChangeText={setDescription}
-            editable={!isLoading}
-          />
-
-          {/* --- NEW: Allocation Input --- */}
-          <Text style={addMoneyStyles.label}>
-            Allocate over how many months?
-          </Text>
-          <TextInput
-            placeholder="1"
-            placeholderTextColor={COLORS.darkGray}
-            style={addMoneyStyles.descriptionInput} // Re-use style
-            keyboardType="numeric"
-            value={allocationMonths}
-            onChangeText={setAllocationMonths}
-            editable={!isLoading}
-          />
-          <Text style={addMoneyStyles.infoTextSmall}>
-            Enter "1" for a one-time income. Enter "6" to spread the
-            total amount over 6 months.
-          </Text>
-
-          {/* --- Save Button --- */}
-          <TouchableOpacity
-            style={[
-              addMoneyStyles.saveButton,
-              isLoading && { opacity: 0.6 },
-            ]}
-            onPress={handleSaveIncome}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={COLORS.white} size="small" />
-            ) : (
-              <Text style={addMoneyStyles.saveButtonText}>Save Income</Text>
-            )}
+      <SafeAreaView style={addMoneyStyles.safeArea} edges={['top', 'left', 'right']}>
+        {/* --- Standardized Header --- */}
+        <View style={addMoneyStyles.header}>
+          <TouchableOpacity onPress={onBack} style={addMoneyStyles.backButton}>
+            <Icon name="arrow-left" size={24} color={COLORS.accent} />
           </TouchableOpacity>
+          <Text style={addMoneyStyles.headerTitle}>Add Money</Text>
+          <View style={{ width: 40 }} />
         </View>
 
-        {/* --- Info Box --- */}
-        <View style={addMoneyStyles.infoBox}>
-          <Icon
-            name="info"
-            size={20}
-            color={COLORS.accent}
-            style={{ marginRight: 10 }}
-          />
-          <Text style={addMoneyStyles.infoText}>
-            Use this screen to add any money you receive. You can allocate
-            large sums over multiple months to budget correctly.
-          </Text>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        <ScrollView
+          contentContainerStyle={addMoneyStyles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* --- Input Card --- */}
+          <View style={addMoneyStyles.card}>
+            <View style={addMoneyStyles.cardHeader}>
+              <Icon name="trending-up" size={20} color={COLORS.secondary} />
+              <Text style={addMoneyStyles.cardTitle}>New Income</Text>
+            </View>
+
+            <View style={addMoneyStyles.inputGroup}>
+              <Text style={addMoneyStyles.label}>AMOUNT RECEIVED (RM)</Text>
+              <View style={addMoneyStyles.amountRow}>
+                <TextInput
+                  placeholder="0.00"
+                  placeholderTextColor={COLORS.darkGray + '80'}
+                  style={addMoneyStyles.amountInput}
+                  keyboardType="numeric"
+                  value={amount}
+                  onChangeText={setAmount}
+                  editable={!isLoading}
+                  autoFocus
+                />
+              </View>
+            </View>
+
+            <View style={addMoneyStyles.inputGroup}>
+              <View style={addMoneyStyles.labelWithIcon}>
+                <Icon name="tag" size={14} color={COLORS.primary} />
+                <Text style={addMoneyStyles.label}>DESCRIPTION</Text>
+              </View>
+              <TextInput
+                placeholder="e.g., Salary, Freelance Job"
+                placeholderTextColor={COLORS.darkGray + '80'}
+                style={addMoneyStyles.textInput}
+                value={description}
+                onChangeText={setDescription}
+                editable={!isLoading}
+              />
+            </View>
+
+            <View style={addMoneyStyles.inputGroup}>
+              <View style={addMoneyStyles.labelWithIcon}>
+                <Icon name="clock" size={14} color={COLORS.secondary} />
+                <Text style={addMoneyStyles.label}>PLAN FOR FUTURE MONTHS?</Text>
+              </View>
+
+              {/* --- iOS Style Month Picker --- */}
+              <View style={addMoneyStyles.monthPickerContainer}>
+                <TouchableOpacity
+                  onPress={decrementMonth}
+                  style={addMoneyStyles.pickerButton}
+                  activeOpacity={0.7}
+                >
+                  <Icon name="minus" size={20} color={COLORS.accent} />
+                </TouchableOpacity>
+
+                <View style={addMoneyStyles.pickerDisplay}>
+                  <TextInput
+                    style={addMoneyStyles.pickerValue}
+                    keyboardType="numeric"
+                    value={allocationMonths.toString()}
+                    onChangeText={handleManualMonthChange}
+                    editable={!isLoading}
+                  />
+                  <Text style={addMoneyStyles.pickerLabel}>MONTHS</Text>
+                </View>
+
+                <TouchableOpacity
+                  onPress={incrementMonth}
+                  style={addMoneyStyles.pickerButton}
+                  activeOpacity={0.7}
+                >
+                  <Icon name="plus" size={20} color={COLORS.accent} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={addMoneyStyles.actionRow}>
+              <TouchableOpacity
+                style={[
+                  addMoneyStyles.confirmButton,
+                  isLoading && { opacity: 0.6 },
+                ]}
+                onPress={handleSaveIncome}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={COLORS.white} size="small" />
+                ) : (
+                  <>
+                    <Text style={addMoneyStyles.confirmButtonText}>Confirm Income</Text>
+                    <Icon name="check" size={14} color={COLORS.white} style={{ marginLeft: 8 }} />
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* --- Pro Tip --- */}
+          <View style={addMoneyStyles.proTipCard}>
+            <View style={addMoneyStyles.proTipHeader}>
+              <Icon name="zap" size={14} color={COLORS.yellow} />
+              <Text style={addMoneyStyles.proTipTitle}>Beruang Advice</Text>
+            </View>
+            <Text style={addMoneyStyles.proTipText}>
+              Splitting income keeps your daily budget balanced and accurate across months.
+            </Text>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 };
 
-// --- Styles for AddMoneyScreen ---
 const addMoneyStyles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F8F9FA',
+  },
+  safeArea: {
     backgroundColor: COLORS.white,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: '#F0F0F0',
   },
   backButton: {
     padding: 5,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '900',
     color: COLORS.accent,
+    letterSpacing: 0.5,
   },
   scrollContainer: {
     padding: 20,
   },
-  section: {
-    marginBottom: 30,
+  card: {
+    backgroundColor: COLORS.white,
+    borderRadius: 30,
+    padding: 24,
+    elevation: 4,
+    shadowColor: COLORS.secondary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    marginBottom: 20,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 22,
+    gap: 10,
+  },
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: '900',
     color: COLORS.accent,
-    marginBottom: 15,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  labelWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '800',
     color: COLORS.darkGray,
-    marginBottom: 10,
-    marginLeft: 5,
+    letterSpacing: 0.8,
   },
-  inputView: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.lightGray,
-    borderRadius: 15,
-    paddingHorizontal: 20,
-    marginBottom: 15,
-  },
-  currencySymbol: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: COLORS.darkGray,
-    marginRight: 10,
+  amountRow: {
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.primary,
+    paddingBottom: 4,
   },
   amountInput: {
-    flex: 1,
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: 'bold',
     color: COLORS.accent,
-    height: 70,
+    padding: 0,
   },
-  descriptionInput: {
+  textInput: {
     backgroundColor: COLORS.lightGray,
     borderRadius: 15,
-    paddingHorizontal: 20,
-    height: 60,
-    fontSize: 16,
-    marginBottom: 15, // Adjusted margin
+    paddingHorizontal: 16,
+    height: 52,
+    fontSize: 15,
     color: COLORS.accent,
+    fontWeight: '600',
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
   },
-  saveButton: {
-    backgroundColor: COLORS.accent,
-    padding: 20,
-    borderRadius: 15,
-    alignItems: 'center',
-    elevation: 3,
-    marginTop: 20, // Added margin top
-  },
-  saveButtonText: {
-    color: COLORS.white,
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  infoBox: {
-    marginTop: 20,
-    backgroundColor: COLORS.primary,
-    borderRadius: 15,
-    padding: 15,
+  monthPickerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.lightGray,
+    borderRadius: 20,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
   },
-  infoText: {
-    flex: 1,
+  pickerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: COLORS.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  pickerDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pickerValue: {
+    fontSize: 22,
+    fontWeight: '900',
     color: COLORS.accent,
-    fontSize: 14,
-    lineHeight: 20,
+    minWidth: 40,
+    textAlign: 'center',
+    padding: 0,
   },
-  infoTextSmall: {
-    flex: 1,
-    color: COLORS.darkGray,
+  pickerLabel: {
     fontSize: 12,
-    lineHeight: 18,
-    marginLeft: 5,
-    marginBottom: 20, // Add space before button
+    fontWeight: '900',
+    color: COLORS.darkGray,
+    letterSpacing: 1,
+  },
+  actionRow: {
+    alignItems: 'flex-end',
+    marginTop: 15,
+  },
+  confirmButton: {
+    backgroundColor: COLORS.accent,
+    paddingHorizontal: 22,
+    height: 46,
+    borderRadius: 23,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+  },
+  confirmButtonText: {
+    color: COLORS.white,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  proTipCard: {
+    backgroundColor: COLORS.primary + '15',
+    borderRadius: 25,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: COLORS.primary + '30',
+  },
+  proTipHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 10,
+  },
+  proTipTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: COLORS.accent,
+  },
+  proTipText: {
+    fontSize: 13,
+    color: COLORS.accent,
+    lineHeight: 20,
+    fontWeight: '500',
+    opacity: 0.8,
   },
 });
