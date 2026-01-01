@@ -412,11 +412,11 @@ const addMoneyStyles = StyleSheet.create({
     fontWeight: '900',
   },
   proTipCard: {
-    backgroundColor: COLORS.primary + '15',
+    backgroundColor: COLORS.primary,
     borderRadius: 25,
     padding: 20,
     borderWidth: 1,
-    borderColor: COLORS.primary + '30',
+    borderColor: COLORS.primary,
   },
   proTipHeader: {
     flexDirection: 'row',
