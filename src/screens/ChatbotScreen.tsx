@@ -26,6 +26,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import Markdown from 'react-native-markdown-display';
 import { COLORS } from '../constants/colors';
+import { SmartWidget } from '../components/SmartWidget';
 
 import { RouteProp } from '@react-navigation/native';
 import { Screen } from './HomeScreen';
@@ -378,6 +379,77 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
 
   const lastUserMessage = [...currentChatMessages].filter(m => m.sender === 'user').pop();
 
+  const renderMessageContent = (text: string, isBot: boolean) => {
+    // 1. Handle partial widget blocks during streaming
+    const openTag = '[WIDGET_DATA]';
+    const closeTag = '[/WIDGET_DATA]';
+    let textToProcess = text;
+    let widgetIsStreaming = false;
+
+    if (isBot && text.includes(openTag) && !text.includes(closeTag)) {
+      widgetIsStreaming = true;
+      textToProcess = text.split(openTag)[0];
+    }
+
+    // 2. Regex to find complete [WIDGET_DATA]...[/WIDGET_DATA] blocks
+    const widgetRegex = /\[WIDGET_DATA\]([\s\S]*?)\[\/WIDGET_DATA\]/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = widgetRegex.exec(textToProcess)) !== null) {
+      // Add text before the widget
+      if (match.index > lastIndex) {
+        parts.push({ type: 'text', content: textToProcess.substring(lastIndex, match.index) });
+      }
+      // Add the widget data
+      parts.push({ type: 'widget', content: match[1].trim() });
+      lastIndex = widgetRegex.lastIndex;
+    }
+
+    // Add remaining text
+    if (lastIndex < textToProcess.length) {
+      parts.push({ type: 'text', content: textToProcess.substring(lastIndex) });
+    }
+
+    // Default to markdown if no parts or user message
+    if (parts.length === 0 || !isBot) {
+      return (
+        <View>
+          {isBot ? <Markdown style={markdownStyles}>{textToProcess}</Markdown> : <Text style={styles.userMessageText}>{textToProcess}</Text>}
+          {widgetIsStreaming && (
+            <View style={styles.streamingWidgetPlaceholder}>
+              <ActivityIndicator size="small" color={COLORS.accent} style={{ marginRight: 8 }} />
+              <Text style={styles.streamingWidgetText}>Generating visual...</Text>
+            </View>
+          )}
+        </View>
+      );
+    }
+
+    return (
+      <View>
+        {parts.map((part, index) => (
+          part.type === 'widget' ? (
+            <SmartWidget key={`widget-${index}`} dataString={part.content} />
+          ) : (
+            part.content.trim() !== '' && (
+              <Markdown key={`text-${index}`} style={markdownStyles}>
+                {part.content}
+              </Markdown>
+            )
+          )
+        ))}
+        {widgetIsStreaming && (
+          <View style={styles.streamingWidgetPlaceholder}>
+            <ActivityIndicator size="small" color={COLORS.accent} style={{ marginRight: 8 }} />
+            <Text style={styles.streamingWidgetText}>Generating visual...</Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeAreaContent} edges={['top', 'left', 'right', 'bottom']}>
@@ -454,9 +526,9 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
                         ]}
                       >
                         {item.sender === 'user' ? (
-                          <Text style={styles.userMessageText}>{item.text}</Text>
+                          renderMessageContent(item.text, false)
                         ) : (
-                          <Markdown style={markdownStyles}>{item.text}</Markdown>
+                          renderMessageContent(item.text, true)
                         )}
                       </View>
                     )}
@@ -511,9 +583,7 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
                   <View style={styles.messageWrapper}>
                     {streamingMessage ? (
                       <View style={[styles.messageBubble, styles.botBubble, styles.streamingBubble]}>
-                        <Markdown style={markdownStyles}>
-                          {streamingMessage + (cursorVisible ? ' |' : '')}
-                        </Markdown>
+                        {renderMessageContent(streamingMessage + (cursorVisible ? ' |' : ''), true)}
                       </View>
                     ) : (
                       <View style={[styles.messageBubble, styles.botBubble, styles.typingBubble]}>
@@ -892,6 +962,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.accent,
     fontWeight: '600',
+  },
+  streamingWidgetPlaceholder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary + '15',
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary + '30',
+  },
+  streamingWidgetText: {
+    color: COLORS.accent,
+    fontSize: 12,
+    fontWeight: '600',
+    fontStyle: 'italic',
   },
 });
 
