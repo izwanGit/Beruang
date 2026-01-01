@@ -113,6 +113,49 @@ export const calculateMonthlyStats = (transactions: any[], userProfile?: any) =>
   };
 };
 
+// NEW FUNCTION: Calculate stats for all months (for historical context)
+export const calculateAllMonthlyStats = (transactions: any[], userProfile?: any) => {
+  const months = Array.from(new Set(transactions.map(t => getMonthKey(t.date))));
+  const monthlyStats: any = {};
+
+  months.forEach(monthKey => {
+    const monthTransactions = transactions.filter(t => getMonthKey(t.date) === monthKey);
+
+    const income = monthTransactions
+      .filter(t => t.type === 'income' && !t.isCarriedOver)
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const needs = monthTransactions
+      .filter(t => t.type === 'expense' && t.category === 'needs')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const wants = monthTransactions
+      .filter(t => t.type === 'expense' && t.category === 'wants')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const saved = monthTransactions
+      .filter(t => t.type === 'expense' && t.category === 'savings')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    monthlyStats[monthKey] = { income, needs, wants, saved };
+  });
+
+  return monthlyStats;
+};
+
+// NEW FUNCTION: Format historical data for RAG
+export const formatHistoricalRAG = (allStats: any) => {
+  let output = "\n--- HISTORICAL SPENDING SUMMARY ---\n";
+  const sortedMonths = Object.keys(allStats).sort().reverse(); // Show latest first
+
+  sortedMonths.forEach(month => {
+    const s = allStats[month];
+    output += `${month}: Inc RM${s.income.toFixed(0)}, Needs RM${s.needs.toFixed(0)}, Wants RM${s.wants.toFixed(0)}, Saved RM${s.saved.toFixed(0)}\n`;
+  });
+
+  return output.trim();
+};
+
 // NEW FUNCTION: Format budget data for RAG context
 export const formatBudgetForRAG = (budgetData: any) => {
   if (!budgetData) return '';

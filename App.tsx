@@ -53,7 +53,12 @@ import { SavingsScreen } from './src/screens/SavingsScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 
 // Import finance utilities
-import { calculateMonthlyStats, formatBudgetForRAG } from './src/utils/financeUtils';
+import {
+  calculateMonthlyStats,
+  formatBudgetForRAG,
+  calculateAllMonthlyStats,
+  formatHistoricalRAG
+} from './src/utils/financeUtils';
 import { XP_REWARDS, calculateLevel, getAvatarForLevel } from './src/utils/gamificationUtils';
 import { isBearAvatar } from './src/constants/avatars';
 
@@ -832,7 +837,8 @@ export default function App() {
 
     // 3. Calculate budget data for RAG
     const budgetData = calculateMonthlyStats(transactions, userProfile);
-    const budgetContext = formatBudgetForRAG(budgetData);
+    const historicalStats = calculateAllMonthlyStats(transactions, userProfile);
+    const budgetContext = formatBudgetForRAG(budgetData) + formatHistoricalRAG(historicalStats);
 
     // 4. START STREAMING VIA XHR
     setStreamingResponse('');
@@ -939,7 +945,6 @@ export default function App() {
       xhr.send(JSON.stringify({
         message: text,
         history: historyForServer,
-        transactions: transactions.slice(0, 20),
         userProfile: userProfile,
         budgetContext: budgetContext,
       }));
@@ -1059,7 +1064,6 @@ export default function App() {
         body: JSON.stringify({
           message: newText,
           history: historyForServer,
-          transactions: transactions.slice(0, 20),
           userProfile: userProfile,
           budgetContext: budgetContext,
         }),
