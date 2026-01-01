@@ -698,9 +698,13 @@ export const SavingsScreen = ({
             {/* --- Single "Add to Savings" Button (REMOVED FROM BOTTOM) --- */}
           </View>
 
-          {/* Savings Graph */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Cumulative Savings History</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Cumulative Savings History</Text>
+              <View style={styles.currencyBadge}>
+                <Text style={styles.currencyBadgeText}>RM</Text>
+              </View>
+            </View>
             {chartReady ? (
               <View style={styles.chartContainer}>
                 <LineChart
@@ -708,13 +712,13 @@ export const SavingsScreen = ({
                     labels: chartLabels.length > 6 ? chartLabels.map((l, i) => (i % Math.ceil(chartLabels.length / 5) === 0 ? l : '')) : chartLabels,
                     datasets: [{ data: chartDataPoints }],
                   }}
-                  width={screenWidth - 32} // Match container width minus external margins
+                  width={screenWidth - 32}
                   height={240}
                   yAxisInterval={1}
                   formatYLabel={(value) => {
                     const num = Math.round(parseFloat(value));
-                    if (num >= 1000) return `RM ${(num / 1000).toFixed(1)}k`;
-                    return `RM ${num}`;
+                    if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
+                    return `${num}`;
                   }}
                   chartConfig={{
                     backgroundColor: COLORS.white,
@@ -745,7 +749,7 @@ export const SavingsScreen = ({
                   style={{
                     marginVertical: 12,
                     borderRadius: 24,
-                    paddingRight: 65, // This shifts the chart right to make room for labels on the LEFT!
+                    paddingRight: 40,
                   }}
                 />
               </View>
@@ -1199,6 +1203,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 16,
     elevation: 8,
+  },
+  currencyBadge: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  currencyBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: COLORS.white,
   },
   chartStyle: {
     borderRadius: 16,
