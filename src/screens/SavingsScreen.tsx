@@ -699,12 +699,7 @@ export const SavingsScreen = ({
           </View>
 
           <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Cumulative Savings History</Text>
-              <View style={styles.currencyBadge}>
-                <Text style={styles.currencyBadgeText}>RM</Text>
-              </View>
-            </View>
+            <Text style={styles.sectionTitle}>Cumulative Savings History (RM)</Text>
             {chartReady ? (
               <View style={styles.chartContainer}>
                 <LineChart
@@ -712,7 +707,7 @@ export const SavingsScreen = ({
                     labels: chartLabels.length > 6 ? chartLabels.map((l, i) => (i % Math.ceil(chartLabels.length / 5) === 0 ? l : '')) : chartLabels,
                     datasets: [{ data: chartDataPoints }],
                   }}
-                  width={screenWidth - 32}
+                  width={screenWidth - 64}
                   height={240}
                   yAxisInterval={1}
                   formatYLabel={(value) => {
@@ -749,7 +744,6 @@ export const SavingsScreen = ({
                   style={{
                     marginVertical: 12,
                     borderRadius: 24,
-                    paddingRight: 40,
                   }}
                 />
               </View>
@@ -1193,6 +1187,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: 32,
     paddingVertical: 20,
+    paddingHorizontal: 16,
     marginTop: 10,
     borderWidth: 1.5,
     borderColor: COLORS.primary + '30',
@@ -1203,19 +1198,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 16,
     elevation: 8,
-  },
-  currencyBadge: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  currencyBadgeText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: COLORS.white,
   },
   chartStyle: {
     borderRadius: 16,
