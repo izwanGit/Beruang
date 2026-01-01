@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
-import { LineChart } from 'react-native-chart-kit';
+import { LineChart, ProgressChart } from 'react-native-chart-kit';
 import { COLORS } from '../constants/colors';
 import { calculateSavingsProgress, calculateMonthlyStats } from '../utils/financeUtils';
 
@@ -136,20 +136,22 @@ const SaveModal: React.FC<SaveModalProps> = ({
   }, [hasLeftoverGoal]);
 
   return (
-    <Modal visible={visible} transparent={true} animationType="fade" onRequestClose={handleClose}>
+    <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={handleClose}>
       <View style={modalStyles.overlay}>
         <View style={modalStyles.container}>
           <Text style={modalStyles.title}>Add to Savings</Text>
+
           <Text style={modalStyles.label}>Amount to Save</Text>
           <TextInput
             style={modalStyles.input}
-            placeholder="e.g., 50.00"
+            placeholder="RM 0.00"
+            placeholderTextColor={COLORS.darkGray + '80'}
             keyboardType="numeric"
             value={amount}
             onChangeText={handleSetAmount}
           />
           <Text style={modalStyles.balanceInfo}>
-            {balanceLabel} RM {currentMaxAmount.toFixed(2)}
+            {balanceLabel} <Text style={{ color: COLORS.accent }}>RM {currentMaxAmount.toFixed(2)}</Text>
           </Text>
 
           <Text style={modalStyles.label}>Save Towards</Text>
@@ -180,7 +182,7 @@ const SaveModal: React.FC<SaveModalProps> = ({
                   modalStyles.toggleText,
                   saveType === 'leftover' && modalStyles.toggleTextActive
                 ]}>
-                  Leftover Goal
+                  Leftover
                 </Text>
               </TouchableOpacity>
             )}
@@ -189,10 +191,10 @@ const SaveModal: React.FC<SaveModalProps> = ({
           {error ? <Text style={modalStyles.errorText}>{error}</Text> : null}
 
           <View style={modalStyles.buttonRow}>
-            <TouchableOpacity style={[modalStyles.button, modalStyles.cancelButton, { flex: 1 }]} onPress={handleClose}>
-              <Text style={[modalStyles.buttonText, modalStyles.cancelButtonText]}>Cancel</Text>
+            <TouchableOpacity style={[modalStyles.button, modalStyles.cancelButton]} onPress={handleClose}>
+              <Text style={modalStyles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[modalStyles.button, modalStyles.confirmButton, { flex: 1 }]} onPress={handleSubmit}>
+            <TouchableOpacity style={[modalStyles.button, modalStyles.confirmButton]} onPress={handleSubmit}>
               <Text style={modalStyles.buttonText}>Confirm</Text>
             </TouchableOpacity>
           </View>
@@ -259,44 +261,58 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({
   }
 
   return (
-    <Modal visible={visible} transparent={true} animationType="fade" onRequestClose={handleClose}>
+    <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={handleClose}>
       <View style={modalStyles.overlay}>
         <View style={modalStyles.container}>
-          <Text style={modalStyles.title}>Withdraw Savings</Text>
-          <Text style={modalStyles.label}>Amount to Withdraw</Text>
+          <Text style={modalStyles.title}>Withdraw</Text>
+
+          <Text style={modalStyles.label}>Amount</Text>
           <TextInput
             style={modalStyles.input}
-            placeholder="e.g., 100.00"
+            placeholder="RM 0.00"
+            placeholderTextColor={COLORS.darkGray + '80'}
             keyboardType="numeric"
             value={amount}
             onChangeText={handleSetAmount}
           />
           <Text style={modalStyles.balanceInfo}>
-            Total Saved: RM {totalSaved.toFixed(2)}
+            Available: <Text style={{ color: COLORS.accent }}>RM {totalSaved.toFixed(2)}</Text>
           </Text>
 
           {error ? <Text style={modalStyles.errorText}>{error}</Text> : null}
 
-          <Text style={modalStyles.label}>Withdrawal Option</Text>
+          <Text style={modalStyles.label}>Method</Text>
 
-          <TouchableOpacity style={[modalStyles.optionButton, { backgroundColor: COLORS.info }]} onPress={() => handleSubmit('budget')}>
-            <Icon name="arrow-right-circle" size={20} color={COLORS.white} style={{ marginRight: 10 }} />
-            <View>
+          <TouchableOpacity
+            style={[modalStyles.optionButton, { backgroundColor: COLORS.info }]}
+            onPress={() => handleSubmit('budget')}
+            activeOpacity={0.8}
+          >
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 12, marginRight: 14 }}>
+              <Icon name="arrow-right-circle" size={20} color={COLORS.white} />
+            </View>
+            <View style={{ flex: 1 }}>
               <Text style={modalStyles.optionTitle}>Move to Budget</Text>
-              <Text style={modalStyles.optionSubtitle}>Adds to monthly income (50/30/20 rule)</Text>
+              <Text style={modalStyles.optionSubtitle}>Add to this month's spending pool</Text>
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[modalStyles.optionButton, { backgroundColor: COLORS.danger }]} onPress={() => handleSubmit('emergency')}>
-            <Icon name="alert-triangle" size={20} color={COLORS.white} style={{ marginRight: 10 }} />
-            <View>
-              <Text style={modalStyles.optionTitle}>Emergency Withdraw</Text>
-              <Text style={modalStyles.optionSubtitle}>Removes money from savings permanently</Text>
+          <TouchableOpacity
+            style={[modalStyles.optionButton, { backgroundColor: COLORS.accent }]}
+            onPress={() => handleSubmit('emergency')}
+            activeOpacity={0.8}
+          >
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 12, marginRight: 14 }}>
+              <Icon name="alert-triangle" size={20} color={COLORS.white} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={modalStyles.optionTitle}>Direct Withdraw</Text>
+              <Text style={modalStyles.optionSubtitle}>Withdraw as cash (bypasses budget)</Text>
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[modalStyles.button, modalStyles.cancelButton, { marginTop: 20, marginRight: 0 }]} onPress={handleClose}>
-            <Text style={[modalStyles.buttonText, modalStyles.cancelButtonText]}>Cancel</Text>
+          <TouchableOpacity style={[modalStyles.button, modalStyles.cancelButton, { marginTop: 20 }]} onPress={handleClose}>
+            <Text style={modalStyles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -356,27 +372,18 @@ export const SavingsScreen = ({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   };
 
-  const chartLabels = sortedSavingsTx
-    .map(t => {
-      const m = getMonthKey(t.date);
-      return `${parseInt(m.split('-')[1], 10)}/${m.split('-')[0].slice(2)}`;
-    })
-    .filter((value, index, self) => self.indexOf(value) === index);
-
-  const chartDataPoints = chartLabels.map(label => {
-    let lastCumulativeAmount = 0;
-    for (let i = sortedSavingsTx.length - 1; i >= 0; i--) {
-      const t = sortedSavingsTx[i];
-      const tLabel = `${parseInt(getMonthKey(t.date).split('-')[1], 10)}/${getMonthKey(t.date).split('-')[0].slice(2)}`;
-      if (tLabel === label) {
-        lastCumulativeAmount = cumulativeChartData[i];
-        break;
-      }
-    }
-    return lastCumulativeAmount;
+  const chartLabels = sortedSavingsTx.map(t => {
+    const d = new Date(t.date);
+    return `${d.getDate()}/${d.getMonth() + 1}`;
   });
 
+  const chartDataPoints = cumulativeChartData;
+
   // --- HANDLERS ---
+
+  const remainingToSaveTotal = remainingToSave20Percent + (hasLeftoverGoal ? remainingToSaveLeftover : 0);
+  const totalMissionTarget = targetSavings20Percent + (hasLeftoverGoal ? derivedTarget : 0);
+  const savingsPercentageOverall = totalMissionTarget > 0 ? (totalMonthlySaved / totalMissionTarget) * 100 : 100;
 
   const handleSaveSubmit = (amount: number, type: '20_percent' | 'leftover') => {
     const transactionName =
@@ -503,115 +510,192 @@ export const SavingsScreen = ({
             />
           }
         >
-          {/* Hero Card (Primary color) */}
-          <View style={styles.heroCard}>
-            <Text style={styles.heroLabel}>Total Saved (All Time)</Text>
-            <Text style={styles.heroAmount}>
-              RM {totalSavedAllTime.toFixed(2)}
-            </Text>
-            <TouchableOpacity
-              style={styles.heroWithdrawButton}
-              onPress={() => setShowWithdrawModal(true)}
-            >
-              <Text style={styles.heroWithdrawText}>Withdraw</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* --- SINGLE summary card --- */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Current Month Summary</Text>
-            <View style={styles.summaryCard}>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Monthly Income:</Text>
-                <Text style={styles.summaryValue}>
-                  RM {monthlyIncome.toFixed(2)}
-                </Text>
+          {/* --- Wealth Cockpit --- */}
+          <View style={styles.cockpitCard}>
+            <View style={styles.cockpitTop}>
+              <View>
+                <Text style={styles.cockpitLabel}>Total Savings</Text>
+                <Text style={styles.cockpitAmount}>RM {totalSavedAllTime.toFixed(2)}</Text>
               </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Target Savings (20%):</Text>
-                <Text style={styles.summaryValue}>
-                  RM {targetSavings20Percent.toFixed(2)}
-                </Text>
-              </View>
-              {hasLeftoverGoal && (
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>
-                    Leftover Balance Target:
-                  </Text>
-                  <Text style={[styles.summaryValue, { color: COLORS.info }]}>
-                    RM {derivedTarget.toFixed(2)}
-                  </Text>
-                </View>
-              )}
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Saved (This Month):</Text>
-                <Text style={[styles.summaryValue, { color: COLORS.success }]}>
-                  RM {totalMonthlySaved.toFixed(2)}
-                </Text>
-              </View>
-
-              {/* Progress Bar (tracks the 20% goal) */}
-              <View style={styles.progressContainer}>
-                <View style={styles.progressBarBackground}>
-                  <View
-                    style={[
-                      styles.progressBar,
-                      {
-                        width: `${Math.min(savingsPercentage20, 100)}%`,
-                        backgroundColor: COLORS.success,
-                      },
-                    ]}
-                  />
-                </View>
-                <Text style={styles.progressText}>
-                  {savingsPercentage20.toFixed(0)}% of 20% target
-                </Text>
-              </View>
-
-              {/* --- Combined Remaining Section --- */}
-              <View style={styles.remainingContainer}>
-                <View style={styles.remainingRow}>
-                  <Text style={styles.remainingLabel}>Remaining (20% Goal):</Text>
-                  <Text style={styles.remainingValue}>
-                    RM {remainingToSave20Percent.toFixed(2)}
-                  </Text>
-                </View>
-                {hasLeftoverGoal && (
-                  <View style={styles.remainingRow}>
-                    <Text style={styles.remainingLabel}>
-                      Remaining (Leftover):
-                    </Text>
-                    <Text style={[styles.remainingValue, { color: COLORS.info }]}>
-                      RM {remainingToSaveLeftover.toFixed(2)}
-                    </Text>
-                  </View>
-                )}
-              </View>
+              <TouchableOpacity
+                style={styles.withdrawCircle}
+                onPress={() => setShowWithdrawModal(true)}
+              >
+                <Icon name="log-out" size={18} color={COLORS.accent} />
+              </TouchableOpacity>
             </View>
 
-            {/* --- Single "Add to Savings" Button --- */}
+            <View style={styles.missionSummary}>
+              <Icon name="info" size={16} color={COLORS.accent} style={{ opacity: 0.6 }} />
+              <Text style={styles.missionText}>
+                {remainingToSaveTotal <= 0
+                  ? "You've hit your saving mission! Great job! 🐻🏆"
+                  : `You're RM ${remainingToSaveTotal.toFixed(2)} away from your monthly mission.`}
+              </Text>
+            </View>
+
             <TouchableOpacity
               style={[
-                styles.addButton,
-                { backgroundColor: COLORS.success },
-                monthlyBalance <= 0 && styles.addButtonDisabled,
+                styles.primarySaveButton,
+                monthlyBalance <= 0 && styles.saveButtonDisabled
               ]}
               onPress={() => setShowSaveModal(true)}
               disabled={monthlyBalance <= 0}
             >
-              <Icon
-                name="plus-circle"
-                size={20}
-                color={COLORS.white}
-                style={{ marginRight: 8 }}
-              />
-              <Text style={styles.addButtonText}>Add to Savings</Text>
-            </TouchableOpacity>
-            {monthlyBalance <= 0 && (
-              <Text style={styles.disabledButtonText}>
-                You have no available balance to save.
+              <Icon name="heart" size={20} color={COLORS.white} style={{ marginRight: 10 }} />
+              <Text style={styles.primarySaveButtonText}>
+                {monthlyBalance <= 0 ? "Saved & Sorted" : "Save Your Balance"}
               </Text>
-            )}
+              {monthlyBalance > 0 && (
+                <View style={styles.saveBadge}>
+                  <Text style={styles.saveBadgeText}>+ RM {monthlyBalance.toFixed(0)}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+
+
+          {/* --- Information Section --- */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <View>
+                <Text style={styles.sectionTitle}>Goal Breakdown</Text>
+                <Text style={styles.sectionSubtitle}>Where your savings come from</Text>
+              </View>
+              <View style={styles.badgeContainer}>
+                <Text style={styles.badgeText}>Real-time</Text>
+              </View>
+            </View>
+            <View style={styles.summaryCard}>
+              <View style={styles.statsGrid}>
+                <View style={styles.statItem}>
+                  <View style={[styles.statIcon, { backgroundColor: COLORS.primary + '40' }]}>
+                    <Icon name="trending-up" size={18} color={COLORS.accent} />
+                  </View>
+                  <Text style={styles.statLabel}>Income</Text>
+                  <Text style={styles.statValue}>RM {monthlyIncome.toFixed(0)}</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <View style={[styles.statIcon, { backgroundColor: COLORS.info + '20' }]}>
+                    <Icon name="target" size={18} color={COLORS.info} />
+                  </View>
+                  <Text style={styles.statLabel}>Target</Text>
+                  <Text style={styles.statValue}>RM {(targetSavings20Percent + (hasLeftoverGoal ? derivedTarget : 0)).toFixed(0)}</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <View style={[styles.statIcon, { backgroundColor: COLORS.success + '20' }]}>
+                    <Icon name="check-circle" size={18} color={COLORS.success} />
+                  </View>
+                  <Text style={styles.statLabel}>Saved</Text>
+                  <Text style={[styles.statValue, { color: COLORS.success }]}>RM {totalMonthlySaved.toFixed(0)}</Text>
+                </View>
+              </View>
+
+              <View style={styles.chartAndProgressRow}>
+                {/* Progress Circle - DATA VISUALIZATION */}
+                <View style={styles.chartCircleWrapper}>
+                  <ProgressChart
+                    data={{
+                      data: [Math.min(savingsPercentageOverall / 100, 1) || 0]
+                    }}
+                    width={100}
+                    height={100}
+                    strokeWidth={10}
+                    radius={36}
+                    chartConfig={{
+                      backgroundColor: COLORS.white,
+                      backgroundGradientFrom: COLORS.white,
+                      backgroundGradientTo: COLORS.white,
+                      color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
+                      labelColor: (opacity = 1) => `rgba(102, 90, 72, ${opacity})`,
+                    }}
+                    hideLegend={true}
+                  />
+                  <View style={styles.chartCenterTextWrapper}>
+                    <Text style={styles.chartCenterPercentage}>{savingsPercentageOverall.toFixed(0)}%</Text>
+                  </View>
+                </View>
+
+                {/* Progress Details */}
+                <View style={{ flex: 1, marginLeft: 16 }}>
+                  <Text style={styles.progressStatus}>Overall Mission Progress</Text>
+                  <View style={styles.missionGoalRow}>
+                    <Text style={styles.missionGoalLabel}>Saved so far:</Text>
+                    <Text style={styles.missionGoalValue}>RM {totalMonthlySaved.toFixed(0)}</Text>
+                  </View>
+                  <View style={styles.missionGoalRow}>
+                    <Text style={styles.missionGoalLabel}>Total Mission:</Text>
+                    <Text style={styles.missionGoalValue}>RM {totalMissionTarget.toFixed(0)}</Text>
+                  </View>
+
+                  <View style={styles.progressBarWrapper}>
+                    <View
+                      style={[
+                        styles.progressBar,
+                        {
+                          width: `${Math.min(savingsPercentageOverall, 100)}%`,
+                          backgroundColor: COLORS.success,
+                        },
+                      ]}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* --- Explicit Targets Breakdown or Completion Indicator --- */}
+              {remainingToSaveTotal <= 0 ? (
+                <View style={styles.completionIndicator}>
+                  <Icon name="award" size={24} color={COLORS.success} style={{ marginRight: 12 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.completionTitle}>Goal Reached!</Text>
+                    <Text style={styles.completionSubtext}>Your future self says thank you! 🐻🏆</Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.targetsContainer}>
+                  <View style={styles.targetRow}>
+                    <View style={styles.targetLabelBox}>
+                      <View style={[styles.targetDot, { backgroundColor: COLORS.success }]} />
+                      <View>
+                        <Text style={styles.targetLabel}>Monthly Target (20%)</Text>
+                        <Text style={styles.targetStatusText}>Based on 50/30/20 rule</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.targetValue}>RM {remainingToSave20Percent.toFixed(2)}</Text>
+                  </View>
+
+                  {hasLeftoverGoal && (
+                    <View style={[styles.targetRow, { marginTop: 12, borderTopWidth: 1, borderTopColor: '#F0F0F0', paddingTop: 12 }]}>
+                      <View style={styles.targetLabelBox}>
+                        <View style={[styles.targetDot, { backgroundColor: COLORS.info }]} />
+                        <View>
+                          <Text style={styles.targetLabel}>Unsaved from Last Month</Text>
+                          <Text style={styles.targetStatusText}>Carry-over balance</Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.targetValue, { color: COLORS.info }]}>RM {remainingToSaveLeftover.toFixed(2)}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+
+            {/* --- Beruang Guide --- */}
+            <View style={styles.adviceCard}>
+              <View style={styles.adviceHeader}>
+                <Icon name="shield" size={16} color={COLORS.accent} />
+                <Text style={styles.adviceTitle}>Why have these targets?</Text>
+              </View>
+              <Text style={styles.adviceText}>
+                Beruang follows the <Text style={{ fontWeight: 'bold' }}>50/30/20 rule</Text>.
+                We automatically allocate 20% of your earnings to savings.
+                If you don't save it by the end of the month, it carries over to keep you disciplined! 🐻💪
+              </Text>
+            </View>
+
+            {/* --- Single "Add to Savings" Button (REMOVED FROM BOTTOM) --- */}
           </View>
 
           {/* Savings Graph */}
@@ -621,35 +705,48 @@ export const SavingsScreen = ({
               <View style={styles.chartContainer}>
                 <LineChart
                   data={{
-                    labels: chartLabels,
+                    labels: chartLabels.length > 6 ? chartLabels.map((l, i) => (i % Math.ceil(chartLabels.length / 5) === 0 ? l : '')) : chartLabels,
                     datasets: [{ data: chartDataPoints }],
                   }}
-                  width={screenWidth - 60}
-                  height={220}
-                  yAxisLabel="RM "
+                  width={screenWidth - 32} // Match container width minus external margins
+                  height={240}
                   yAxisInterval={1}
+                  formatYLabel={(value) => {
+                    const num = Math.round(parseFloat(value));
+                    if (num >= 1000) return `RM ${(num / 1000).toFixed(1)}k`;
+                    return `RM ${num}`;
+                  }}
                   chartConfig={{
                     backgroundColor: COLORS.white,
                     backgroundGradientFrom: COLORS.white,
                     backgroundGradientTo: COLORS.white,
                     decimalPlaces: 0,
-                    color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`, // COLORS.success
-                    labelColor: (opacity = 1) =>
-                      `rgba(102, 90, 72, ${opacity})`, // COLORS.accent
+                    color: (opacity = 1) => COLORS.success,
+                    labelColor: (opacity = 1) => `rgba(102, 90, 72, ${opacity * 0.9})`,
                     propsForDots: {
                       r: '6',
-                      strokeWidth: '2',
-                      stroke: COLORS.success,
-                      fill: COLORS.white,
+                      strokeWidth: '3',
+                      stroke: COLORS.white,
+                      fill: COLORS.success,
                     },
                     propsForBackgroundLines: {
-                      strokeDasharray: '',
-                      stroke: COLORS.lightGray,
-                      strokeWidth: 1,
+                      strokeWidth: 0.8,
+                      stroke: COLORS.primary,
+                      strokeDasharray: '5, 5',
                     },
+                    fillShadowGradient: COLORS.primary,
+                    fillShadowGradientOpacity: 0.2,
                   }}
                   bezier
-                  style={styles.chartStyle}
+                  withInnerLines={true}
+                  withOuterLines={false}
+                  withVerticalLines={false}
+                  withHorizontalLines={true}
+                  style={{
+                    marginVertical: 12,
+                    borderRadius: 24,
+                    paddingRight: 65, // This shifts the chart right to make room for labels on the LEFT!
+                  }}
                 />
               </View>
             ) : (
@@ -687,199 +784,447 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.lightGray,
+    borderBottomColor: '#F0F0F0',
   },
   backButton: {
-    padding: 5,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8F9FA',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.accent,
-  },
-  heroCard: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 15,
-    padding: 25,
-    marginHorizontal: 20,
-    marginTop: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 5,
-  },
-  heroLabel: {
     fontSize: 18,
+    fontWeight: '800',
     color: COLORS.accent,
-    fontWeight: '600',
+    letterSpacing: 0.5,
   },
-  heroAmount: {
-    fontSize: 42,
-    fontWeight: 'bold',
+  cockpitCard: {
+    backgroundColor: COLORS.primary,
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 28,
+    padding: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
+    elevation: 8,
+  },
+  cockpitTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  cockpitLabel: {
+    fontSize: 12,
+    fontWeight: '800',
     color: COLORS.accent,
-    marginTop: 5,
+    textTransform: 'uppercase',
+    opacity: 0.6,
+    letterSpacing: 1,
   },
-  heroWithdrawButton: {
-    marginTop: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+  cockpitAmount: {
+    fontSize: 38,
+    fontWeight: '900',
+    color: COLORS.accent,
+    letterSpacing: -1,
+  },
+  withdrawCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+  },
+  missionSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 18,
+  },
+  missionText: {
+    color: COLORS.accent,
+    fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 8,
+    flex: 1,
+  },
+  primarySaveButton: {
+    backgroundColor: COLORS.accent,
+    height: 58,
     borderRadius: 20,
+    marginTop: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 8,
   },
-  heroWithdrawText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.accent,
+  saveButtonDisabled: {
+    backgroundColor: 'rgba(102, 90, 72, 0.2)',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  primarySaveButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  saveBadge: {
+    backgroundColor: COLORS.success,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginLeft: 12,
+  },
+  saveBadgeText: {
+    color: COLORS.white,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  footerInfo: {
+    fontSize: 10,
+    color: COLORS.darkGray,
+    textAlign: 'center',
+    marginTop: 16,
+    opacity: 0.6,
+    fontStyle: 'italic',
   },
   section: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     marginTop: 20,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: COLORS.accent,
-    marginBottom: 15,
+    letterSpacing: 0.3,
   },
-  summaryCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 15,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  sectionSubtitle: {
+    fontSize: 12,
+    color: COLORS.darkGray,
+    fontWeight: '600',
+    opacity: 0.7,
   },
-  summaryRow: {
+  sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  summaryLabel: {
-    fontSize: 15,
-    color: COLORS.darkGray,
+  badgeContainer: {
+    backgroundColor: COLORS.primary + '30',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  summaryValue: {
-    fontSize: 15,
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '800',
     color: COLORS.accent,
-    fontWeight: '600',
+    textTransform: 'uppercase',
   },
-  progressContainer: {
-    marginVertical: 15,
+  summaryCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 24,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary + '30',
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  progressBarBackground: {
-    height: 10,
+  statsGrid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.darkGray,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.accent,
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
     backgroundColor: COLORS.lightGray,
-    borderRadius: 5,
+    marginHorizontal: 10,
+  },
+  progressSection: {
+    marginBottom: 16,
+  },
+  progressInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginBottom: 10,
+  },
+  progressPercentage: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: COLORS.accent,
+    lineHeight: 36,
+  },
+  progressStatus: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.darkGray,
+    paddingBottom: 4,
+  },
+  progressBarWrapper: {
+    height: 12,
+    backgroundColor: COLORS.lightGray,
+    borderRadius: 6,
     overflow: 'hidden',
   },
   progressBar: {
     height: '100%',
-    borderRadius: 5,
+    borderRadius: 6,
   },
-  progressText: {
-    fontSize: 12,
-    color: COLORS.darkGray,
-    marginTop: 5,
-    textAlign: 'right',
+  targetsContainer: {
+    backgroundColor: '#F8F9FA',
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
-  remainingContainer: {
-    borderTopWidth: 1,
-    borderTopColor: COLORS.lightGray,
-    paddingTop: 15,
-    marginTop: 10,
-  },
-  remainingRow: {
+  targetRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  targetLabelBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  targetDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 10,
+  },
+  targetLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.darkGray,
+  },
+  targetValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.accent,
+  },
+  completionIndicator: {
+    backgroundColor: 'rgba(76, 175, 80, 0.08)',
+    padding: 20,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(76, 175, 80, 0.2)',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  completionIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(76, 175, 80, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  completionTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: COLORS.success,
+    letterSpacing: 0.3,
+  },
+  completionSubtext: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#444',
+    marginTop: 2,
+    lineHeight: 18,
+  },
+  targetStatusText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.darkGray,
+    opacity: 0.6,
+  },
+  adviceCard: {
+    backgroundColor: '#FAF7F2', // Warm light brown/cream
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1.2,
+    borderColor: COLORS.accent + '20',
+  },
+  chartAndProgressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  chartCircleWrapper: {
+    position: 'relative',
+    width: 100,
+    height: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chartCenterTextWrapper: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chartCenterPercentage: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: COLORS.success,
+  },
+  missionGoalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  missionGoalLabel: {
+    fontSize: 11,
+    color: COLORS.darkGray,
+    fontWeight: '600',
+  },
+  missionGoalValue: {
+    fontSize: 11,
+    color: COLORS.accent,
+    fontWeight: '800',
+  },
+  adviceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 8,
   },
-  remainingLabel: {
-    fontSize: 16,
-    fontWeight: '600',
+  adviceTitle: {
+    fontSize: 14,
+    fontWeight: '800',
     color: COLORS.accent,
+    marginLeft: 8,
   },
-  remainingValue: {
-    fontSize: 16,
+  adviceText: {
+    fontSize: 12,
     color: COLORS.accent,
-    fontWeight: '600',
+    lineHeight: 18,
+    opacity: 0.9,
   },
   addButton: {
-    borderRadius: 10,
-    paddingVertical: 14,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 15,
-    flexDirection: 'row',
-    shadowOffset: { width: 0, height: 2 },
+    backgroundColor: COLORS.accent,
+    height: 60,
+    borderRadius: 30,
+    marginTop: 20,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  addButtonDisabled: {
-    opacity: 0.5,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  disabledButtonText: {
-    textAlign: 'center',
-    color: COLORS.darkGray,
-    fontSize: 12,
-    marginTop: 5,
+    shadowRadius: 10,
+    elevation: 5,
   },
   addButtonText: {
-    fontSize: 15,
     color: COLORS.white,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  addButtonDisabled: {
+    backgroundColor: COLORS.darkGray,
+    shadowOpacity: 0,
+    elevation: 0,
+    opacity: 0.5,
+  },
+  disabledButtonText: {
+    fontSize: 12,
+    color: COLORS.darkGray,
+    textAlign: 'center',
+    marginTop: 10,
+    fontWeight: '600',
   },
   chartContainer: {
     backgroundColor: COLORS.white,
-    borderRadius: 15,
+    borderRadius: 32,
     paddingVertical: 20,
-    paddingHorizontal: 10,
+    marginTop: 10,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary + '30',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    marginHorizontal: 16,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 16,
+    elevation: 8,
   },
   chartStyle: {
-    borderRadius: 10,
+    borderRadius: 16,
+    paddingRight: 40,
   },
   noDataCard: {
     backgroundColor: COLORS.white,
-    borderRadius: 15,
+    borderRadius: 32,
     padding: 40,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 2,
+    borderColor: COLORS.lightGray,
+    borderStyle: 'dashed',
   },
   noDataText: {
-    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '800',
     color: COLORS.accent,
-    fontSize: 16,
-    fontWeight: '600',
     marginTop: 15,
   },
   noDataSubtext: {
-    textAlign: 'center',
-    color: COLORS.darkGray,
     fontSize: 14,
+    color: COLORS.darkGray,
+    textAlign: 'center',
     marginTop: 5,
+    fontWeight: '500',
   },
 });
 
@@ -887,123 +1232,144 @@ const styles = StyleSheet.create({
 const modalStyles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(102, 90, 72, 0.4)', // Accent color overlay
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   container: {
     backgroundColor: COLORS.white,
-    borderRadius: 20,
-    padding: 25,
+    borderRadius: 32,
+    padding: 24,
     width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.25,
+    shadowRadius: 25,
     elevation: 10,
   },
   title: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '900',
     color: COLORS.accent,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.accent,
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.darkGray,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
     marginBottom: 8,
-    marginTop: 10,
+    marginTop: 16,
   },
   input: {
-    backgroundColor: COLORS.lightGray,
-    borderRadius: 10,
-    padding: 12,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    height: 56,
     fontSize: 16,
     color: COLORS.accent,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
+    fontWeight: '700',
+    borderWidth: 1.5,
+    borderColor: '#F0F0F0',
   },
   balanceInfo: {
     fontSize: 12,
     color: COLORS.darkGray,
     textAlign: 'left',
-    marginTop: 5,
+    marginTop: 6,
+    fontWeight: '600',
   },
   errorText: {
     color: COLORS.danger,
     fontSize: 13,
-    marginTop: 10,
+    marginTop: 12,
     textAlign: 'center',
+    fontWeight: '600',
   },
   toggleContainer: {
     flexDirection: 'row',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    overflow: 'hidden',
+    borderRadius: 16,
+    backgroundColor: '#F8F9FA',
+    padding: 4,
+    borderWidth: 1.5,
+    borderColor: '#F0F0F0',
   },
   toggleButton: {
     flex: 1,
-    padding: 12,
+    paddingVertical: 12,
     alignItems: 'center',
-    backgroundColor: COLORS.white,
+    borderRadius: 12,
   },
   toggleActive: {
-    backgroundColor: COLORS.accent,
+    backgroundColor: COLORS.white,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   toggleText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.accent,
+    fontWeight: '800',
+    color: COLORS.darkGray,
   },
   toggleTextActive: {
-    color: COLORS.white,
+    color: COLORS.accent,
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 25,
+    marginTop: 32,
+    gap: 12,
   },
   button: {
-    padding: 14,
-    borderRadius: 10,
+    paddingVertical: 16,
+    borderRadius: 20,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   cancelButton: {
-    backgroundColor: COLORS.lightGray,
-    marginRight: 10,
+    backgroundColor: '#F8F9FA',
+    flex: 1,
   },
   cancelButtonText: {
     color: COLORS.accent,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
   confirmButton: {
-    backgroundColor: COLORS.success,
-    marginLeft: 10,
+    backgroundColor: COLORS.accent,
+    flex: 1,
   },
   buttonText: {
     color: COLORS.white,
-    fontWeight: 'bold',
+    fontWeight: '900',
     fontSize: 15,
   },
   optionButton: {
-    borderRadius: 10,
-    padding: 15,
+    borderRadius: 20,
+    padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 12,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   optionTitle: {
-    fontSize: 15,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '800',
     color: COLORS.white,
   },
   optionSubtitle: {
     fontSize: 12,
     color: COLORS.white,
-    opacity: 0.9,
+    opacity: 0.85,
+    fontWeight: '500',
+    marginTop: 2,
   },
 });
