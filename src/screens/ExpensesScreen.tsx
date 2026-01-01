@@ -19,6 +19,7 @@ import {
   ActivityIndicator,
   LayoutAnimation,
   UIManager,
+  RefreshControl,
 } from 'react-native';
 
 // Enable LayoutAnimation for Android
@@ -41,6 +42,8 @@ type ExpensesScreenProps = {
   onAskAI: (message: string) => void;
   onUpdateTransaction: (transactionId: string, updatedData: Partial<Transaction>) => Promise<void>;
   onDeleteTransaction: (transactionId: string) => Promise<void>;
+  refreshing: boolean;
+  onRefresh: () => void;
 };
 
 type SortOption = 'dateDesc' | 'dateAsc' | 'amountHigh' | 'amountLow';
@@ -93,6 +96,8 @@ export const ExpensesScreen = ({
   onAskAI,
   onUpdateTransaction,
   onDeleteTransaction,
+  refreshing,
+  onRefresh,
 }: ExpensesScreenProps) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [activeTab, setActiveTab] = useState('latest');
@@ -136,7 +141,15 @@ export const ExpensesScreen = ({
     const txDate = new Date(t.date);
     const txMonth = txDate.getMonth() + 1;
     const txYear = txDate.getFullYear();
-    return txMonth === selectedMonth && txYear === currentYear;
+
+    // Logic: If selectedMonth is Dec (12) and current actual month is Jan (1),
+    // we should look for Dec in (currentYear - 1).
+    let targetYear = currentYear;
+    if (selectedMonth > currentDate.getMonth() + 1 && currentDate.getMonth() === 0 && selectedMonth >= 10) {
+      targetYear = currentYear - 1;
+    }
+
+    return txMonth === selectedMonth && txYear === targetYear;
   });
 
   // --- SORTING LOGIC ---
@@ -560,7 +573,17 @@ export const ExpensesScreen = ({
           <Text style={expensesStyles.headerTitle}>Expenses</Text>
           <View style={{ width: 24 }} />
         </View>
-        <ScrollView contentContainerStyle={expensesStyles.scrollContainer}>
+        <ScrollView
+          contentContainerStyle={expensesStyles.scrollContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[COLORS.accent]}
+              tintColor={COLORS.accent}
+            />
+          }
+        >
           {/* Month Tabs */}
           <View style={expensesStyles.monthTabs}>
             {months.map((month, index) => (

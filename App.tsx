@@ -1,7 +1,7 @@
 // App.tsx
 import 'react-native-gesture-handler'; // MUST BE THE VERY FIRST LINE
 import React, { useState, useEffect, useRef } from 'react';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, RefreshControl } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -32,6 +32,7 @@ import {
   orderBy,
   deleteDoc,
   getDocs,
+  where,
 } from 'firebase/firestore';
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -197,6 +198,7 @@ export default function App() {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [currentChatMessages, setCurrentChatMessages] = useState<Message[]>([]);
   const [streamingResponse, setStreamingResponse] = useState<string>('');
+  const [refreshing, setRefreshing] = useState(false);
 
   // --- NEW: Monthly Budgets State ---
   const [monthlyBudgets, setMonthlyBudgets] = useState<{ [key: string]: MonthlyBudget }>({});
@@ -395,7 +397,13 @@ export default function App() {
         setPendingBalance(leftover);
         setShowBalanceModal(true);
       } else {
-        updateLastCheckedMonth(currentMonthKey);
+        const userId = getUserId();
+        if (userId) {
+          // If no leftover, we still just update the last checked month
+          updateDoc(doc(db, 'users', userId), {
+            lastCheckedMonth: currentMonthKey
+          });
+        }
       }
     }
   };
@@ -605,7 +613,6 @@ export default function App() {
         batch.update(profileRef, {
           lastCheckedMonth: currentMonthKey,
         });
-
       } else {
         batch.set(doc(transRef), {
           ...transactionData,
@@ -614,7 +621,6 @@ export default function App() {
         });
 
         batch.update(profileRef, {
-          allocatedSavingsTarget: (userProfile?.allocatedSavingsTarget || 0) + pendingBalance,
           lastCheckedMonth: currentMonthKey,
         });
       }
@@ -630,6 +636,59 @@ export default function App() {
     } catch (e) {
       console.error('Error allocating balance: ', e);
       showMessage('Error allocating balance.');
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    if (userProfile && transactions.length > 0) {
+      checkLeftoverBalance(userProfile, transactions);
+      await syncMonthlyBudget();
+    }
+    // UX feedback delay
+    setTimeout(() => setRefreshing(false), 800);
+  };
+
+  const handleResetMonth = async () => {
+    const userId = getUserId();
+    if (!userId) return;
+
+    try {
+      const currentMonthKey = getMonthKey(new Date().toISOString());
+      const lastMonthDate = new Date();
+      lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
+      const lastMonthKey = getMonthKey(lastMonthDate.toISOString());
+
+      // 1. Revert lastCheckedMonth
+      await updateDoc(doc(db, 'users', userId), {
+        lastCheckedMonth: lastMonthKey
+      });
+
+      // 2. Find and Delete Carried Over transaction for Jan 2026
+      const transRef = collection(db, 'users', userId, 'transactions');
+      const q = query(
+        transRef,
+        where('subCategory', '==', 'Carried Over')
+      );
+
+      const querySnapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      const today = new Date();
+      const currentMonthStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.date >= currentMonthStart) {
+          batch.delete(doc.ref);
+        }
+      });
+      await batch.commit();
+
+      showMessage('State reset. Restart the app or refresh to see the modal!');
+      // Force local state update if needed, but Firebase listeners usually handle it.
+    } catch (e) {
+      console.error('Error resetting month: ', e);
+      showMessage('Error resetting month.');
     }
   };
 
@@ -1275,9 +1334,9 @@ export default function App() {
                     userName={userProfile?.name || 'User'}
                     userAvatar={userProfile?.avatar || 'bear'}
                     userXP={userProfile?.totalXP || 0}
-                    allocatedSavingsTarget={
-                      userProfile?.allocatedSavingsTarget || 0
-                    }
+                    onResetMonth={handleResetMonth}
+                    refreshing={refreshing}
+                    onRefresh={handleRefresh}
                   />
                 )}
               </Stack.Screen>
@@ -1356,6 +1415,8 @@ export default function App() {
                     }}
                     onUpdateTransaction={handleUpdateTransaction}
                     onDeleteTransaction={handleDeleteTransaction}
+                    refreshing={refreshing}
+                    onRefresh={handleRefresh}
                   />
                 )}
               </Stack.Screen>
@@ -1365,9 +1426,8 @@ export default function App() {
                     onBack={() => navigation.goBack()}
                     transactions={transactions}
                     onAddTransaction={(tx) => handleAddTransaction(tx)}
-                    allocatedSavingsTarget={
-                      userProfile?.allocatedSavingsTarget || 0
-                    }
+                    refreshing={refreshing}
+                    onRefresh={handleRefresh}
                   />
                 )}
               </Stack.Screen>

@@ -11,18 +11,20 @@ import {
   StatusBar,
   Modal,
   TextInput,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import { LineChart } from 'react-native-chart-kit';
 import { COLORS } from '../constants/colors';
-import { calculateSavingsProgress } from '../utils/financeUtils';
+import { calculateSavingsProgress, calculateMonthlyStats } from '../utils/financeUtils';
 
 type SavingsScreenProps = {
   onBack: () => void;
   transactions: Array<any>;
   onAddTransaction: (transaction: any | any[]) => void;
-  allocatedSavingsTarget: number;
+  refreshing: boolean;
+  onRefresh: () => void;
 };
 
 // --- MODAL COMPONENTS ---
@@ -76,7 +78,7 @@ const SaveModal: React.FC<SaveModalProps> = ({
         maxAmount = Math.min(monthlyBalance, remainingToSaveLeftover);
         label = 'Available for Leftover Goal:';
       }
-      
+
       const finalAmount = Math.max(0, maxAmount);
       setCurrentMaxAmount(finalAmount);
       setBalanceLabel(label);
@@ -183,14 +185,14 @@ const SaveModal: React.FC<SaveModalProps> = ({
               </TouchableOpacity>
             )}
           </View>
-          
+
           {error ? <Text style={modalStyles.errorText}>{error}</Text> : null}
 
           <View style={modalStyles.buttonRow}>
-            <TouchableOpacity style={[modalStyles.button, modalStyles.cancelButton, {flex: 1}]} onPress={handleClose}>
+            <TouchableOpacity style={[modalStyles.button, modalStyles.cancelButton, { flex: 1 }]} onPress={handleClose}>
               <Text style={[modalStyles.buttonText, modalStyles.cancelButtonText]}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[modalStyles.button, modalStyles.confirmButton, {flex: 1}]} onPress={handleSubmit}>
+            <TouchableOpacity style={[modalStyles.button, modalStyles.confirmButton, { flex: 1 }]} onPress={handleSubmit}>
               <Text style={modalStyles.buttonText}>Confirm</Text>
             </TouchableOpacity>
           </View>
@@ -276,24 +278,24 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({
           {error ? <Text style={modalStyles.errorText}>{error}</Text> : null}
 
           <Text style={modalStyles.label}>Withdrawal Option</Text>
-          
-          <TouchableOpacity style={[modalStyles.optionButton, {backgroundColor: COLORS.info}]} onPress={() => handleSubmit('budget')}>
-            <Icon name="arrow-right-circle" size={20} color={COLORS.white} style={{marginRight: 10}}/>
+
+          <TouchableOpacity style={[modalStyles.optionButton, { backgroundColor: COLORS.info }]} onPress={() => handleSubmit('budget')}>
+            <Icon name="arrow-right-circle" size={20} color={COLORS.white} style={{ marginRight: 10 }} />
             <View>
               <Text style={modalStyles.optionTitle}>Move to Budget</Text>
               <Text style={modalStyles.optionSubtitle}>Adds to monthly income (50/30/20 rule)</Text>
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[modalStyles.optionButton, {backgroundColor: COLORS.danger}]} onPress={() => handleSubmit('emergency')}>
-            <Icon name="alert-triangle" size={20} color={COLORS.white} style={{marginRight: 10}}/>
+          <TouchableOpacity style={[modalStyles.optionButton, { backgroundColor: COLORS.danger }]} onPress={() => handleSubmit('emergency')}>
+            <Icon name="alert-triangle" size={20} color={COLORS.white} style={{ marginRight: 10 }} />
             <View>
               <Text style={modalStyles.optionTitle}>Emergency Withdraw</Text>
               <Text style={modalStyles.optionSubtitle}>Removes money from savings permanently</Text>
             </View>
           </TouchableOpacity>
-          
-          <TouchableOpacity style={[modalStyles.button, modalStyles.cancelButton, {marginTop: 20, marginRight: 0}]} onPress={handleClose}>
+
+          <TouchableOpacity style={[modalStyles.button, modalStyles.cancelButton, { marginTop: 20, marginRight: 0 }]} onPress={handleClose}>
             <Text style={[modalStyles.buttonText, modalStyles.cancelButtonText]}>Cancel</Text>
           </TouchableOpacity>
         </View>
@@ -308,15 +310,17 @@ export const SavingsScreen = ({
   onBack,
   transactions,
   onAddTransaction,
-  allocatedSavingsTarget,
+  refreshing,
+  onRefresh,
 }: SavingsScreenProps) => {
   // --- STATE ---
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
 
   // --- CALCULATIONS USING FINANCE UTILS ---
-  const savingsData = calculateSavingsProgress(transactions, { allocatedSavingsTarget });
-  
+  const savingsData = calculateSavingsProgress(transactions);
+  const { target: derivedTarget } = calculateMonthlyStats(transactions).budget.leftover;
+
   const {
     monthlyIncome,
     targetSavings20Percent,
@@ -330,7 +334,7 @@ export const SavingsScreen = ({
     monthlyBalance,
   } = savingsData;
 
-  const hasLeftoverGoal = allocatedSavingsTarget > 0;
+  const hasLeftoverGoal = derivedTarget > 0;
 
   // --- Chart Data ---
   const allSavingsTransactions = transactions.filter(
@@ -343,10 +347,10 @@ export const SavingsScreen = ({
 
   let cumulativeTotal = 0;
   const cumulativeChartData = sortedSavingsTx.map(t => {
-      cumulativeTotal += t.amount;
-      return cumulativeTotal;
+    cumulativeTotal += t.amount;
+    return cumulativeTotal;
   });
-  
+
   const getMonthKey = (dateStr: string) => {
     const d = new Date(dateStr);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -361,7 +365,7 @@ export const SavingsScreen = ({
 
   const chartDataPoints = chartLabels.map(label => {
     let lastCumulativeAmount = 0;
-    for(let i = sortedSavingsTx.length - 1; i >= 0; i--) {
+    for (let i = sortedSavingsTx.length - 1; i >= 0; i--) {
       const t = sortedSavingsTx[i];
       const tLabel = `${parseInt(getMonthKey(t.date).split('-')[1], 10)}/${getMonthKey(t.date).split('-')[0].slice(2)}`;
       if (tLabel === label) {
@@ -424,9 +428,9 @@ export const SavingsScreen = ({
         category: 'savings',
         subCategory: 'Withdrawal',
       };
-      
-      onAddTransaction([incomeTx, expenseTx]); 
-      
+
+      onAddTransaction([incomeTx, expenseTx]);
+
       Alert.alert(
         'Transfer Complete',
         `RM ${positiveAmount.toFixed(2)} has been moved from Savings to your Budget.`
@@ -490,6 +494,14 @@ export const SavingsScreen = ({
           style={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 40 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[COLORS.accent]}
+              tintColor={COLORS.accent}
+            />
+          }
         >
           {/* Hero Card (Primary color) */}
           <View style={styles.heroCard}>
@@ -527,7 +539,7 @@ export const SavingsScreen = ({
                     Leftover Balance Target:
                   </Text>
                   <Text style={[styles.summaryValue, { color: COLORS.info }]}>
-                    RM {allocatedSavingsTarget.toFixed(2)}
+                    RM {derivedTarget.toFixed(2)}
                   </Text>
                 </View>
               )}

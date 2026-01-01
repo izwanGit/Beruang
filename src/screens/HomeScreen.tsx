@@ -9,6 +9,7 @@ import {
   StatusBar,
   Alert,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
@@ -48,7 +49,9 @@ type HomeScreenProps = {
   userName: string;
   userAvatar: string;
   userXP: number;
-  allocatedSavingsTarget: number;
+  onResetMonth: () => void;
+  refreshing: boolean;
+  onRefresh: () => void;
 };
 
 export const HomeScreen = ({
@@ -57,10 +60,12 @@ export const HomeScreen = ({
   userName,
   userAvatar,
   userXP,
-  allocatedSavingsTarget,
+  onResetMonth,
+  refreshing,
+  onRefresh,
 }: HomeScreenProps) => {
   // Calculate all budget data using financeUtils
-  const budgetData = calculateMonthlyStats(transactions, { allocatedSavingsTarget });
+  const budgetData = calculateMonthlyStats(transactions);
 
   const {
     income,
@@ -139,12 +144,31 @@ export const HomeScreen = ({
   return (
     <View style={homeStyles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.accent} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.accent]} // Android
+            tintColor={COLORS.accent} // iOS
+          />
+        }
+      >
         {/* --- Header --- */}
         <View style={homeStyles.header}>
           <View>
             <Text style={homeStyles.greeting}>Hello, {userName}!</Text>
-            <Text style={homeStyles.headerDate}>Welcome back to Beruang</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={homeStyles.headerDate}>Welcome back to Beruang</Text>
+              <TouchableOpacity
+                onPress={onResetMonth}
+                style={{ marginLeft: 10, backgroundColor: 'rgba(255,255,255,0.2)', padding: 4, borderRadius: 4 }}
+              >
+                <Text style={{ fontSize: 10, color: COLORS.white }}>Retest Allocation</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           <TouchableOpacity
             style={homeStyles.avatarContainer}

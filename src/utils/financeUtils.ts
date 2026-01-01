@@ -5,7 +5,7 @@ export const getMonthKey = (dateStr: string) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
 
-export const calculateMonthlyStats = (transactions: any[], userProfile: any) => {
+export const calculateMonthlyStats = (transactions: any[], userProfile?: any) => {
   const currentDate = new Date();
   const currentMonthKey = getMonthKey(currentDate.toISOString().split('T')[0]);
 
@@ -13,7 +13,7 @@ export const calculateMonthlyStats = (transactions: any[], userProfile: any) => 
   const allMonthlyIncomeTrans = transactions.filter(
     (t) => t.type === 'income' && getMonthKey(t.date) === currentMonthKey
   );
-  
+
   const freshMonthlyIncome = allMonthlyIncomeTrans
     .filter((t) => !t.isCarriedOver)
     .reduce((sum, t) => sum + t.amount, 0);
@@ -35,7 +35,11 @@ export const calculateMonthlyStats = (transactions: any[], userProfile: any) => 
 
   // --- 3. Savings (Targets vs Realized) ---
   const savingsTarget20 = freshMonthlyIncome * 0.2;
-  const leftoverTarget = userProfile?.allocatedSavingsTarget || 0;
+
+  // Deriving leftoverTarget from transactions instead of profile
+  const leftoverTarget = allMonthlyIncomeTrans
+    .filter((t) => t.isCarriedOver)
+    .reduce((sum, t) => sum + t.amount, 0);
 
   const monthlySaved20Realized = monthlyExpenses
     .filter((t) => t.category === 'savings' && t.name === 'Monthly Savings')
@@ -62,7 +66,7 @@ export const calculateMonthlyStats = (transactions: any[], userProfile: any) => 
   // Calculate Pending Savings
   const pendingLeftoverSave = Math.max(0, leftoverTarget - monthlySavedLeftoverRealized);
   const pending20Save = Math.max(0, savingsTarget20 - monthlySaved20Realized);
-  
+
   const displayBalance = currentWalletBalance - pendingLeftoverSave;
 
   return {
@@ -72,27 +76,27 @@ export const calculateMonthlyStats = (transactions: any[], userProfile: any) => 
       total: totalMonthlyIncome
     },
     budget: {
-      needs: { 
-        target: needsTarget, 
-        spent: needsSpent, 
+      needs: {
+        target: needsTarget,
+        spent: needsSpent,
         remaining: needsTarget - needsSpent,
         percentage: needsTarget > 0 ? (needsSpent / needsTarget) * 100 : 0
       },
-      wants: { 
-        target: wantsTarget, 
-        spent: wantsSpent, 
+      wants: {
+        target: wantsTarget,
+        spent: wantsSpent,
         remaining: wantsTarget - wantsSpent,
         percentage: wantsTarget > 0 ? (wantsSpent / wantsTarget) * 100 : 0
       },
-      savings20: { 
-        target: savingsTarget20, 
-        saved: monthlySaved20Realized, 
+      savings20: {
+        target: savingsTarget20,
+        saved: monthlySaved20Realized,
         pending: pending20Save,
         percentage: savingsTarget20 > 0 ? (monthlySaved20Realized / savingsTarget20) * 100 : 0
       },
-      leftover: { 
-        target: leftoverTarget, 
-        saved: monthlySavedLeftoverRealized, 
+      leftover: {
+        target: leftoverTarget,
+        saved: monthlySavedLeftoverRealized,
         pending: pendingLeftoverSave,
         percentage: leftoverTarget > 0 ? (monthlySavedLeftoverRealized / leftoverTarget) * 100 : 0
       }
@@ -112,7 +116,7 @@ export const calculateMonthlyStats = (transactions: any[], userProfile: any) => 
 // NEW FUNCTION: Format budget data for RAG context
 export const formatBudgetForRAG = (budgetData: any) => {
   if (!budgetData) return '';
-  
+
   return `
 --- CURRENT MONTH BUDGET BREAKDOWN (50/30/20) ---
 Month: ${budgetData.month}
@@ -150,9 +154,9 @@ TOTALS:
 };
 
 // NEW FUNCTION: Calculate savings progress for SavingsScreen
-export const calculateSavingsProgress = (transactions: any[], userProfile: any) => {
+export const calculateSavingsProgress = (transactions: any[], userProfile?: any) => {
   const budgetData = calculateMonthlyStats(transactions, userProfile);
-  
+
   return {
     monthlyIncome: budgetData.income.fresh,
     targetSavings20Percent: budgetData.budget.savings20.target,
@@ -163,6 +167,6 @@ export const calculateSavingsProgress = (transactions: any[], userProfile: any) 
     remainingToSave20Percent: budgetData.budget.savings20.pending,
     remainingToSaveLeftover: budgetData.budget.leftover.pending,
     savingsPercentage20: budgetData.budget.savings20.percentage,
-    monthlyBalance: budgetData.totals.walletBalance - budgetData.budget.leftover.pending
+    monthlyBalance: budgetData.totals.walletBalance
   };
 };
