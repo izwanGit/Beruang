@@ -942,10 +942,11 @@ export default function App() {
       xhr.onerror = () => reject(new Error('Network error'));
       xhr.ontimeout = () => reject(new Error('Timeout'));
 
-      // Send payload WITH BUDGET CONTEXT
+      // Send payload WITH BUDGET CONTEXT AND TRANSACTIONS
       xhr.send(JSON.stringify({
         message: text,
         history: historyForServer,
+        transactions: transactions.slice(0, 20),
         userProfile: userProfile,
         budgetContext: budgetContext,
       }));
@@ -1065,6 +1066,7 @@ export default function App() {
         body: JSON.stringify({
           message: newText,
           history: historyForServer,
+          transactions: transactions.slice(0, 20),
           userProfile: userProfile,
           budgetContext: budgetContext,
         }),
