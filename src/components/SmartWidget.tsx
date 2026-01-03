@@ -31,6 +31,7 @@ export const SmartWidget: React.FC<SmartWidgetProps> = ({ dataString }) => {
 
     try {
         data = JSON.parse(dataString);
+        console.log('📊 Widget parsed:', JSON.stringify(data, null, 2));
     } catch (e) {
         console.warn('Malformed widget data:', dataString);
         return null; // Fallback to nothing if JSON is broken
