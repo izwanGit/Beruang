@@ -135,7 +135,7 @@ export const AddMoneyScreen = ({
   return (
     <View style={addMoneyStyles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-      <SafeAreaView style={addMoneyStyles.safeArea} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={addMoneyStyles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
         {/* --- Standardized Header --- */}
         <View style={addMoneyStyles.header}>
           <TouchableOpacity onPress={onBack} style={addMoneyStyles.backButton}>
@@ -264,9 +264,10 @@ export const AddMoneyScreen = ({
 const addMoneyStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: COLORS.white,
   },
   safeArea: {
+    flex: 1,
     backgroundColor: COLORS.white,
   },
   header: {

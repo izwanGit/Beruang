@@ -90,7 +90,7 @@ export const AddTransactionScreen = ({
   return (
     <View style={addTransactionStyles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-      <SafeAreaView style={addTransactionStyles.safeArea} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={addTransactionStyles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
         {/* --- Standardized Header --- */}
         <View style={addTransactionStyles.header}>
           <TouchableOpacity onPress={onBack} style={addTransactionStyles.backButton}>
@@ -264,9 +264,10 @@ export const AddTransactionScreen = ({
 const addTransactionStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: COLORS.white,
   },
   safeArea: {
+    flex: 1,
     backgroundColor: COLORS.white,
   },
   header: {

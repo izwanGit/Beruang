@@ -104,6 +104,7 @@ export type Advice = {
   date: string;
   chatId: string;
   messageId: string;
+  createdAt: any;
 };
 
 export type User = {
@@ -1146,6 +1147,7 @@ export default function App() {
         }),
         chatId: chatId,
         messageId: messageId,
+        createdAt: serverTimestamp(),
       });
       showMessage('Advice saved.');
     } catch (e) {

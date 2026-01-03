@@ -16,6 +16,7 @@ import Icon from 'react-native-vector-icons/Feather';
 import { Advice } from '../../App';
 import { COLORS } from '../constants/colors';
 import Markdown from 'react-native-markdown-display';
+import { SmartWidget } from '../components/SmartWidget';
 
 const { width } = Dimensions.get('window');
 
@@ -59,7 +60,7 @@ const AdviceCard = ({
       </View>
 
       <View style={cardStyles.contentWrapper}>
-        <Markdown style={markdownStyles}>{advice.text}</Markdown>
+        {renderMessageContent(advice.text)}
       </View>
 
       <View style={cardStyles.footer}>
@@ -72,6 +73,45 @@ const AdviceCard = ({
           <Icon name="external-link" size={12} color={COLORS.accent} />
         </TouchableOpacity>
       </View>
+    </View>
+  );
+};
+
+const renderMessageContent = (text: string) => {
+  const widgetRegex = /\[WIDGET_DATA\]([\s\S]*?)\[\/WIDGET_DATA\]/g;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = widgetRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({ type: 'text', content: text.substring(lastIndex, match.index) });
+    }
+    parts.push({ type: 'widget', content: match[1].trim() });
+    lastIndex = widgetRegex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push({ type: 'text', content: text.substring(lastIndex) });
+  }
+
+  if (parts.length === 0) {
+    return <Markdown style={markdownStyles}>{text}</Markdown>;
+  }
+
+  return (
+    <View>
+      {parts.map((part, index) => (
+        part.type === 'widget' ? (
+          <SmartWidget key={`widget-${index}`} dataString={part.content} />
+        ) : (
+          part.content.trim() !== '' && (
+            <Markdown key={`text-${index}`} style={markdownStyles}>
+              {part.content}
+            </Markdown>
+          )
+        )
+      ))}
     </View>
   );
 };
@@ -92,7 +132,12 @@ export const SavedAdviceScreen = ({
       result = result.filter(a => a.text.toLowerCase().includes(q) || a.date.toLowerCase().includes(q));
     }
 
-    return result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return result.sort((a, b) => {
+      // Use Firestore timestamp or fallback to date string comparison
+      const dateA = a.createdAt?.seconds ? a.createdAt.seconds : (a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.date).getTime());
+      const dateB = b.createdAt?.seconds ? b.createdAt.seconds : (b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.date).getTime());
+      return dateB - dateA;
+    });
   }, [savedAdvices, searchQuery]);
 
   return (
@@ -170,7 +215,7 @@ export const SavedAdviceScreen = ({
           </View>
         </ScrollView>
       </SafeAreaView>
-    </View>
+    </View >
   );
 };
 
