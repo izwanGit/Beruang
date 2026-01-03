@@ -4,9 +4,10 @@ import { COLORS } from '../constants/colors';
 import { SpendingSummaryWidget } from './widgets/SpendingSummaryWidget';
 import { ItineraryWidget } from './widgets/ItineraryWidget';
 import { GoalProgressWidget } from './widgets/GoalProgressWidget';
+import { DailyTransactionsWidget } from './widgets/DailyTransactionsWidget';
 
 export type WidgetData = {
-    t: 's' | 'i' | 'g';
+    t: 's' | 'i' | 'g' | 'd';
     [key: string]: any;
 };
 
@@ -58,7 +59,8 @@ export const SmartWidget: React.FC<SmartWidgetProps> = ({ dataString }) => {
             {data.t === 's' && <SpendingSummaryWidget data={data} />}
             {data.t === 'i' && <ItineraryWidget data={data} />}
             {data.t === 'g' && <GoalProgressWidget data={data} />}
-            {!['s', 'i', 'g'].includes(data.t) && (
+            {data.t === 'd' && <DailyTransactionsWidget data={data} />}
+            {!['s', 'i', 'g', 'd'].includes(data.t) && (
                 <View style={styles.errorState}>
                     <Text style={styles.errorText}>Invalid Widget Type</Text>
                 </View>
