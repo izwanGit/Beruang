@@ -29,12 +29,14 @@ type AddTransactionScreenProps = {
   onBack: () => void;
   showMessage: (message: string) => void;
   onAddTransaction: (transaction: any) => void;
+  canAccommodateBudget?: (amount: number, category: 'needs' | 'wants') => boolean;
 };
 
 export const AddTransactionScreen = ({
   onBack,
   showMessage,
   onAddTransaction,
+  canAccommodateBudget,
 }: AddTransactionScreenProps) => {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -172,6 +174,12 @@ export const AddTransactionScreen = ({
 
     try {
       const result = await categorizeTransaction(description);
+
+      // PRE-CHECK: Validate budget can accommodate this transaction
+      if (canAccommodateBudget && !canAccommodateBudget(amountNum, result.category as 'needs' | 'wants')) {
+        setIsLoading(false);
+        return; // Modal will be shown by App.tsx
+      }
 
       const newTransaction = {
         icon: 'shopping-cart',

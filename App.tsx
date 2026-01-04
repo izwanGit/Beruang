@@ -51,6 +51,7 @@ import { ChatbotScreen } from './src/screens/ChatbotScreen';
 import { ExpensesScreen } from './src/screens/ExpensesScreen';
 import { SavingsScreen } from './src/screens/SavingsScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
+import { BudgetExceededModal } from './src/components/BudgetExceededModal';
 
 // Import finance utilities
 import {
@@ -191,6 +192,13 @@ export default function App() {
   const [showBalanceModal, setShowBalanceModal] = useState(false);
   const [showInitialBalanceModal, setShowInitialBalanceModal] = useState(false);
   const [pendingBalance, setPendingBalance] = useState(0);
+  const [showBudgetExceededModal, setShowBudgetExceededModal] = useState(false);
+  const [budgetExceededInfo, setBudgetExceededInfo] = useState({
+    needsRemaining: 0,
+    wantsRemaining: 0,
+    savingsUnsaved: 0,
+    transactionAmount: 0,
+  });
 
   // --- Auth & Data State ---
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -481,7 +489,7 @@ export default function App() {
     const userId = getUserId();
     if (!userId || !userProfile || transactions.length === 0 || isRebalancing.current) return false;
 
-    const { needs, wants } = stats.budget;
+    const { needs, wants, savings20 } = stats.budget;
     const currentMonthKey = stats.month;
 
     // Filter current month expenses
@@ -584,7 +592,51 @@ export default function App() {
         }
       }
     }
+    // RULE 3: Both Needs & Wants full, but Savings 20% not fully saved yet
+    // This allows the overflow to "eat into" the unsaved savings budget
+    else if (needs.remaining <= 0.01 && wants.remaining <= 0.01 && savings20.pending > 0.01) {
+      // Find the latest expense that caused the overflow
+      const latestExpense = currentMonthExpenses
+        .filter(t => t.category === 'needs' || t.category === 'wants')
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+      if (latestExpense) {
+        const excess = Math.abs(needs.remaining) + Math.abs(wants.remaining);
+        if (excess <= savings20.pending) {
+          // Allow but warn - the savings budget absorbs the overflow
+          handleAwardXP(XP_REWARDS.OVERSPENDING_PENALTY * 2); // Double penalty
+          showMessage("⚠️ Emergency: Both Needs & Wants are full! Using your unsaved Savings budget. Double XP penalty applied! 🐻");
+          return false; // Don't rebalance, just warn
+        }
+      }
+    }
     return false;
+  };
+
+  // --- NEW FUNCTION: Check if budget can accommodate transaction ---
+  const canAccommodateTransaction = (amount: number, category: 'needs' | 'wants'): boolean => {
+    const stats = calculateMonthlyStats(transactions, userProfile);
+    const { needs, wants, savings20 } = stats.budget;
+
+    // Calculate total available budget
+    const needsAvailable = Math.max(0, needs.remaining);
+    const wantsAvailable = Math.max(0, wants.remaining);
+    const savingsBuffer = Math.max(0, savings20.pending); // Unsaved savings can be used as emergency buffer
+
+    const totalAvailable = needsAvailable + wantsAvailable + savingsBuffer;
+
+    if (amount > totalAvailable) {
+      // Show budget exceeded modal
+      setBudgetExceededInfo({
+        needsRemaining: needsAvailable,
+        wantsRemaining: wantsAvailable,
+        savingsUnsaved: savingsBuffer,
+        transactionAmount: amount,
+      });
+      setShowBudgetExceededModal(true);
+      return false;
+    }
+    return true;
   };
 
   // --- ALLOCATION LOGIC FIXED (50/30/20 vs Save All) ---
@@ -1376,6 +1428,7 @@ export default function App() {
                     onBack={() => navigation.goBack()}
                     showMessage={showMessage}
                     onAddTransaction={(tx) => handleAddTransaction(tx)}
+                    canAccommodateBudget={canAccommodateTransaction}
                   />
                 )}
               </Stack.Screen>
@@ -1472,6 +1525,11 @@ export default function App() {
       <InitialBalanceModal
         visible={showInitialBalanceModal}
         onSubmit={handleSetInitialBalance}
+      />
+      <BudgetExceededModal
+        visible={showBudgetExceededModal}
+        onClose={() => setShowBudgetExceededModal(false)}
+        budgetStatus={budgetExceededInfo}
       />
       <MessageModal
         visible={modalVisible}
