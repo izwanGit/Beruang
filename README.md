@@ -2,156 +2,202 @@
 
 <img src="assets/chatbot_mascot.png" alt="Beruang Logo" width="180" height="180" style="border-radius: 50%; box-shadow: 0 10px 20px rgba(0,0,0,0.1)"/>
 
-# 🐻 Beruang
-### **Empowering Malaysian Financial Freedom through AI**
+# 🐻 Beruang: The AI-Powered Financial Ecosystem
+### **Final Year Project (FYP) • Universiti Teknologi MARA (UiTM)**
 
-*A state-of-the-art, AI-driven financial ecosystem designed for the next generation.*
+*A state-of-the-art, logic-proof financial companion engineered to master the Malaysian economy.*
 
 [![Version](https://img.shields.io/badge/version-12.0-blue.svg?style=for-the-badge)](https://github.com/izwanGit/Beruang)
 [![Transaction AI](https://img.shields.io/badge/Transaction%20AI-99.88%25-brightgreen.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-ai-backend)
 [![Intent AI](https://img.shields.io/badge/Intent%20AI-99.41%25-green.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-server)
 [![Dataset](https://img.shields.io/badge/150k--Logic--Proof-orange.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-ai-backend)
 
-[✨ Features](#-key-features) • [📖 How to Use](#-the-beruang-experience) • [🏗️ Architecture](#-system-architecture) • [🚀 Installation](#-getting-started) • [🔗 Family](#-the-beruang-family)
+[✨ Features](#-key-features) • [🧠 AI Methodology](#-ai-methodology-deep-dive) • [🏗️ Architecture](#-system-architecture) • [📖 User Guide](#-the-beruang-experience-user-guide) • [🚀 Setup](#-getting-started)
 
 ---
 
 </div>
 
-## 📑 Table of Contents
-- [🎯 The Vision](#-the-vision)
-- [✨ Key Features](#-key-features)
-- [🏗️ System Architecture](#-system-architecture)
-- [📖 The Beruang Experience](#-the-beruang-experience)
-- [🕹️ Gamification Lifecycle](#-gamification-lifecycle)
-- [🔗 The Beruang Family](#-the-beruang-family)
-- [🚀 Getting Started](#-getting-started)
+## 📑 Detailed Table of Contents
+1.  [🎯 Project Overview & Mission](#-project-overview--mission)
+2.  [🧠 AI Methodology Deep-Dive](#-ai-methodology-deep-dive)
+    *   [Data Generation (150k Rows)](#-data-generation-methodology)
+    *   [BiLSTM Transaction Model](#-bilstm-transaction-model)
+    *   [NLP Intent Classification](#-nlp-intent-classification)
+3.  [🏗️ System Architecture](#-system-architecture)
+    *   [Ecosystem Overview](#-ecosystem-overview)
+    *   [Server Orchestration (SSE & RAG)](#-server-orchestration-sse--rag)
+4.  [🕹️ Gamification & 50/30/20](#-gamification--the-503020-rule)
+5.  [📖 The Beruang Experience (User Guide)](#-the-beruang-experience-user-guide)
+6.  [🔗 The Beruang Family (Repositories)](#-the-beruang-family)
+7.  [🚀 Getting Started & Installation](#-getting-started)
+8.  [📜 Credits & FYP Acknowledgments](#-credits--fyp-acknowledgments)
 
 ---
 
-## 🎯 The Vision
+## 🎯 Project Overview & Mission
 
-**Beruang** (Bear 🐻) is a revolutionary financial companion that bridges the gap between complex budgeting and everyday life. Built specifically for the Malaysian context, it utilizes a dual AI-pipeline to categorize spending and provide real-time, context-aware financial advice based on the **50/30/20 principle**.
+**Beruang** (Bear 🐻) is a comprehensive AI-powered personal finance management ecosystem designed for young Malaysian adults. The project addresses the critical gap between manual expense tracking and actionable financial wisdom.
 
-> [!IMPORTANT]
-> **V12.0 Milestone reached**: Our transaction model now achieves **99.88% accuracy** with zero logic errors, trained on a curated 150,381-row logic-proof dataset.
+### The Problem
+Traditional finance apps are either too manual (leading to "entry fatigue") or too generic (giving advice that doesn't apply to the local Malaysian context).
+
+### The Solution
+Beruang leverages a **Multi-Stage AI Pipeline** to:
+1.  **Automate Entry**: Via Gemini Vision OCR.
+2.  **Ensure Logic**: Via a custom-trained BiLSTM model that understands Needs vs. Wants.
+3.  **Provide Wisdom**: Via a Grok-1 powered chatbot integrated with local Malaysian economic data (DOSM).
 
 ---
 
-## ✨ Key Features
+## 🧠 AI Methodology Deep-Dive
 
-| 🧠 Intelligence | 🎮 Interaction | 📸 Convenience |
-| :--- | :--- | :--- |
-| **BiLSTM Logic-Proof AI**<br/>99.88% accuracy in categorizing Needs/Wants. | **Streaming Chatbot**<br/>Real-time financial reasoning powered by Grok-1. | **Gemini Vision OCR**<br/>Instant receipt scanning and auto-entry. |
-| **Triple-Source RAG**<br/>Integrated DOSM stats, 388 expert tips, and manual. | **Evolution System**<br/>13-stage bear evolution based on financial health. | **Smart Widgets**<br/>AI-generated charts streamed directly into chat. |
+### 📊 Data Generation Methodology
+The backbone of Beruang is our **150,381-row "Gold Standard" Dataset**. 
+
+*   **Logic-Proofing**: We moved away from random word mixing to a **Template-Based Pairing System**. This ensures that "luxury" items aren't accidentally paired with "Needs" categories.
+*   **Malaysian Context**: The model is trained on 600+ local vocabulary items including *Zakat, Grab, TnG, Mamak, Teh Tarik,* and regional spelling variations.
+*   **Zero Overfitting**: Verified by the parity between training and validation loss curves, ensuring the model generalizes to new, unseen merchant names with **99.88% accuracy**.
+
+### 🧬 BiLSTM Transaction Model
+Deployed locally via **TensorFlow.js**, this model handles categorizing transactions without ever sending private text to the cloud.
+
+*   **Architecture**: Bi-directional Long Short-Term Memory (BiLSTM).
+*   **Performance**:
+    *   **99.88% Accuracy** on category (Needs/Wants).
+    *   **99.04% Accuracy** on subcategories (7 distinct classes).
+*   **Dual-Output**: Predicts both high-level and granular categories in a single compute pass.
+
+### 🗣️ NLP Intent Classification
+The "brain" of the chatbot, responsible for mapping user speech to system actions.
+
+*   **Model**: all-MiniLM-L6-v2 embeddings + Neural Network.
+*   **Scope**: 56 distinct intents across navigation, financial help, and advice.
+*   **Accuracy**: 99.41% Weighted F1-Score.
 
 ---
 
 ## 🏗️ System Architecture
 
-### 🔄 The Intelligence Workflow
-Our ecosystem decouples high-speed local processing from deep cloud-based reasoning.
+### 🔄 Ecosystem Overview
+The project is built as a decoupled ecosystem to ensure scalability and high performance.
 
 ```mermaid
 graph TD
     subgraph "📱 Frontend (React Native)"
-    A[User UI] --> B{Dispatcher}
-    B -->|Local Predict| C[<b>TF.js (BiLSTM)</b><br/>Needs/Wants/Subcat]
-    B -->|Image Data| D[<b>Gemini Vision</b><br/>Receipt OCR]
+    A["User Interactive UI"] --> B{"Action Dispatcher"}
+    B -->|Offline Pred| C["TF.js (BiLSTM Model)<br/>99.88% Accuracy"]
+    B -->|Receipt Scan| D["Gemini Vision API<br/>Base64 Image Cloud"]
     end
 
-    subgraph "🌍 Backend Hub (Node.js)"
-    B -->|Chat Stream| E{<b>Orchestrator</b>}
-    E -->|Intent| F[<b>NLP Model</b><br/>99.41% Accuracy]
-    E -->|Reasoning| G[<b>Grok-1 LLM</b><br/>Cloud API]
-    E -->|Context| H[(<b>Multi-Source RAG</b>)]
-    H --- H1[DOSM Stats]
-    H --- H2[Expert Tips]
-    H --- H3[App Manual]
+    subgraph "🌍 Backend Orchestrator (Node.js)"
+    B -->|Stream/Chat| E{"Beruang Server"}
+    E -->|Intent| F["NLP Intent Model<br/>99.41% Accuracy"]
+    E -->|Reasoning| G["Grok-1 LLM<br/>OpenRouter API"]
+    E -->|Context| H["Triple-Source RAG"]
+    H --- H1["DOSM Stats"]
+    H --- H2["388 Expert Tips"]
+    H --- H3["App Manual"]
     end
 
-    C & D & F & G -->|Live Data| A
+    C & D & F & G -->|Live Result| A
 ```
+
+### 📡 Server Orchestration (SSE & RAG)
+Beruang Server uses **Server-Sent Events (SSE)** to provide a "human-like" typing experience. While streaming, it performs **Retrieval-Augmented Generation (RAG)** by injecting:
+1.  **User State**: Current budget and spending history.
+2.  **Market Data**: Latest Malaysian inflation and income statistics.
+3.  **App Wisdom**: Curated financial tips and technical documentation.
 
 ---
 
-## 📖 The Beruang Experience
+## 🕹️ Gamification & The 50/30/20 Rule
 
-### 1️⃣ Intelligent Categorization
-Stop worrying about where your money goes. Our **Logic-Proof AI** understands that "Starbucks" is a Want, while "Utilities" is a Need. It even understands local context like **TnG e-Wallet** and **Zakat**.
+Beruang enforces the **50/30/20 Budgeting Rule** (50% Needs, 30% Wants, 20% Savings) through a reactive gamification system.
 
-### 2️⃣ Real-Time Consultation
-Ask Beruang anything:
-- *"Can I afford a Perodua Ativa with my current savings?"*
-- *"Why did I spend so much on Grab last month?"*
-The AI analyzes your **150,381-row trained logic** and your real-time budget to give you an honest answer.
-
-### 3️⃣ Automated 50/30/20 Flow
-Visualize your income split instantly. Any surplus at month-end is automatically flagged for your "Mission Target"—ensuring you never miss your 20% savings.
+*   **The Evolution**: Your avatar bear evolves through **13 stages** (Cub → Teen → Adult → Golden Bear).
+*   **The XP Engine**:
+    *   **+50 XP**: Logging a transaction.
+    *   **+2 XP per RM**: Successfully adding to savings.
+    *   **-200 XP**: Overspending in the "Wants" category.
+*   **Budget Rebalancing**: At month-end, the app detects leftovers and gives the user three "Missions": Move to Savings, Rebalance Budget, or Emergency Withdraw.
 
 ---
 
-## 🕹️ Gamification Lifecycle
-Finance is a game where you win your freedom. Grow your bear as you save.
+## 📖 The Beruang Experience (User Guide)
 
-```mermaid
-graph LR
-    Log[Log Expense] -->|+50 XP| XP[Total XP]
-    Save[Realize Savings] -->|+2 XP / RM| XP
-    Over[Overspending] -->|-200 XP| XP
-    
-    XP --> Stage{<b>Evolution</b>}
-    Stage --> Cub[Cub Stages 1-4]
-    Stage --> Teen[Teen Stages 5-8]
-    Stage --> King["Golden Bear (Lv 13) 👑"]
-```
+### 1️⃣ Phase 1: Onboarding
+Complete a "Financial Persona" quiz. Your answers (Risk Tolerance, Lifestyle, Financial Goals) directly influence the tone and content of the AI chatbot's advice.
+
+### 2️⃣ Phase 2: The Wallet "Seed"
+Set your Initial Balance. Beruang tracks every cent relative to this initial seed, allowing for a strictly accurate "Cash Flow" calculation.
+
+### 3️⃣ Phase 3: Daily Habits
+*   **Smart Entry**: Use the AI-powered search to find transactions.
+*   **Receipt OCR**: Snap a photo. The app automatically fills in the Merchant, Amount, and Category.
+*   **Visualization**: View the Donut Chart on the dashboard to see exactly how much "Needs" space you have left.
+
+### 4️⃣ Phase 4: Financial Advice
+Talk to Beruang. Use queries like:
+- *"Is my electricity bill too high compared to the KL average?"* (Triggers RAG + DOSM data).
+- *"How can I save for a RM1500 holiday in Langkawi?"* (Triggers Itinerary Widget).
 
 ---
 
 ## 🔗 The Beruang Family
 
-The project is modularized into three high-performance repositories:
+To see the full technical depth, explore each component:
 
-1.  **[Beruang AI Backend](https://github.com/izwanGit/beruang-ai-backend)**: 🧪 The Data Science Lab (TF.js, Python Viz, 150k Dataset).
-2.  **[Beruang Server](https://github.com/izwanGit/beruang-server)**: 📡 The Orchestrator (Node.js, SSE Streaming, RAG, Grok).
-3.  **[Beruang App](https://github.com/izwanGit/Beruang)**: 📱 The User Experience (React Native, Firebase).
+| Repository | Role | Core Technologies |
+| :--- | :--- | :--- |
+| **[Beruang App](https://github.com/izwanGit/Beruang)** | **The Interface** | React Native, TypeScript, Firebase, TF.js |
+| **[Beruang AI Backend](https://github.com/izwanGit/beruang-ai-backend)** | **The Science** | TensorFlow, Python (Viz), Node.js (Training) |
+| **[Beruang Server](https://github.com/izwanGit/beruang-server)** | **The Brain** | Express, Grok-1, SSE Streaming, RAG |
 
 ---
 
 ## 🚀 Getting Started
 
 ### 📦 Prerequisites
-- **Node.js**: v20+ (Metro Bundler)
-- **CocoaPods**: (for iOS builds)
-- **Android SDK**: (for Android builds)
+- **Node.js**: v20.0.0 or higher.
+- **Git**: For cloning the family of repos.
+- **Firebase Project**: Configured for Auth and Firestore.
 
-### 🛠 Setup & Run
-```bash
-# Clone
-git clone https://github.com/izwanGit/Beruang.git
-cd Beruang
-
-# Install
-npm install
-cd ios && pod install && cd ..
-
-# Launch
-npm start
-# In a new terminal:
-npm run ios # or npm run android
-```
+### 🛠 Installation (Client)
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/izwanGit/Beruang.git
+    cd Beruang
+    ```
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+3.  Install iOS dependencies:
+    ```bash
+    cd ios && pod install && cd ..
+    ```
+4.  Launch the app:
+    ```bash
+    npm run ios # or npm run android
+    ```
 
 ---
 
-## 📜 Credits & License
-Developed as a **Final Year Project (FYP)** by Muhammad Izwan bin Ahmad, supervised by Dr. Khairulliza binti Ahmad Salleh at **Universiti Teknologi MARA (UiTM)**.
+## 📜 Credits & FYP Acknowledgments
+
+This project was developed as a **Final Year Project (FYP)** for the Bachelor of Information Technology at **Universiti Teknologi MARA (UiTM)**.
+
+*   **Lead Developer**: Muhammad Izwan bin Ahmad
+*   **Project Supervisor**: Dr. Khairulliza binti Ahmad Salleh
+*   **Special Thanks**: To the open-source communities behind TensorFlow.js, React Native, and the Grok API team.
 
 ---
 
 <div align="center">
 
-**Made with 🐻 by Izwan**
+**Developed with 🐻 and ❤️ in Malaysia**
 
-*"Beruang" sounds like "Ber-wang" (having money). Let's build your wealth together.*
+*"Beruang" sounds like "Ber-wang" (having money). Let's build your financial future together.*
 
 </div>
