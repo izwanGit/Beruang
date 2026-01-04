@@ -264,7 +264,12 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({
     <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={handleClose}>
       <View style={modalStyles.overlay}>
         <View style={modalStyles.container}>
-          <Text style={modalStyles.title}>Withdraw</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 16 }}>
+            <Text style={modalStyles.title}>Withdraw</Text>
+            <TouchableOpacity onPress={handleClose} style={{ padding: 8 }}>
+              <Icon name="x" size={24} color={COLORS.accent} />
+            </TouchableOpacity>
+          </View>
 
           <Text style={modalStyles.label}>Amount</Text>
           <TextInput
