@@ -180,8 +180,8 @@ export const AddTransactionScreen = ({
         const canProceed = canAccommodateBudget(amountNum, result.category as 'needs' | 'wants');
         if (!canProceed) {
           setIsLoading(false);
-          showMessage('❌ Budget Exhausted! All your budgets (Needs, Wants, and Savings buffer) are full. Transaction blocked.');
-          onBack(); // Go back to let user see the modal or manage budgets
+          showMessage('Budget full! Add income or wait for next month. 💸');
+          onBack();
           return;
         }
       }
