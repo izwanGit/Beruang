@@ -176,9 +176,14 @@ export const AddTransactionScreen = ({
       const result = await categorizeTransaction(description);
 
       // PRE-CHECK: Validate budget can accommodate this transaction
-      if (canAccommodateBudget && !canAccommodateBudget(amountNum, result.category as 'needs' | 'wants')) {
-        setIsLoading(false);
-        return; // Modal will be shown by App.tsx
+      if (canAccommodateBudget) {
+        const canProceed = canAccommodateBudget(amountNum, result.category as 'needs' | 'wants');
+        if (!canProceed) {
+          setIsLoading(false);
+          showMessage('❌ Budget Exhausted! All your budgets (Needs, Wants, and Savings buffer) are full. Transaction blocked.');
+          onBack(); // Go back to let user see the modal or manage budgets
+          return;
+        }
       }
 
       const newTransaction = {
