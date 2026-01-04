@@ -1,299 +1,674 @@
 <div align="center">
 
-<img src="assets/beruang_logo.png" alt="Beruang Logo" width="180" height="180" style="border-radius: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 2px solid #ffffff; padding: 5px; background-color: #ffffff;"/>
+<img src="assets/beruang_logo.png" alt="Beruang Logo" width="150" height="150" style="border-radius: 32px;"/>
 
-# 🐻 Beruang: The Ultimate AI-Powered Financial Ecosystem
-### **Comprehensive Technical Report & Master Documentation Hub**  
-**Final Year Project (FYP) • Universiti Teknologi MARA (UiTM)**  
-**Bachelor of Information Technology (Hons.) Intelligent Systems Engineering**
+# 🐻 Beruang
+### **AI-Powered Personal Finance for Malaysia**
 
-*A state-of-the-art, logic-proof financial companion engineered to master the Malaysian economy through Hybrid AI Orchestration, Sequential Deep Learning (BiLSTM), and Behavioral Economics.*
+*A hybrid-intelligence financial ecosystem built with Deep Learning, SSE Streaming, and Behavioral Gamification.*
 
 [![Version](https://img.shields.io/badge/version-12.0-blue.svg?style=for-the-badge)](https://github.com/izwanGit/Beruang)
 [![Transaction AI](https://img.shields.io/badge/Transaction%20AI-99.88%25-brightgreen.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-ai-backend)
 [![Intent AI](https://img.shields.io/badge/Intent%20AI-99.41%25-green.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-server)
-[![Dataset](https://img.shields.io/badge/150k--Logic--Proof-orange.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-ai-backend)
-[![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20Android-lightgrey.svg?style=for-the-badge)](https://github.com/izwanGit/Beruang)
+[![Dataset](https://img.shields.io/badge/Dataset-150k-orange.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-ai-backend)
 
-[✨ Core Features](#-key-features) • [🧠 AI Methodology](#-2-ai-methodology-deep-dive) • [🏗️ Architecture](#-3-system-architecture) • [📊 ERD & Data](#-4-entity-relationship-diagram-erd) • [📖 User Guide](#-7-the-beruang-experience-user-guide) • [🚀 Getting Started](#-14-getting-started)
+**Final Year Project • UiTM Shah Alam • Intelligent Systems Engineering**
 
 ---
 
 </div>
 
-## 📑 1. Comprehensive Table of Contents (Full System Report)
+## 📑 Table of Contents
 
-1.  [🎯 **Project Overview & Strategic Mission**](#-1-project-overview--mission)
-    *   [1.1 Problem Statement: The Tracking Tragedy](#11-problem-statement)
-    *   [1.2 The Malaysian Socio-Economic Context & Need Analysis](#12-the-malaysian-socio-economic-context)
-    *   [1.3 Core Innovations & Competitive Advantage](#13-core-innovations--flex)
-    *   [1.4 Project Goals & Success Metrics Framework](#14-project-goals--success-metrics)
-2.  [🧠 **AI Methodology: The Intelligence Layer**](#-2-ai-methodology-deep-dive)
-    *   [2.1 Hybrid Pipeline Architecture: Edge vs. Cloud](#21-the-hybrid-intelligence-pipeline)
-    *   [2.2 Data Engineering: The 150,381 Logic-Proof Dataset](#22-data-engineering-150381-logic-proof-rows)
-    *   [2.3 Dataset Logic Pillars & Transaction Pattern Samples](#23-dataset-logic-pillars)
-    *   [2.4 BiLSTM Transaction Model: Layer-by-Layer Implementation](#24-bilstm-architecture--neural-specs)
-    *   [2.5 NLP Intent Classification & OOD Filtering Logic](#25-intent-classification--ood-filtering)
-    *   [2.6 Computer Vision: Multi-Modal Receipt Extraction](#26-vision-ocr-via-gemini-15-flash)
-3.  [🏗️ **System Architecture: Industrial-Grade Foundation**](#-3-system-architecture)
-    *   [3.1 Decoupled Ecosystem Model: Pillar-Based Design](#31-high-level-ecosystem-design)
-    *   [3.2 React Native Frontend Layer: Mobile System Logic](#32-reactive-frontend-layer)
-    *   [3.3 Orchestrator Hub: Node.js, SSE & Streaming Interaction](#33-server-orchestration-nodejs--sse)
-    *   [3.4 Triple-Source Retrieval-Augmented Generation (RAG)](#34-triple-source-retrieval-augmented-generation-rag)
-4.  [📊 **Data Entity Modeling & Relationship Logic (ERD)**](#-4-entity-relationship-diagram-erd)
-    *   [4.1 ERD Visualization: Relational Mapping](#41-erd-visualization)
-    *   [4.2 Attribute Definitions & Firestore Data Schema](#42-attribute-definitions)
-    *   [4.3 Data Flow & Normalization Principles](#43-data-flow-logic)
-5.  [🕹️ **Gamification: Psychological Habit Engineering**](#-5-gamification--behavioral-economics)
-    *   [5.1 The 50/30/20 Framework: Financial Lifeblood](#51-the-503020-rule)
-    *   [5.2 Evolutionary XP Mechanics: Rewarding Discipline](#52-evolutionary-xp-mechanics)
-    *   [5.3 Evolution Tier Breakdown: 13 Stages of Growth](#53-evolution-tier-breakdown)
-6.  [💡 **Advanced Features Showcase & UI Logic**](#-6-intelligence-features-showcase)
-    *   [6.1 Smart Widget Parsing: Character-Stream Interaction](#61-smart-widget-system)
-    *   [6.2 Mission Control: Month-End Behavioral Correction](#62-mission-control-budgeting)
-    *   [6.3 Multi-Tone Personas: Tailored Consulting Styles](#63-persona-multi-tone-adaptation)
-7.  [📖 **The Beruang Experience: Comprehensive User Manual**](#-7-the-beruang-experience-user-guide)
-    *   [7.1 Phase 1: Intelligent Onboarding & Financial Profiling](#phase-1-persona-onboarding)
-    *   [7.2 Phase 2: Transaction Logging Scenarios (Alpha/Beta Path)](#phase-2-intelligent-logging)
-    *   [7.3 Phase 3: Conversational Advice & Goal Monitoring](#phase-3-real-time-consultation)
-    *   [7.4 Phase 4: Financial Recovery Mission (Month-End Transition)](#phase-4-financial-recovery)
-8.  [⚙️ **Technical Challenges, Mitigations & System Performance**](#-8-technical-challenges--mitigations)
-    *   [8.1 LLM Latency vs. Perceived User Velocity](#81-llm-latency-vs-perceived-user-velocity)
-    *   [8.2 System Performance Benchmark Table](#82-system-performance-benchmarks)
-9.  [🛡️ **Security, Privacy & Ethical AI Standards**](#-9-security-privacy--ethical-ai)
-    *   [9.1 Local-First Privacy: Zero-Exposure Logic](#91-local-first-privacy)
-    *   [9.2 Firestore Security Rule Configurations](#92-firestore-security-layer)
-10. [🧪 **Testing, Quality Assurance & QA Logic**](#-10-testing--quality-assurance)
-11. [📡 **API Reference & Full Payload Specifications**](#-11-api-reference)
-12. [📁 **Project Structure: Codebase Architecture Tree**](#-12-project-structure-deep-dive)
-13. [🔗 **The Beruang Family: Sub-Repository Guides**](#-13-the-beruang-family)
-14. [🚀 **Getting Started: Full Installation Lab**](#-14-getting-started)
-15. [🗺️ **Environmental Variable Configuration (Complete Hub)**](#15-environmental-variable-configuration)
-16. [🛠️ **Extensive Troubleshooting & FAQ Hub**](#-16-troubleshooting--faq)
-17. [🇲🇾 **Malaysian Financial Glossary for AI**](#-17-malaysian-financial-glossary)
-18. [🔮 **Vision 2027: Future Technical Roadmap**](#-18-future-roadmap)
-19. [📜 **Technical Acknowledgments & Credits**](#-19-credits--acknowledgments)
+| Section | Description |
+|:--------|:------------|
+| [Overview](#-overview) | Project mission and Malaysian context |
+| [AI Deep-Dive](#-ai-methodology-deep-dive) | BiLSTM, Intent Detection, Vision OCR |
+| [Architecture](#-system-architecture) | Decoupled microservices design |
+| [ERD & Data](#-entity-relationship-diagram) | Database schema and relationships |
+| [Gamification](#-gamification-system) | XP mechanics and evolution tiers |
+| [API Reference](#-api-reference) | Endpoint specifications |
+| [Installation](#-installation) | Setup guide |
 
 ---
 
-## 🎯 1. Project Overview & Mission
+## 🎯 Overview
 
-**Beruang** (Bear 🐻) is not just another finance app; it is a holistic financial ecosystem engineered to tackle the systemic financial literacy crisis among young adults in Malaysia. By merging **Sequential Deep Learning** with **Behavioral Economics**, Beruang transforms the mundane task of expense tracking into an engaging, intelligent experience.
+**Beruang** (Malaysian for "Bear" 🐻) is a comprehensive AI-powered financial companion designed specifically for young Malaysians. The application combines cutting-edge machine learning with behavioral psychology to help users master their personal finances.
 
-### 1.1 Problem Statement: The Tracking Tragedy
-Statistically, 80% of personal finance app users abandon manual tracking within 3 weeks due to "entry friction"—the time-consuming process of typing and categorizing every expense. Beruang eliminates this barrier through **Automatic Inference**, where the machine handles the categorization while the user simply confirms.
+### The Problem We Solve
 
-### 1.2 The Malaysian Socio-Economic Context
-With the rising cost of living in Malaysia, specifically in urban hubs like Kuala Lumpur and Shah Alam, young professionals face a complex web of "Lifestyle Creep." Beruang is culturally fine-tuned to recognize localized spending patterns, from *TnG e-Wallet* reloads to *Mamak* dining, ensuring the advice given is always contextually relevant.
+| Problem | Impact | Beruang Solution |
+|:--------|:-------|:-----------------|
+| Manual tracking fatigue | 80% app abandonment rate | AI auto-categorization in <10ms |
+| Generic Western advice | Irrelevant to Malaysian context | RAG grounded in DOSM data |
+| Boring spreadsheet UX | Zero engagement | Gamified bear evolution system |
+| Privacy concerns | Users avoid logging sensitive data | On-device TensorFlow.js inference |
+| Delayed financial feedback | Behavioral drift | Real-time SSE streaming advice |
+
+### Technology Stack
+
+| Layer | Technology | Purpose |
+|:------|:-----------|:--------|
+| **Mobile** | React Native + TypeScript | Cross-platform UI |
+| **Local AI** | TensorFlow.js | On-device transaction classification |
+| **Backend** | Node.js + Express | API orchestration |
+| **LLM** | Grok-1 (OpenRouter) | Deep financial reasoning |
+| **Vision** | Gemini 1.5 Flash | Receipt OCR extraction |
+| **Database** | Firebase Firestore | Real-time persistence |
+| **Auth** | Firebase Authentication | Secure identity |
+| **Streaming** | Server-Sent Events (SSE) | Real-time token delivery |
 
 ---
 
-## 🧠 2. AI Methodology Deep-Dive
+## 🧠 AI Methodology Deep-Dive
 
-### 2.1 The Hybrid Intelligence Pipeline Architecture
-The architecture follows a specialized escalation path designed for high availability and low latency.
+Beruang's intelligence is powered by a **multi-stage hybrid pipeline** that routes data through the optimal processing path based on task complexity.
+
+### The Hybrid Intelligence Pipeline
 
 ```mermaid
-graph TD
-    subgraph "Inbound Activity Layer"
-    U["User Activity / Photo / Voice"] --> R{<b>Intelligence Router</b>}
+flowchart TD
+    subgraph INPUT["📥 User Input Layer"]
+        A[Text Entry] 
+        B[Photo Receipt]
+        C[Voice/Chat Query]
     end
 
-    subgraph "Offline Logic (Edge AI)"
-    R -->|Text Entry| TFJ["<b>TensorFlow.js (BiLSTM)</b><br/>Inference < 10ms<br/>99.88% Accuracy"]
+    subgraph EDGE["⚡ Edge Processing (Local)"]
+        D["BiLSTM Model<br/>TensorFlow.js<br/>99.88% Accuracy"]
     end
 
-    subgraph "Visual Analytics (Cloud Vision)"
-    R -->|Receipt Capture| GV["<b>Gemini 1.5 Flash Vision</b><br/>Feature Mapping & Extraction"]
+    subgraph CLOUD["☁️ Cloud Processing"]
+        E["Gemini 1.5 Flash<br/>Vision OCR"]
+        F["MiniLM Intent<br/>56 Classes"]
+        G["Grok-1 LLM<br/>Financial Reasoning"]
+        H["Triple-Source RAG"]
     end
 
-    subgraph "Cognitive Hub (Cloud LLM)"
-    R -->|Natural Language| INT["<b>MiniLM-L6 Intent Model</b><br/>Routing to 56 Classes"]
-    INT -->|Complex Context| GROK["<b>Grok-1 LLM Orchestration</b><br/>Deep Financial Counseling"]
-    GROK --> RAG["<b>Multi-Source RAG Controller</b>"]
-    RAG --- D1[DOSM Economic Stats]
-    RAG --- D2[388 Expert Tips]
-    RAG --- D3[System Manual]
+    subgraph OUTPUT["📤 Response Layer"]
+        I["Structured UI Response"]
     end
 
-    TFJ & GV & RAG --> Out["<b>Structured Rich Interactive UI</b>"]
+    A --> D
+    B --> E
+    C --> F
+    F -->|Complex Query| G
+    G --> H
+    H --> I
+    D --> I
+    E --> I
 ```
 
-### 2.2 Data Engineering: 150,381 Logic-Proof Rows
-The intelligence of Beruang is rooted in its **Gold Standard Dataset**. We implemented a **Set-Strict Template Strategy**.
+### BiLSTM Transaction Classification Model
 
-- **Needs Pillar**: Curated tokens representing essential survival (e.g., *Sewa, API, Air, Tol, MyRapid*).
-- **Wants Pillar**: Tokens representing discretionary lifestyle (e.g., *Starbucks, GSC, Steam, Uniqlo*).
-- **Logic Safeguard**: A script ensures no "Survival" items ever appear in the "Wants" training set, preventing the AI from hallucinating a "Necessity" as "Lifestyle".
+The core categorization engine uses a **Bi-directional Long Short-Term Memory** neural network to understand the context of Malaysian transaction descriptions.
 
-### 2.3 Dataset Logic Pillars: Transaction Pattern Samples
+#### Model Architecture Specifications
 
-| Transaction Input | Extracted Core Token | Category | Subcategory |
-| :--- | :--- | :--- | :--- |
-| *Starbucks iced latte with extra shot* | Starbucks | Wants | Lifestyle |
-| *Bayar sewa rumah apartment jun* | Sewa | Needs | Housing |
-| *TNB bill payment electricity* | TNB | Needs | Utilities |
-| *GSC Cinema tickets 2 persons* | GSC | Wants | Entertainment |
-| *ASB self-contribution RM200* | ASB | Savings | Investment |
+| Layer | Configuration | Parameters | Purpose |
+|:------|:--------------|:-----------|:--------|
+| Input | Sequence (max_len=15) | - | Variable-length text handling |
+| Embedding | 64 dimensions | 76,800 | Malaysian financial vocabulary mapping |
+| BiLSTM | 128 units, dropout=0.3 | 98,816 | Bidirectional context capture |
+| GlobalMaxPool | 1D | - | Activation peak extraction |
+| Dense (Cat) | 3 units, softmax | 387 | Needs/Wants/Savings classification |
+| Dense (Sub) | 7 units, softmax | 903 | Subcategory classification |
+| **Total** | - | **176,906** | Optimized for mobile inference |
+
+#### Training Configuration
+
+| Parameter | Value | Rationale |
+|:----------|:------|:----------|
+| Optimizer | Adam | Adaptive learning rate |
+| Learning Rate | 0.001 | Balanced convergence |
+| Batch Size | 32 | Memory efficiency |
+| Epochs | 25 | Convergence point |
+| Validation Split | 20% | Generalization check |
+| Early Stopping | patience=5 | Prevent overfitting |
+
+#### Model Performance Metrics
+
+| Metric | Category Model | Subcategory Model |
+|:-------|:---------------|:------------------|
+| Accuracy | 99.88% | 99.04% |
+| Precision | 99.87% | 98.96% |
+| Recall | 99.88% | 99.02% |
+| F1-Score | 99.87% | 98.99% |
+| Inference Time | 8.4ms | 8.4ms |
+| Model Size | 2.1MB | 2.1MB |
+
+### The 150,381-Row Logic-Proof Dataset
+
+The dataset was engineered using a **Set-Theoretical Constraint System** to ensure zero logic collisions between categories.
+
+#### Dataset Class Distribution
+
+| Category | Sample Count | Percentage | Description |
+|:---------|:-------------|:-----------|:------------|
+| **Needs** | 67,672 | 45% | Essential survival expenses |
+| **Wants** | 52,633 | 35% | Discretionary lifestyle spending |
+| **Savings** | 30,076 | 20% | Future wealth building |
+| **Total** | **150,381** | **100%** | Balanced for 50/30/20 rule |
+
+#### Token Logic Pillars (Exclusive Sets)
+
+| Pillar | Anchor Tokens | Logic Rule |
+|:-------|:--------------|:-----------|
+| **Needs (Essential)** | Sewa, TNB, Air, Syabas, MyRapid, Toll, Insurance, Groceries, Ubat, Clinic | These tokens CANNOT appear in Wants |
+| **Wants (Lifestyle)** | Starbucks, GSC, Cinema, Steam, Shopee, Uniqlo, Lazada, Grab (leisure), Tealive | These tokens CANNOT appear in Needs |
+| **Savings (Future)** | ASB, KWSP, EPF, Tabung, Goal, Emergency, Investment, Zakat | Anchored to wealth building |
+
+#### Transaction Pattern Engineering Samples
+
+| Input Pattern | Extracted Token | Category | Subcategory | Logic Basis |
+|:--------------|:----------------|:---------|:------------|:------------|
+| *Bayar sewa rumah bulan jun* | sewa | Needs | Housing | Shelter obligation |
+| *TNB bill payment RM150* | TNB | Needs | Utilities | Essential utility |
+| *Starbucks coffee KLCC* | Starbucks | Wants | Food & Drink | Premium discretionary |
+| *GSC cinema tickets for 2* | GSC | Wants | Entertainment | Leisure activity |
+| *ASB contribution RM500* | ASB | Savings | Investment | Wealth building |
+| *Grab ride to work* | Grab + work | Needs | Transport | Employment commute |
+| *Grab food McDonald's* | Grab + food | Wants | Food & Drink | Delivery premium |
+| *Zakat fitrah payment* | Zakat | Savings | Religious | Social obligation |
+| *Beli ubat farmasi* | ubat | Needs | Health | Medical necessity |
+| *Steam summer sale games* | Steam | Wants | Entertainment | Digital leisure |
+
+### NLP Intent Classification System
+
+The chatbot uses a dedicated **56-class intent detection model** to route queries efficiently.
+
+#### Intent Category Distribution
+
+| Intent Category | Classes | Example Query |
+|:----------------|:--------|:--------------|
+| **Transaction Queries** | 8 | "How much did I spend on food?" |
+| **Balance/Summary** | 5 | "What's my total savings?" |
+| **Goal Management** | 6 | "Create a goal for new car" |
+| **Budget Analysis** | 7 | "Am I overspending on wants?" |
+| **Navigation** | 12 | "Go to settings" |
+| **Help/FAQ** | 8 | "How do I add income?" |
+| **Greeting/Casual** | 4 | "Hello", "Thanks" |
+| **Out-of-Domain** | 6 | "What's the weather?" |
+
+#### Intent Model Performance
+
+| Metric | Score |
+|:-------|:------|
+| Accuracy | 99.41% |
+| Macro F1 | 99.38% |
+| OOD Detection | 98.7% |
+
+### Vision OCR (Gemini 1.5 Flash)
+
+Receipt scanning uses **multi-modal reasoning** to extract structured data from Malaysian receipts.
+
+#### Supported Receipt Types
+
+| Receipt Type | Extraction Fields | Accuracy |
+|:-------------|:------------------|:---------|
+| Restaurant bills | Items, prices, total, merchant | 97.2% |
+| Grocery receipts | Individual items, quantities | 95.8% |
+| Fuel receipts | Liters, price/L, total | 98.1% |
+| E-wallet screenshots | Amount, merchant, timestamp | 96.5% |
+| Bank statements | Transactions, dates, balances | 94.3% |
 
 ---
 
-## 🏗️ 3. System Architecture
+## 🏗️ System Architecture
 
-### 3.1 Decoupled Ecosystem Model: Pillar-Based Design
-Beruang is architected into three primary pillars for maximum scalability:
-1.  **[Beruang App](https://github.com/izwanGit/Beruang)**: Product Core (React Native & Edge AI).
-2.  **[Beruang Server](https://github.com/izwanGit/beruang-server)**: Cloud Orchestrator (Node.js & SSE).
-3.  **[Beruang AI](https://github.com/izwanGit/beruang-ai-backend)**: Data Science Lab (Training & Datasets).
+Beruang is built as a **decoupled microservices ecosystem** across three repositories.
+
+### Repository Family
+
+| Repository | Purpose | Stack |
+|:-----------|:--------|:------|
+| [**Beruang**](https://github.com/izwanGit/Beruang) | Mobile Application | React Native, TypeScript, TF.js |
+| [**beruang-server**](https://github.com/izwanGit/beruang-server) | API Orchestrator | Node.js, Express, SSE |
+| [**beruang-ai-backend**](https://github.com/izwanGit/beruang-ai-backend) | AI Training Lab | TensorFlow, Python, Node.js |
+
+### System Interaction Diagram
+
+```mermaid
+flowchart LR
+    subgraph MOBILE["📱 Mobile App"]
+        UI[React Native UI]
+        TF[TensorFlow.js]
+        FB[Firebase SDK]
+    end
+
+    subgraph SERVER["🖥️ Server Hub"]
+        API[Express API]
+        SSE[SSE Stream]
+        RAG[RAG Engine]
+    end
+
+    subgraph CLOUD["☁️ Cloud Services"]
+        GROK[Grok-1 LLM]
+        GEMINI[Gemini Vision]
+        FIRE[Firebase]
+    end
+
+    UI <-->|REST/SSE| API
+    TF -->|Local Inference| UI
+    FB <-->|Sync| FIRE
+    API --> GROK
+    API --> GEMINI
+    API --> RAG
+    SSE -->|Tokens| UI
+```
+
+### Server Orchestration Layer
+
+The Node.js server implements **Server-Sent Events (SSE)** for real-time token streaming.
+
+#### SSE Streaming Flow
+
+```
+Client Request → Context Injection → RAG Lookup → LLM Call → Token Stream → UI Render
+     ↓                  ↓                ↓            ↓            ↓           ↓
+   Query          User Budget      DOSM Stats     Grok-1     Character    React State
+                  + History        + Expert Tips   Stream     by Char
+```
+
+#### Latency Benchmarks
+
+| Operation | Latency | Notes |
+|:----------|:--------|:------|
+| First token appearance | ~200ms | SSE eliminates wait perception |
+| Full response completion | 3-8s | Depends on response length |
+| Local categorization | 8ms | TensorFlow.js |
+| Receipt OCR | 4.2s | Gemini Vision API |
+| Firebase sync | 120ms | Firestore write |
+
+### Triple-Source RAG System
+
+The Retrieval-Augmented Generation system grounds AI responses in factual data.
+
+| RAG Source | Data Type | Use Case |
+|:-----------|:----------|:---------|
+| **DOSM Economic** | Malaysian income statistics, inflation rates | "How does my spending compare to B40?" |
+| **Expert Tips** | 388 curated financial advice entries | "Give me tips to save more" |
+| **App Documentation** | Feature guides, FAQ entries | "How do I create a goal?" |
 
 ---
 
-## 📊 4. Entity Relationship Diagram (ERD)
+## 📊 Entity Relationship Diagram
+
+The Firestore database schema is optimized for real-time financial aggregation.
 
 ```mermaid
 erDiagram
-    USER ||--o{ TRANSACTION : "records"
-    USER ||--o{ SAVINGS_GOAL : "monitors"
-    USER ||--o{ CHAT_HISTORY : "converses"
-    USER ||--|| PERSONA_PROFILE : "configures"
+    USER ||--o{ TRANSACTION : records
+    USER ||--o{ SAVINGS_GOAL : tracks
+    USER ||--o{ CHAT_HISTORY : creates
+    USER ||--|| PERSONA : configures
 
     USER {
-        string uid PK "Foreign Key from Firebase Auth"
-        string email "Primary Contact"
-        int totalXP "Accumulated Point Pool"
-        int level "Evolution Level (1-13)"
-        float monthlyIncome "Total Monthly RM Intake"
-        json budgetConfig "50-30-20 Percentage Settings"
+        string uid PK "Firebase Auth UID"
+        string email "User email"
+        string name "Display name"
+        int totalXP "Gamification points"
+        int level "Evolution level 1-13"
+        float monthlyIncome "Base income RM"
+        object budgetConfig "50/30/20 settings"
+        timestamp createdAt "Account creation"
     }
 
     TRANSACTION {
-        string tid PK "Transaction ID"
-        string uid FK "User Reference"
-        float amount "RM Value"
-        string category "Needs|Wants|Savings"
-        string subcategory "Food|Housing|Utility|etc"
-        string merchant "Extracted Name"
-        string description "Raw Input Description"
-        datetime timestamp "ISO-8601 creation date"
+        string tid PK "Auto-generated ID"
+        string uid FK "User reference"
+        float amount "Transaction value RM"
+        string category "Needs/Wants/Savings"
+        string subcategory "Food/Transport/etc"
+        string merchant "Business name"
+        string description "Original input"
+        string type "income/expense"
+        timestamp createdAt "Log time"
     }
 
     SAVINGS_GOAL {
         string gid PK "Goal ID"
-        string uid FK "User Reference"
-        string label "Display Name"
-        float targetAmount "Target RM Threshold"
-        float currentAmount "Currently Saved RM"
-        datetime deadline "Projected End Date"
-        boolean isCompleted "Success Flag"
+        string uid FK "User reference"
+        string label "Goal name"
+        float targetAmount "Target RM"
+        float currentAmount "Progress RM"
+        date deadline "Target date"
+        boolean isCompleted "Success flag"
+        timestamp createdAt "Creation time"
     }
 
     CHAT_HISTORY {
-        string cid PK "Conversation ID"
-        string uid FK "User Reference"
-        string user_query "Raw Text Input"
-        string ai_reply "Synthesized Streaming Output"
-        json widgets "Structured Data for Rich UI"
-        datetime timestamp "Server Log Time"
+        string cid PK "Chat ID"
+        string uid FK "User reference"
+        string userQuery "User message"
+        string aiResponse "AI response"
+        object widgets "Rich UI data"
+        timestamp createdAt "Message time"
     }
 ```
 
----
+### Data Schema Details
 
-## 🕹️ 5. Gamification (The 13 Evolution Stages)
+#### User Document Structure
 
-| Tier | Final Stage Form | Psychological Trigger |
-| :--- | :--- | :--- |
-| **Newborn** | Polar Cub (Lv 1-2) | First interaction and budget setup effort. |
-| **Learner** | Panda Cub (Lv 3-4) | Sustained 7-day tracking activity. |
-| **Grizzly** | Silver Grizzly (Lv 8-9) | Consistent 50/30/20 compliance for 4 weeks. |
-| **Master** | Black Belt Bear (Lv 11-12) | Successful completion of 3 savings goals. |
-| **Zenith** | **The Golden King** 👑 (Lv 13) | Total Financial Freedom milestone. |
+| Field | Type | Description |
+|:------|:-----|:------------|
+| uid | string | Primary key from Firebase Auth |
+| email | string | User email address |
+| name | string | Display name |
+| totalXP | number | Accumulated experience points |
+| level | number | Current evolution level (1-13) |
+| monthlyIncome | number | Monthly income in RM |
+| budgetConfig.needs | number | Needs percentage (default 50) |
+| budgetConfig.wants | number | Wants percentage (default 30) |
+| budgetConfig.savings | number | Savings percentage (default 20) |
+| persona | string | Coaching style preference |
+| createdAt | timestamp | Account creation date |
 
----
+#### Transaction Document Structure
 
-## ⚙️ 8. Technical Challenges, Mitigations & System Performance
-
-### 8.2 System Performance Benchmarks (Latency)
-
-| Component | Operation | Latency (Avg) | Technology |
-| :--- | :--- | :--- | :--- |
-| **Local Logic** | Categorization | **8ms** | TensorFlow.js |
-| **Cloud Vision** | Receipt Extraction | **4.2s** | Gemini 1.5 Flash |
-| **Cognitive Hub** | Financial Reasoning | **SSE (Instant start)** | Grok-1 / OpenRouter |
-| **Persistence** | Sync to Firestore | **120ms** | Firebase SDK |
-
----
-
-## 🛡️ 9. Security, Privacy & Ethical AI Standards
-
-- **On-Device Prediction**: raw descriptions stay on your phone; Only de-identified aggregations reach the cloud for RAG advice.
-- **Ownership Lockdown**: Firebase Security Rules ensure only YOU can see your data:
-  ```javascript
-  allow read, write: if request.auth.uid == resource.data.uid;
-  ```
+| Field | Type | Constraints |
+|:------|:-----|:------------|
+| tid | string | Auto-generated |
+| uid | string | Must match authenticated user |
+| amount | number | Positive float, 2 decimal places |
+| category | string | Enum: "Needs", "Wants", "Savings" |
+| subcategory | string | 7 possible values |
+| merchant | string | Extracted business name |
+| description | string | Original user input |
+| type | string | Enum: "income", "expense" |
+| createdAt | timestamp | Transaction log time |
 
 ---
 
-## 📁 12. Project Structure: Codebase Architecture Tree
+## 🕹️ Gamification System
 
-```text
-/Users/izwan/FinalYearProject/Beruang
-├── 📂 src/
-│   ├── 📂 components/   # UI Library
-│   │   ├── 📂 widgets/  # AI Dynamic Renderers
-│   │   └── 📄 Bear.tsx # Evolution Hub
-│   ├── 📂 screens/      # Feature Implementation
-│   │   ├── 📄 Home.tsx   # Dashboard Logic
-│   │   ├── 📄 Chat.tsx   # Stream Hub
-│   │   └── 📄 Savings.tsx # Goals Logic
-│   ├── 📂 utils/        # Internal Engines
-│   │   ├── 📄 ai.ts      # TF.js Interface
-│   │   └── 📄 finance.ts # RM Algorithms
-│   └── 📂 constants/    # Global Style Hub
-├── 📄 firebaseConfig.js # Persistence Hub
-└── 📄 App.tsx          # Main Entry Wrapper
+Beruang transforms financial discipline into an engaging evolution game using principles from the **Octalysis Framework**.
+
+### The 50/30/20 Budgeting Rule
+
+| Category | Allocation | Purpose | Examples |
+|:---------|:-----------|:--------|:---------|
+| **Needs** | 50% | Essential survival | Rent, utilities, groceries, transport, insurance |
+| **Wants** | 30% | Quality of life | Entertainment, dining out, hobbies, subscriptions |
+| **Savings** | 20% | Future security | Emergency fund, investments, goals, retirement |
+
+### XP Reward System
+
+| Action | XP Reward | Psychological Mechanism |
+|:-------|:----------|:------------------------|
+| Log a transaction | +50 XP | Habit reinforcement |
+| Stay within budget (daily) | +100 XP | Positive reinforcement |
+| Complete savings goal | +500 XP | Achievement milestone |
+| 7-day logging streak | +300 XP | Streak motivation |
+| Month-end budget success | +1000 XP | Major milestone |
+| **Overspend Wants** | **-250 XP** | **Loss aversion penalty** |
+| **Miss goal deadline** | **-200 XP** | **Accountability** |
+
+### Evolution Tier System (13 Stages)
+
+| Level | Stage | Form | XP Required | Unlock Trigger |
+|:------|:------|:-----|:------------|:---------------|
+| 1-2 | Newborn | Polar Cub 🐻‍❄️ | 0 - 2,000 | Account creation |
+| 3-4 | Learner | Panda Cub 🐼 | 2,000 - 5,000 | First week streak |
+| 5-6 | Explorer | Brown Bear 🐻 | 5,000 - 10,000 | First goal created |
+| 7-8 | Builder | Black Bear 🐻 | 10,000 - 20,000 | 20% savings achieved |
+| 9-10 | Warrior | Grizzly 🐻 | 20,000 - 40,000 | Month of compliance |
+| 11-12 | Master | Kodiak 🐻 | 40,000 - 80,000 | 3 goals completed |
+| 13 | **Zenith** | **Golden King** 👑 | 100,000+ | Financial freedom |
+
+### Bear Evolution Visualization
+
+```
+Level 1-2     Level 5-6     Level 9-10    Level 13
+   🐻‍❄️    →     🐻     →     🐻     →     👑
+Polar Cub    Brown Bear    Grizzly    Golden King
 ```
 
 ---
 
-## 🚀 14. Getting Started: Full Installation Lab
+## 📡 API Reference
 
-1.  `git clone https://github.com/izwanGit/Beruang.git`
-2.  `npm install`
-3.  `cd ios && pod install && cd ..`
-4.  `npm run ios`.
+### Chat Streaming Endpoint
+
+**POST** `/chat/stream`
+
+| Parameter | Type | Required | Description |
+|:----------|:-----|:---------|:------------|
+| message | string | Yes | User query |
+| userId | string | Yes | Firebase UID |
+| context | object | No | Budget state & history |
+| persona | string | No | Coaching style |
+
+**Response**: Server-Sent Events stream
+
+```
+event: token
+data: {"content": "Based"}
+
+event: token
+data: {"content": " on"}
+
+event: token
+data: {"content": " your"}
+
+event: widget
+data: {"type": "spending_chart", "data": {...}}
+
+event: done
+data: {"complete": true}
+```
+
+### Receipt Scan Endpoint
+
+**POST** `/scan-receipt`
+
+| Parameter | Type | Required | Description |
+|:----------|:-----|:---------|:------------|
+| image | base64 | Yes | Receipt image |
+| userId | string | Yes | Firebase UID |
+
+**Response**:
+
+```json
+{
+  "merchant": "Family Mart",
+  "items": [
+    {"name": "Onigiri", "amount": 5.90},
+    {"name": "Green Tea", "amount": 3.50}
+  ],
+  "total": 9.40,
+  "category": "Wants",
+  "subcategory": "Food & Drink"
+}
+```
 
 ---
 
-## 🛠️ 16. Extensive Troubleshooting & FAQ Hub
+## 📁 Project Structure
 
-**Q: Local prediction is taking 2-3 seconds?**
-A: Ensure your device supports WebGL or Metal for TF.js acceleration.
-
-**Q: AI is giving generic advice?**
-A: Check if your budget is seeded. RAG requires at least 3 transactions to provide personal depth.
+```
+Beruang/
+├── 📂 src/
+│   ├── 📂 components/
+│   │   ├── 📂 widgets/          # AI-rendered rich components
+│   │   │   ├── SpendingChart.tsx
+│   │   │   ├── GoalProgress.tsx
+│   │   │   └── DailySummary.tsx
+│   │   ├── BearEvolution.tsx    # Gamification display
+│   │   ├── DonutChart.tsx       # Budget visualization
+│   │   └── TransactionCard.tsx  # Ledger item
+│   │
+│   ├── 📂 screens/
+│   │   ├── HomeScreen.tsx       # Dashboard (50/30/20)
+│   │   ├── ChatbotScreen.tsx    # SSE streaming UI
+│   │   ├── ExpensesScreen.tsx   # Transaction ledger
+│   │   ├── SavingsScreen.tsx    # Goals management
+│   │   └── SettingsScreen.tsx   # User preferences
+│   │
+│   ├── 📂 utils/
+│   │   ├── aiPredict.ts         # TensorFlow.js interface
+│   │   ├── financeUtils.ts      # Budget calculations
+│   │   ├── xpEngine.ts          # Gamification logic
+│   │   └── firebaseConfig.ts    # Database connection
+│   │
+│   └── 📂 constants/
+│       ├── colors.ts            # Design system
+│       ├── tiers.ts             # Evolution definitions
+│       └── budgetRules.ts       # 50/30/20 logic
+│
+├── 📂 assets/
+│   ├── 📂 avatars/              # 13 bear evolution images
+│   ├── beruang_logo.png         # App icon
+│   └── wallpaper.png            # Onboarding background
+│
+├── 📂 android/                   # Native Android config
+├── 📂 ios/                       # Native iOS config
+├── App.tsx                       # Root component
+└── package.json                  # Dependencies
+```
 
 ---
 
-## 🇲🇾 17. Malaysian Financial Glossary
-The AI is specifically trained on:
-- **ASB (Amanah Saham Bumiputera)**: National trust fund interest tracking.
-- **KWSP (EPF)**: Retirement savings logic.
-- **Zakat**: Compulsory spiritual taxes (Savings tier).
-- **Mamak**: Local street-food context.
-- **TnG**: Digital payment flow.
+## 🚀 Installation
+
+### Prerequisites
+
+| Requirement | Version |
+|:------------|:--------|
+| Node.js | 20.0.0+ |
+| npm | 10.0.0+ |
+| Xcode | 15.0+ (iOS) |
+| Android Studio | Latest (Android) |
+| CocoaPods | 1.14.0+ |
+
+### Environment Variables
+
+Create `.env` files with the following:
+
+**beruang-server/.env**
+```
+PORT=3001
+OPENROUTER_API_KEY=your_key_here
+GOOGLE_GENAI_API_KEY=your_key_here
+```
+
+**Beruang/firebaseConfig.js**
+```javascript
+export const firebaseConfig = {
+  apiKey: "your_api_key",
+  authDomain: "your_project.firebaseapp.com",
+  projectId: "your_project_id",
+  storageBucket: "your_bucket",
+  messagingSenderId: "your_sender_id",
+  appId: "your_app_id"
+};
+```
+
+### Setup Steps
+
+```bash
+# 1. Clone all repositories
+git clone https://github.com/izwanGit/Beruang.git
+git clone https://github.com/izwanGit/beruang-server.git
+git clone https://github.com/izwanGit/beruang-ai-backend.git
+
+# 2. Install server dependencies
+cd beruang-server
+npm install
+npm start
+
+# 3. Install mobile dependencies
+cd ../Beruang
+npm install
+
+# 4. iOS pod install
+cd ios && pod install && cd ..
+
+# 5. Run the app
+npm run ios    # For iOS
+npm run android # For Android
+```
 
 ---
 
-## 📜 19. Credits, Acknowledgments & Academic Heritage
-Developed by **Muhammad Izwan bin Ahmad** under the guidance of **Dr. Khairulliza binti Ahmad Salleh**.  
-**UiTM Shah Alam • 2026**
+## 🛡️ Security & Privacy
+
+| Security Feature | Implementation |
+|:-----------------|:---------------|
+| **Local-first AI** | Transaction descriptions processed on-device |
+| **Zero-knowledge categorization** | Raw text never sent to cloud for classification |
+| **Firebase Security Rules** | UID-based access control |
+| **HTTPS encryption** | All API calls encrypted |
+| **No third-party analytics** | User data not sold or shared |
+
+### Firebase Security Rules
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+    match /transactions/{transactionId} {
+      allow read, write: if request.auth.uid == resource.data.uid;
+    }
+  }
+}
+```
+
+---
+
+## 🇲🇾 Malaysian Financial Glossary
+
+The AI is trained to understand Malaysian financial terminology:
+
+| Term | Description | AI Category |
+|:-----|:------------|:------------|
+| **TnG** | Touch 'n Go e-wallet | Payment method |
+| **Mamak** | 24-hour Malaysian restaurant | Needs (basic) or Wants (social) |
+| **Zakat** | Islamic charitable obligation | Savings/Religious |
+| **ASB** | Amanah Saham Bumiputera trust fund | Savings/Investment |
+| **KWSP/EPF** | Employees Provident Fund | Savings/Retirement |
+| **PTPTN** | Student loan corporation | Needs/Debt |
+| **Grab** | Ride-hailing / food delivery | Context-dependent |
+| **Shopee/Lazada** | E-commerce platforms | Usually Wants |
+
+---
+
+## 🔮 Future Roadmap
+
+| Version | Feature | Status |
+|:--------|:--------|:-------|
+| v13.0 | Bank SMS auto-detection | Planned |
+| v13.1 | Shared household budgets | Planned |
+| v14.0 | Predictive overspending alerts | Research |
+| v14.1 | Zakat calculator integration | Research |
+| v15.0 | Voice transaction logging | Concept |
+
+---
+
+## 📜 Credits & Acknowledgments
+
+**Final Year Project (FYP)**  
+Bachelor of Information Technology (Hons.) Intelligent Systems Engineering  
+Universiti Teknologi MARA (UiTM) Shah Alam
+
+| Role | Name |
+|:-----|:-----|
+| **Developer** | Muhammad Izwan bin Ahmad |
+| **Supervisor** | Dr. Khairulliza binti Ahmad Salleh |
+| **Institution** | UiTM Shah Alam, Selangor |
+| **Year** | 2026 |
 
 ---
 
 <div align="center">
 
-**Made with 🐻 and ❤️ in Malaysia**  
+**Made with 🐻 and ❤️ in Malaysia**
+
 *"Beruang" sounds like "Ber-wang" (having money). Let's build your financial future together.*
 
 </div>
