@@ -349,7 +349,7 @@ export const ProfileScreen = ({
                   <Icon name="message-circle" size={18} color={COLORS.accent} />
                 </View>
                 <View style={styles.xpTextContent}>
-                  <Text style={styles.xpItemLabel}>Chat with YuLaoshi</Text>
+                  <Text style={styles.xpItemLabel}>Chat with Beruang</Text>
                   <Text style={styles.xpItemValue}>+100 XP per session</Text>
                 </View>
               </View>
