@@ -20,6 +20,7 @@ import {
   Platform,
   Image,
   ImageBackground,
+  InteractionManager,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -252,9 +253,8 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
   const lastMessageCountRef = useRef(currentChatMessages.length);
   const isEditingRef = useRef(false);
   const hasInitializedRef = useRef(false);
-  const prevChatSessionsLengthRef = useRef(chatSessions?.length || 0);
-
   const lastConsumedPrefillRef = useRef<string | undefined>(undefined);
+  const lastConsumedLinkedChatIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     const prefillMessage = route.params?.prefillMessage;
@@ -263,15 +263,7 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
 
     const sessions = chatSessions || [];
 
-    // Guard: Skip if already handling, unless explicit navigation
-    if (hasInitializedRef.current && !prefillMessage && !linkedChatId) {
-      if (prevChatSessionsLengthRef.current === sessions.length) {
-        return;
-      }
-    }
-    prevChatSessionsLengthRef.current = sessions.length;
-
-    // 1. Handle Prefill (Priority 1)
+    // 1. Handle Prefill
     if (prefillMessage && !linkedChatId && lastConsumedPrefillRef.current !== prefillMessage) {
       lastConsumedPrefillRef.current = prefillMessage;
       const createAndNavigate = async () => {
@@ -282,11 +274,15 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
       return;
     }
 
-    // 2. Handle Linked Chat (Priority 2)
-    if (linkedChatId) {
+    // 2. Handle Linked Chat
+    if (linkedChatId && lastConsumedLinkedChatIdRef.current !== linkedChatId) {
       const exists = sessions.find(s => s.id === linkedChatId);
 
+      // If we are just initializing, we might not have sessions yet, so we trust the ID.
+      // But if we are already initialized and it's missing, we skip.
       if (exists || !hasInitializedRef.current || sessions.length === 0) {
+        lastConsumedLinkedChatIdRef.current = linkedChatId;
+
         if (currentChatId !== linkedChatId) {
           lastConsumedPrefillRef.current = undefined;
           onSetCurrentChatId(linkedChatId);
@@ -299,7 +295,7 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
       }
     }
 
-    // 3. Restoration / Default Selection (Priority 3)
+    // 3. Restoration / Default Selection (Only if current is invalid/null)
     if ((!currentChatId || !sessions.find(s => s.id === currentChatId)) && sessions.length > 0) {
       const targetId = sessions[0].id;
       if (currentChatId !== targetId) {
@@ -307,10 +303,16 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
       }
       hasInitializedRef.current = true;
     } else if (!currentChatId && sessions.length === 0 && !hasInitializedRef.current) {
+      // Only auto-create on FIRST load if empty. 
       onCreateNewChat();
       hasInitializedRef.current = true;
     }
-  }, [route.params, chatSessions?.length, currentChatId]);
+
+    // Mark initialized if we have data or sessions are effectively empty
+    if (chatSessions !== undefined) {
+      hasInitializedRef.current = true;
+    }
+  }, [route.params?.prefillMessage, route.params?.chatId, route.params?.messageId, chatSessions?.length, currentChatId]);
 
   useEffect(() => {
     if (editingMessage) {
@@ -348,13 +350,18 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
   };
 
   const handleCreateNew = () => {
-    onCreateNewChat();
     setIsHistoryVisible(false);
+    // Wait for modal close animation and interactions to complete
+    InteractionManager.runAfterInteractions(() => {
+      onCreateNewChat();
+    });
   };
 
   const handleSetChat = (id: string) => {
-    onSetCurrentChatId(id);
     setIsHistoryVisible(false);
+    InteractionManager.runAfterInteractions(() => {
+      onSetCurrentChatId(id);
+    });
   };
 
   // --- STATE RESET ON CHAT SWITCH ---
