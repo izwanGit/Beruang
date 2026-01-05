@@ -407,7 +407,9 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
     if (highlightMessageId && currentChatMessages.length > 0) {
       const index = currentChatMessages.findIndex(m => m.id === highlightMessageId);
       if (index > -1) {
-        flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+        InteractionManager.runAfterInteractions(() => {
+          flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+        });
         const timer = setTimeout(() => {
           setHighlightMessageId(null);
         }, 3000);
@@ -664,6 +666,11 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
                   </View>
                 ) : null
               }
+              onScrollToIndexFailed={(info) => {
+                setTimeout(() => {
+                  flatListRef.current?.scrollToIndex({ index: info.index, animated: true, viewPosition: 0.5 });
+                }, 200);
+              }}
             />
 
             {!editingMessage && (
