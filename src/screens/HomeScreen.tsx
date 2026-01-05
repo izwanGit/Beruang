@@ -41,7 +41,8 @@ export type Screen =
   | 'Savings'
   | 'AddMoney'
   | 'SavedAdvice'
-  | 'Profile';
+  | 'Profile'
+  | 'Notifications';
 
 type HomeScreenProps = {
   onNavigate: (screen: Screen) => void;
@@ -170,21 +171,33 @@ export const HomeScreen = ({
               </TouchableOpacity>
             </View>
           </View>
-          <TouchableOpacity
-            style={homeStyles.avatarContainer}
-            onPress={() => onNavigate('Profile')}
-          >
-            <View style={homeStyles.avatarRing}>
-              {isBearAvatar(userAvatar) ? (
-                <Image source={BEAR_AVATARS[userAvatar]} style={homeStyles.avatarImage} />
-              ) : (
-                <MaterialCommunityIcon name={userAvatar as any || 'account'} size={28} color={COLORS.white} />
-              )}
-            </View>
-            <View style={homeStyles.levelBadge}>
-              <Text style={homeStyles.levelBadgeText}>{level}</Text>
-            </View>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity
+              style={homeStyles.notificationButton}
+              onPress={() => onNavigate('Notifications')}
+            >
+              <Icon name="bell" size={24} color={COLORS.white} />
+              <View style={homeStyles.notificationBadge}>
+                <Text style={homeStyles.notificationBadgeText}>3</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={homeStyles.avatarContainer}
+              onPress={() => onNavigate('Profile')}
+            >
+              <View style={homeStyles.avatarRing}>
+                {isBearAvatar(userAvatar) ? (
+                  <Image source={BEAR_AVATARS[userAvatar]} style={homeStyles.avatarImage} />
+                ) : (
+                  <MaterialCommunityIcon name={userAvatar as any || 'account'} size={28} color={COLORS.white} />
+                )}
+              </View>
+              <View style={homeStyles.levelBadge}>
+                <Text style={homeStyles.levelBadgeText}>{level}</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* --- Balance Card --- */}
@@ -353,39 +366,11 @@ export const HomeScreen = ({
               <Text style={homeStyles.viewMoreText}>View All</Text>
             </TouchableOpacity>
           )}
+
+          {/* Spacer for Global Bottom Nav */}
+          <View style={{ height: 100 }} />
         </View>
       </ScrollView>
-
-      {/* --- Bottom Tab Navigator --- */}
-      <SafeAreaView style={homeStyles.bottomNavSafeArea} edges={['bottom']}>
-        <View style={homeStyles.bottomNav}>
-          <TouchableOpacity
-            style={homeStyles.navItem}
-            onPress={() => onNavigate('Home')}
-          >
-            <Icon name="home" size={26} color={COLORS.accent} />
-            <Text style={homeStyles.navTextActive}>Home</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={homeStyles.navItem}
-            onPress={() => onNavigate('Expenses')}
-          >
-            <Icon name="pie-chart" size={26} color={COLORS.darkGray} />
-            <Text style={homeStyles.navText}>Expenses</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={homeStyles.navItem}
-            onPress={() => onNavigate('Chatbot')}
-          >
-            <Icon name="message-square" size={26} color={COLORS.darkGray} />
-            <Text style={homeStyles.navText}>Chatbot</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={homeStyles.navItem} onPress={() => onNavigate('Profile')}>
-            <Icon name="user" size={26} color={COLORS.darkGray} />
-            <Text style={homeStyles.navText}>Profile</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
     </View>
   );
 };
@@ -455,6 +440,32 @@ const homeStyles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
     color: COLORS.accent,
+  },
+  notificationButton: {
+    padding: 8,
+    marginRight: 10,
+    position: 'relative',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 12,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: '#FF5252',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: COLORS.accent,
+    paddingHorizontal: 2,
+  },
+  notificationBadgeText: {
+    color: COLORS.white,
+    fontSize: 8,
+    fontWeight: 'bold',
   },
   balanceCard: {
     backgroundColor: COLORS.secondary,
@@ -726,6 +737,7 @@ const homeStyles = StyleSheet.create({
   },
   navItem: {
     alignItems: 'center',
+    flex: 1,
   },
   navText: {
     fontSize: 12,

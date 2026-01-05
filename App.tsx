@@ -1,11 +1,22 @@
-// App.tsx
-import 'react-native-gesture-handler'; // MUST BE THE VERY FIRST LINE
 import React, { useState, useEffect, useRef } from 'react';
-import { ActivityIndicator, View, StyleSheet, RefreshControl } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import {
+  ActivityIndicator,
+  View,
+  StyleSheet,
+  RefreshControl,
+  TouchableOpacity,
+  Text,
+} from 'react-native';
+import {
+  NavigationContainer,
+  useNavigationContainerRef,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/Feather';
+import { COLORS } from './src/constants/colors';
 
 // --- Firebase Imports ---
 import { initializeApp } from 'firebase/app';
@@ -52,6 +63,7 @@ import { ChatbotScreen } from './src/screens/ChatbotScreen';
 import { ExpensesScreen } from './src/screens/ExpensesScreen';
 import { SavingsScreen } from './src/screens/SavingsScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
+import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { BudgetExceededModal } from './src/components/BudgetExceededModal';
 
 // Import finance utilities
@@ -80,6 +92,7 @@ export type RootStackParamList = {
   Expenses: undefined;
   Savings: undefined;
   Profile: undefined;
+  Notifications: undefined;
 };
 
 type AppNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -187,6 +200,9 @@ const getMonthKey = (dateStr: string) => {
 
 // --- Main App Component (The CONTROLLER) ---
 export default function App() {
+  const navigationRef = useNavigationContainerRef();
+  const [currentRoute, setCurrentRoute] = useState<string>('');
+
   // --- STATE ---
   const [modalVisible, setModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
@@ -1331,6 +1347,7 @@ export default function App() {
     return <LoadingScreen />;
   }
 
+
   let initialRoute: keyof RootStackParamList = 'Login';
   if (firebaseUser) {
     if (!userProfile) {
@@ -1342,225 +1359,343 @@ export default function App() {
     }
   }
 
+  const handleGlobalNavigate = (screen: string) => {
+    if (navigationRef.isReady()) {
+      // @ts-ignore
+      navigationRef.navigate(screen as any, screen === 'Chatbot' ? {} : undefined);
+    }
+  };
+
+  // Show bottom nav on screens that should have it
+  const showBottomNav = ['Home', 'Expenses', 'Profile'].includes(currentRoute);
+
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName={initialRoute}
-          screenOptions={{ headerShown: false, animation: 'fade' }}
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <NavigationContainer
+          ref={navigationRef}
+          onStateChange={(state) => {
+            // Get the current route from the state
+            const routes = state?.routes;
+            if (routes && routes.length > 0) {
+              const currentRouteName = routes[routes.length - 1].name;
+              setCurrentRoute(currentRouteName);
+            }
+          }}
+          onReady={() => {
+            const routeName = navigationRef.getCurrentRoute()?.name;
+            if (routeName) setCurrentRoute(routeName);
+          }}
         >
-          {!firebaseUser ? (
-            <>
-              <Stack.Screen name="Login">
-                {({ navigation }) => (
-                  <LoginScreen
-                    key="login-screen-v1"
-                    onSignUp={() => navigation.navigate('SignUp')}
-                    showMessage={showMessage}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="SignUp">
-                {({ navigation }) => (
-                  <SignUpScreen
-                    key="signup-screen-v1"
-                    onBack={() => navigation.goBack()}
-                    showMessage={showMessage}
-                  />
-                )}
-              </Stack.Screen>
-            </>
-          ) : (
-            <>
-              <Stack.Screen
-                name="Onboarding"
-                options={{ gestureEnabled: false }}
-              >
-                {({ navigation, route }) => (
-                  <OnboardingScreen
-                    onComplete={(data, isRetake) =>
-                      handleOnboardingComplete(data, isRetake)
-                    }
-                    showMessage={showMessage}
-                    initialData={
-                      route.params?.initialData ||
-                      (userProfile
-                        ? userProfile
-                        : { name: firebaseUser?.displayName || '' })
-                    }
-                    isRetake={route.params?.isRetake}
-                    navigation={navigation}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="Home">
-                {({ navigation }) => (
-                  <HomeScreen
-                    onNavigate={(screen: Screen) => {
-                      if (screen === 'Chatbot') {
-                        navigation.navigate('Chatbot', {});
-                      } else {
-                        navigation.navigate(screen as keyof RootStackParamList)
-                      }
-                    }}
-                    transactions={transactions}
-                    userName={userProfile?.name || 'User'}
-                    userAvatar={userProfile?.avatar || 'bear'}
-                    userXP={userProfile?.totalXP || 0}
-                    onResetMonth={handleResetMonth}
-                    refreshing={refreshing}
-                    onRefresh={handleRefresh}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="AddMoney">
-                {({ navigation }) => (
-                  <AddMoneyScreen
-                    onBack={() => navigation.goBack()}
-                    showMessage={showMessage}
-                    onAddTransaction={handleAddTransaction}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="SavedAdvice">
-                {({ navigation }) => (
-                  <SavedAdviceScreen
-                    onBack={() => navigation.goBack()}
-                    savedAdvices={savedAdvices}
-                    onGoToChat={(chatId, messageId) => {
-                      setCurrentChatId(chatId);
-                      navigation.navigate('Chatbot', { chatId, messageId });
-                    }}
-                    onDeleteAdvice={handleDeleteSavedAdvice}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="AddTransaction">
-                {({ navigation }) => {
-                  const stats = calculateMonthlyStats(transactions, userProfile);
-                  const monthlyBalance = stats.budget.needs.remaining + stats.budget.wants.remaining + stats.budget.savings20.pending;
-                  return (
-                    <AddTransactionScreen
+          <Stack.Navigator
+            initialRouteName={initialRoute}
+            screenOptions={{
+              headerShown: false,
+              animation: 'none',
+            }}
+          >
+            {!firebaseUser ? (
+              <>
+                <Stack.Screen name="Login">
+                  {({ navigation }) => (
+                    <LoginScreen
+                      key="login-screen-v1"
+                      onSignUp={() => navigation.navigate('SignUp')}
+                      showMessage={showMessage}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="SignUp">
+                  {({ navigation }) => (
+                    <SignUpScreen
+                      key="signup-screen-v1"
                       onBack={() => navigation.goBack()}
                       showMessage={showMessage}
-                      onAddTransaction={(tx) => handleAddTransaction(tx)}
-                      canAccommodateBudget={canAccommodateTransaction}
-                      monthlyBalance={Math.max(0, monthlyBalance)}
-                      onNavigateToAddMoney={() => navigation.navigate('AddMoney')}
                     />
-                  );
-                }}
-              </Stack.Screen>
-              <Stack.Screen
-                name="Chatbot"
-                options={{ animation: 'slide_from_bottom' }}
-              >
-                {({ navigation, route }) => (
-                  <ChatbotScreen
-                    onBack={() => {
-                      navigation.goBack();
-                      setCurrentChatId(null);
-                    }}
-                    chatSessions={chatSessions}
-                    currentChatMessages={currentChatMessages}
-                    currentChatId={currentChatId}
-                    userProfile={userProfile!}
-                    transactions={transactions}
-                    onSetCurrentChatId={setCurrentChatId}
-                    onCreateNewChat={handleCreateNewChat}
-                    onSendMessage={handleSendMessage}
-                    onSaveAdvice={handleSaveAdvice}
-                    onDeleteChatSession={handleDeleteChatSession}
-                    onEditMessage={handleEditMessage}
-                    route={route}
-                    streamingMessage={streamingResponse}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="Expenses">
-                {({ navigation }) => (
-                  <ExpensesScreen
-                    onBack={() => navigation.goBack()}
-                    transactions={transactions}
-                    onNavigate={(screen: Screen) => {
-                      if (screen === 'Chatbot') {
-                        navigation.navigate('Chatbot', {});
-                      } else {
-                        navigation.navigate(screen as keyof RootStackParamList)
+                  )}
+                </Stack.Screen>
+              </>
+            ) : (
+              <>
+                <Stack.Screen
+                  name="Onboarding"
+                  options={{ gestureEnabled: false }}
+                >
+                  {({ navigation, route }) => (
+                    <OnboardingScreen
+                      onComplete={(data, isRetake) =>
+                        handleOnboardingComplete(data, isRetake)
                       }
-                    }}
-                    onAskAI={(message) => {
-                      // Navigate immediately, let ChatbotScreen handle the creation & sending
-                      navigation.navigate('Chatbot', { prefillMessage: message });
-                    }}
-                    onUpdateTransaction={handleUpdateTransaction}
-                    onDeleteTransaction={handleDeleteTransaction}
-                    refreshing={refreshing}
-                    onRefresh={handleRefresh}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="Savings">
-                {({ navigation }) => (
-                  <SavingsScreen
-                    onBack={() => navigation.goBack()}
-                    transactions={transactions}
-                    onAddTransaction={(tx) => handleAddTransaction(tx)}
-                    refreshing={refreshing}
-                    onRefresh={handleRefresh}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="Profile">
-                {({ navigation }) => (
-                  <ProfileScreen
-                    onNavigate={(screen: Screen) => {
-                      if (screen === 'Chatbot') {
-                        navigation.navigate('Chatbot', {});
-                      } else {
-                        navigation.navigate(screen as keyof RootStackParamList)
+                      showMessage={showMessage}
+                      initialData={
+                        route.params?.initialData ||
+                        (userProfile
+                          ? userProfile
+                          : { name: firebaseUser?.displayName || '' })
                       }
-                    }}
-                    user={userProfile!}
-                    transactions={transactions}
-                    onUpdateUser={handleUpdateUser}
-                    onLogout={handleLogout}
-                    navigation={navigation}
-                  />
-                )}
-              </Stack.Screen>
-            </>
-          )}
-        </Stack.Navigator>
-      </NavigationContainer>
+                      isRetake={route.params?.isRetake}
+                      navigation={navigation}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="Home">
+                  {({ navigation }) => (
+                    <HomeScreen
+                      onNavigate={(screen: Screen) => {
+                        if (screen === 'Chatbot') {
+                          navigation.navigate('Chatbot', {});
+                        } else {
+                          navigation.navigate(screen as keyof RootStackParamList)
+                        }
+                      }}
+                      transactions={transactions}
+                      userName={userProfile?.name || 'User'}
+                      userAvatar={userProfile?.avatar || 'bear'}
+                      userXP={userProfile?.totalXP || 0}
+                      onResetMonth={handleResetMonth}
+                      refreshing={refreshing}
+                      onRefresh={handleRefresh}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="AddMoney">
+                  {({ navigation }) => (
+                    <AddMoneyScreen
+                      onBack={() => navigation.goBack()}
+                      showMessage={showMessage}
+                      onAddTransaction={handleAddTransaction}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="SavedAdvice">
+                  {({ navigation }) => (
+                    <SavedAdviceScreen
+                      onBack={() => navigation.goBack()}
+                      savedAdvices={savedAdvices}
+                      onGoToChat={(chatId, messageId) => {
+                        setCurrentChatId(chatId);
+                        navigation.navigate('Chatbot', { chatId, messageId });
+                      }}
+                      onDeleteAdvice={handleDeleteSavedAdvice}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="AddTransaction">
+                  {({ navigation }) => {
+                    const stats = calculateMonthlyStats(transactions, userProfile);
+                    const monthlyBalance = stats.budget.needs.remaining + stats.budget.wants.remaining + stats.budget.savings20.pending;
+                    return (
+                      <AddTransactionScreen
+                        onBack={() => navigation.goBack()}
+                        showMessage={showMessage}
+                        onAddTransaction={(tx) => handleAddTransaction(tx)}
+                        canAccommodateBudget={canAccommodateTransaction}
+                        monthlyBalance={Math.max(0, monthlyBalance)}
+                        onNavigateToAddMoney={() => navigation.navigate('AddMoney')}
+                      />
+                    );
+                  }}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="Chatbot"
+                  options={{
+                    animation: 'slide_from_bottom',
+                  }}
+                >
+                  {({ navigation, route }) => (
+                    <ChatbotScreen
+                      onBack={() => {
+                        navigation.goBack();
+                        setCurrentChatId(null);
+                      }}
+                      onNavigate={(screen: Screen) => {
+                        if (screen === 'Chatbot') {
+                          navigation.navigate('Chatbot', {});
+                        } else {
+                          navigation.navigate(screen as keyof RootStackParamList)
+                        }
+                      }}
+                      chatSessions={chatSessions}
+                      currentChatMessages={currentChatMessages}
+                      currentChatId={currentChatId}
+                      userProfile={userProfile!}
+                      transactions={transactions}
+                      onSetCurrentChatId={setCurrentChatId}
+                      onCreateNewChat={handleCreateNewChat}
+                      onSendMessage={handleSendMessage}
+                      onSaveAdvice={handleSaveAdvice}
+                      onDeleteChatSession={handleDeleteChatSession}
+                      onEditMessage={handleEditMessage}
+                      route={route}
+                      streamingMessage={streamingResponse}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="Expenses">
+                  {({ navigation }) => (
+                    <ExpensesScreen
+                      onBack={() => navigation.goBack()}
+                      transactions={transactions}
+                      onNavigate={(screen: Screen) => {
+                        if (screen === 'Chatbot') {
+                          navigation.navigate('Chatbot', {});
+                        } else {
+                          navigation.navigate(screen as keyof RootStackParamList)
+                        }
+                      }}
+                      onAskAI={(message) => {
+                        // Navigate immediately, let ChatbotScreen handle the creation & sending
+                        navigation.navigate('Chatbot', { prefillMessage: message });
+                      }}
+                      onUpdateTransaction={handleUpdateTransaction}
+                      onDeleteTransaction={handleDeleteTransaction}
+                      refreshing={refreshing}
+                      onRefresh={handleRefresh}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="Savings">
+                  {({ navigation }) => (
+                    <SavingsScreen
+                      onBack={() => navigation.goBack()}
+                      transactions={transactions}
+                      onAddTransaction={(tx) => handleAddTransaction(tx)}
+                      refreshing={refreshing}
+                      onRefresh={handleRefresh}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="Profile">
+                  {({ navigation }) => (
+                    <ProfileScreen
+                      onNavigate={(screen: Screen) => {
+                        if (screen === 'Chatbot') {
+                          navigation.navigate('Chatbot', {});
+                        } else {
+                          navigation.navigate(screen as keyof RootStackParamList)
+                        }
+                      }}
+                      user={userProfile!}
+                      transactions={transactions}
+                      onUpdateUser={handleUpdateUser}
+                      onLogout={handleLogout}
+                      navigation={navigation}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="Notifications">
+                  {({ navigation }) => (
+                    <NotificationsScreen
+                      onBack={() => navigation.goBack()}
+                    />
+                  )}
+                </Stack.Screen>
+              </>
+            )}
+          </Stack.Navigator>
+        </NavigationContainer>
 
-      {/* --- MODALS --- */}
-      <BalanceAllocationModal
-        key={pendingBalance}
-        visible={showBalanceModal}
-        balance={pendingBalance}
-        onAllocate={handleBalanceAllocation}
-      />
-      <InitialBalanceModal
-        visible={showInitialBalanceModal}
-        onSubmit={handleSetInitialBalance}
-      />
-      <BudgetExceededModal
-        visible={showBudgetExceededModal}
-        onClose={() => setShowBudgetExceededModal(false)}
-        budgetStatus={budgetExceededInfo}
-      />
-      <MessageModal
-        visible={modalVisible}
-        message={modalMessage}
-        onDismiss={() => setModalVisible(false)}
-      />
-    </GestureHandlerRootView>
+        {/* Global Bottom Nav */}
+        {showBottomNav && (
+          <SafeAreaView style={styles.bottomNavSafeArea} edges={['bottom']}>
+            <View style={styles.bottomNav}>
+              <TouchableOpacity
+                style={styles.navItem}
+                onPress={() => handleGlobalNavigate('Home')}
+              >
+                <Icon name="home" size={26} color={currentRoute === 'Home' ? COLORS.accent : COLORS.darkGray} />
+                <Text style={currentRoute === 'Home' ? styles.navTextActive : styles.navText}>Home</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.navItem}
+                onPress={() => handleGlobalNavigate('Expenses')}
+              >
+                <Icon name="pie-chart" size={26} color={currentRoute === 'Expenses' ? COLORS.accent : COLORS.darkGray} />
+                <Text style={currentRoute === 'Expenses' ? styles.navTextActive : styles.navText}>Expenses</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.navItem}
+                onPress={() => handleGlobalNavigate('Chatbot')}
+              >
+                <Icon name="message-square" size={26} color={currentRoute === 'Chatbot' ? COLORS.accent : COLORS.darkGray} />
+                <Text style={currentRoute === 'Chatbot' ? styles.navTextActive : styles.navText}>Chatbot</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.navItem}
+                onPress={() => handleGlobalNavigate('Profile')}
+              >
+                <Icon name="user" size={26} color={currentRoute === 'Profile' ? COLORS.accent : COLORS.darkGray} />
+                <Text style={currentRoute === 'Profile' ? styles.navTextActive : styles.navText}>Profile</Text>
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        )}
+
+        <BalanceAllocationModal
+          key={pendingBalance}
+          visible={showBalanceModal}
+          balance={pendingBalance}
+          onAllocate={handleBalanceAllocation}
+        />
+        <InitialBalanceModal
+          visible={showInitialBalanceModal}
+          onSubmit={handleSetInitialBalance}
+        />
+        <BudgetExceededModal
+          visible={showBudgetExceededModal}
+          onClose={() => setShowBudgetExceededModal(false)}
+          budgetStatus={budgetExceededInfo}
+        />
+        <MessageModal
+          visible={modalVisible}
+          message={modalMessage}
+          onDismiss={() => setModalVisible(false)}
+        />
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }
 
 // --- Styles ---
 const styles = StyleSheet.create({
+  bottomNavSafeArea: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: COLORS.white,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 20,
+    zIndex: 1000,
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 4, // Minimal padding, let SafeAreaView handle the rest
+    backgroundColor: COLORS.white,
+  },
+  navItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  navText: {
+    fontSize: 12,
+    color: COLORS.darkGray,
+    marginTop: 2,
+  },
+  navTextActive: {
+    fontSize: 12,
+    color: COLORS.accent,
+    marginTop: 2,
+    fontWeight: 'bold',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

@@ -1,5 +1,5 @@
 // src/screens/ExpensesScreen.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -26,7 +26,7 @@ import {
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../constants/colors';
@@ -201,54 +201,60 @@ export const ExpensesScreen = ({
   const needsForMonth = needsExpenses.reduce((sum, t) => sum + t.amount, 0);
   const wantsForMonth = wantsExpenses.reduce((sum, t) => sum + t.amount, 0);
 
-  let chartData;
-  let totalForChart;
-  let subCategoryGroups;
-
   // --- CHART DATA PREPARATION ---
-  if (activeTab === 'needs') {
-    subCategoryGroups = getSubCategoryGroups(needsExpenses);
-    totalForChart = needsForMonth;
-  } else if (activeTab === 'wants') {
-    subCategoryGroups = getSubCategoryGroups(wantsExpenses);
-    totalForChart = wantsForMonth;
-  } else {
-    subCategoryGroups = getSubCategoryGroups(expenses);
-    totalForChart = totalExpenses;
-  }
+  const { chartData, totalForChart, colorMap, subCategoryGroups } = useMemo(() => {
+    let subCategoryGroups;
+    let total;
 
-  // Use a diverse "many colors" palette for the wheels as requested
-  chartData = Object.entries(subCategoryGroups).map(
-    ([sub, data]: [string, any], index) => ({
-      name: sub,
-      population: data.amount,
-      color: categoryColors[index % categoryColors.length],
-    }),
-  );
+    if (activeTab === 'needs') {
+      subCategoryGroups = getSubCategoryGroups(needsExpenses);
+      total = needsForMonth;
+    } else if (activeTab === 'wants') {
+      subCategoryGroups = getSubCategoryGroups(wantsExpenses);
+      total = wantsForMonth;
+    } else {
+      subCategoryGroups = getSubCategoryGroups(expenses);
+      total = totalExpenses;
+    }
 
-  // Specific chart data for Needs/Wants tabs (using same approach)
-  const needsSubGroups = getSubCategoryGroups(needsExpenses);
-  const needsChartData = Object.entries(needsSubGroups).map(
-    ([sub, data]: [string, any], index) => ({
-      name: sub,
-      population: data.amount,
-      color: categoryColors[index % categoryColors.length],
-    }),
-  );
+    const data = Object.entries(subCategoryGroups).map(
+      ([sub, subData]: [string, any], index) => ({
+        name: sub,
+        population: subData.amount,
+        color: categoryColors[index % categoryColors.length],
+      }),
+    );
 
-  const wantsSubGroups = getSubCategoryGroups(wantsExpenses);
-  const wantsChartData = Object.entries(wantsSubGroups).map(
-    ([sub, data]: [string, any], index) => ({
-      name: sub,
-      population: data.amount,
-      color: categoryColors[index % categoryColors.length],
-    }),
-  );
+    const colors: Record<string, string> = data.reduce((acc, slice) => {
+      acc[slice.name] = slice.color;
+      return acc;
+    }, {} as Record<string, string>);
 
-  const colorMap: Record<string, string> = chartData.reduce((acc, slice) => {
-    acc[slice.name] = slice.color;
-    return acc;
-  }, {} as Record<string, string>);
+    return { chartData: data, totalForChart: total, colorMap: colors, subCategoryGroups };
+  }, [activeTab, expenses, needsExpenses, wantsExpenses, needsForMonth, wantsForMonth, totalExpenses]);
+
+  // Specific chart data for Needs/Wants tabs (memoized)
+  const needsChartData = useMemo(() => {
+    const needsSubGroups = getSubCategoryGroups(needsExpenses);
+    return Object.entries(needsSubGroups).map(
+      ([sub, data]: [string, any], index) => ({
+        name: sub,
+        population: data.amount,
+        color: categoryColors[index % categoryColors.length],
+      }),
+    );
+  }, [needsExpenses]);
+
+  const wantsChartData = useMemo(() => {
+    const wantsSubGroups = getSubCategoryGroups(wantsExpenses);
+    return Object.entries(wantsSubGroups).map(
+      ([sub, data]: [string, any], index) => ({
+        name: sub,
+        population: data.amount,
+        color: categoryColors[index % categoryColors.length],
+      }),
+    );
+  }, [wantsExpenses]);
 
   // --- MODAL HELPERS ---
   const animateModal = (visible: boolean, slideVal: Animated.Value) => {
@@ -562,16 +568,19 @@ export const ExpensesScreen = ({
     </View>
   );
 
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = Math.max(insets.top, 20) + 12;
+
   return (
     <View style={expensesStyles.container}>
-      <SafeAreaView style={expensesStyles.safeAreaContent} edges={['top', 'left', 'right']}>
+      <View style={expensesStyles.safeAreaContent}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-        <View style={expensesStyles.header}>
-          <TouchableOpacity onPress={onBack}>
-            <Icon name="arrow-left" size={24} color="#333" />
+        <View style={[expensesStyles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>
+          <TouchableOpacity onPress={onBack} style={expensesStyles.headerButton}>
+            <Icon name="arrow-left" size={24} color={COLORS.accent} />
           </TouchableOpacity>
           <Text style={expensesStyles.headerTitle}>Expenses</Text>
-          <View style={{ width: 24 }} />
+          <View style={{ width: 40 }} />
         </View>
         <ScrollView
           contentContainerStyle={expensesStyles.scrollContainer}
@@ -799,10 +808,10 @@ export const ExpensesScreen = ({
             </View>
           )}
         </ScrollView>
-      </SafeAreaView>
+      </View>
 
       {/* Bottom Nav */}
-      <SafeAreaView style={expensesStyles.bottomNavSafeArea} edges={['bottom']}>
+      <View style={expensesStyles.bottomNavSafeArea}>
         <View style={expensesStyles.bottomNav}>
           <TouchableOpacity
             style={expensesStyles.navItem}
@@ -831,7 +840,7 @@ export const ExpensesScreen = ({
             <Text style={expensesStyles.navText}>Profile</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
 
       {/* --- EDIT MODAL --- */}
       <Modal
@@ -1000,7 +1009,7 @@ const expensesStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingBottom: 12,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',

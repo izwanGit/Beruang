@@ -10,7 +10,7 @@ import {
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import { COLORS } from '../constants/colors';
 
@@ -25,6 +25,9 @@ export const AddMoneyScreen = ({
   showMessage,
   onAddTransaction,
 }: AddMoneyScreenProps) => {
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = Math.max(insets.top, 20) + 12;
+
   const [amountCents, setAmountCents] = useState(0); // Bank-style: store as cents
   const [description, setDescription] = useState('');
   const [allocationMonths, setAllocationMonths] = useState(1);
@@ -148,10 +151,10 @@ export const AddMoneyScreen = ({
   return (
     <View style={addMoneyStyles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-      <SafeAreaView style={addMoneyStyles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+      <View style={addMoneyStyles.safeArea}>
         {/* --- Standardized Header --- */}
-        <View style={addMoneyStyles.header}>
-          <TouchableOpacity onPress={onBack} style={addMoneyStyles.backButton}>
+        <View style={[addMoneyStyles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>
+          <TouchableOpacity onPress={onBack} style={addMoneyStyles.headerButton}>
             <Icon name="arrow-left" size={24} color={COLORS.accent} />
           </TouchableOpacity>
           <Text style={addMoneyStyles.headerTitle}>Add Money</Text>
@@ -269,7 +272,7 @@ export const AddMoneyScreen = ({
             </Text>
           </View>
         </ScrollView>
-      </SafeAreaView>
+      </View>
     </View>
   );
 };
@@ -288,13 +291,18 @@ const addMoneyStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingBottom: 12,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  backButton: {
-    padding: 5,
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8F9FA',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,

@@ -15,7 +15,7 @@ import {
   Share,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../constants/colors';
@@ -145,6 +145,8 @@ export const ProfileScreen = ({
   };
 
 
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = Math.max(insets.top, 20) + 12;
 
   return (
     <View style={styles.container}>
@@ -169,11 +171,11 @@ export const ProfileScreen = ({
       />
 
       {/* --- Main Screen --- */}
-      <SafeAreaView style={styles.safeAreaContent} edges={['top', 'left', 'right']}>
+      <View style={[styles.safeAreaContent, { paddingTop: 0 }]}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
 
         {/* --- Reverted Standard Header --- */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>
           <TouchableOpacity onPress={() => onNavigate('Home')} style={styles.headerButton}>
             <Icon name="arrow-left" size={24} color={COLORS.accent} />
           </TouchableOpacity>
@@ -298,8 +300,8 @@ export const ProfileScreen = ({
               <SettingRow
                 icon="bell"
                 text="Notifications"
-                description="Control your alerts and reminders"
-                onPress={() => Alert.alert('Coming Soon', 'Notification settings are under development.')}
+                description="View your alerts and reminders from Beruang"
+                onPress={() => onNavigate('Notifications')}
                 isLast={true}
               />
             </View>
@@ -312,9 +314,12 @@ export const ProfileScreen = ({
             <Text style={styles.versionInfo}>
               Beruang v1.0.4 • Made With Passion
             </Text>
+
+            {/* Spacer for Global Bottom Nav */}
+            <View style={{ height: 100 }} />
           </View>
         </ScrollView>
-      </SafeAreaView>
+      </View>
 
       {/* --- XP GUIDE MODAL (The Mobile "Hover" equivalent) --- */}
       <Modal
@@ -446,40 +451,7 @@ export const ProfileScreen = ({
         </SafeAreaView>
       </Modal>
 
-      {/* --- Reverted Standard Bottom Navigation --- */}
-      <SafeAreaView style={styles.bottomNavSafeArea} edges={['bottom']}>
-        <View style={styles.bottomNav}>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => onNavigate('Home')}
-          >
-            <Icon name="home" size={26} color={COLORS.darkGray} />
-            <Text style={styles.navText}>Home</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => onNavigate('Expenses')}
-          >
-            <Icon name="pie-chart" size={26} color={COLORS.darkGray} />
-            <Text style={styles.navText}>Expenses</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => onNavigate('Chatbot')}
-          >
-            <Icon name="message-square" size={26} color={COLORS.darkGray} />
-            <Text style={styles.navText}>Chatbot</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => onNavigate('Profile')}
-          >
-            <Icon name="user" size={26} color={COLORS.accent} />
-            <Text style={styles.navTextActive}>Profile</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    </View>
+    </View >
   );
 };
 
@@ -497,7 +469,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingBottom: 12,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
@@ -770,28 +742,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#BDBDBD',
     fontWeight: '600',
-  },
-  bottomNavSafeArea: {
-    backgroundColor: COLORS.white,
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: 10,
-    backgroundColor: COLORS.white,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    elevation: 10,
-    height: 65,
-  },
-  navItem: {
-    alignItems: 'center',
-  },
-  navText: {
-    fontSize: 12,
-    color: COLORS.darkGray,
-    marginTop: 2,
   },
   navTextActive: {
     fontSize: 12,

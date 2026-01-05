@@ -57,7 +57,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [data, total]);
+  }, []); // Only animate on mount
 
   let cumulative = 0;
 

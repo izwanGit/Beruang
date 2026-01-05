@@ -11,7 +11,7 @@ import {
   TextInput,
   Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import { Advice } from '../../App';
 import { COLORS } from '../constants/colors';
@@ -122,6 +122,9 @@ export const SavedAdviceScreen = ({
   onGoToChat,
   onDeleteAdvice,
 }: SavedAdviceScreenProps) => {
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = Math.max(insets.top, 20) + 12;
+
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredAdvices = useMemo(() => {
@@ -143,10 +146,10 @@ export const SavedAdviceScreen = ({
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <View style={styles.safeArea}>
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+        <View style={[styles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>
+          <TouchableOpacity onPress={onBack} style={styles.headerButton}>
             <Icon name="arrow-left" size={24} color={COLORS.accent} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Knowledge Base</Text>
@@ -214,7 +217,7 @@ export const SavedAdviceScreen = ({
             )}
           </View>
         </ScrollView>
-      </SafeAreaView>
+      </View>
     </View >
   );
 };
@@ -321,13 +324,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingBottom: 12,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  backButton: {
-    padding: 5,
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8F9FA',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 17,

@@ -13,7 +13,7 @@ import {
   TextInput,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import { LineChart, ProgressChart } from 'react-native-chart-kit';
 import { COLORS } from '../constants/colors';
@@ -478,9 +478,12 @@ export const SavingsScreen = ({
   const screenWidth = Dimensions.get('window').width;
   const chartReady = chartLabels.length > 0 && chartDataPoints.length > 0;
 
+  const insets = useSafeAreaInsets();
+  const headerTopPadding = Math.max(insets.top, 20) + 12;
+
   return (
     <View style={styles.outerContainer}>
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <View style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
 
         {/* --- Modals --- */}
@@ -501,7 +504,7 @@ export const SavingsScreen = ({
         />
 
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
             <Icon name="arrow-left" size={24} color={COLORS.accent} />
           </TouchableOpacity>
@@ -772,7 +775,7 @@ export const SavingsScreen = ({
             )}
           </View>
         </ScrollView>
-      </SafeAreaView>
+      </View>
     </View>
   );
 };
@@ -795,7 +798,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingBottom: 12,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
