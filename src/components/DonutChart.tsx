@@ -96,8 +96,8 @@ export const DonutChart: React.FC<DonutChartProps> = ({
         {data.map((slice, index) => {
           const sliceAngle = (slice.population / total) * 360;
           const startAngle = cumulative;
-          const endAngle = startAngle + sliceAngle;
-          // Check for full circle case to prevent visual glitch
+          const endAngle = startAngle + (sliceAngle === 360 ? 359.99 : sliceAngle);
+
           const isLargeArc = sliceAngle > 180;
 
           const d = arcPath(center, center, radius, startAngle, endAngle, isLargeArc);
