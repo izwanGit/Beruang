@@ -12,11 +12,13 @@ import { initializeApp } from 'firebase/app';
 import { firebaseConfig } from './firebaseConfig';
 import {
   initializeAuth,
+  // @ts-ignore
   getReactNativePersistence,
   onAuthStateChanged,
   User as FirebaseUser,
   signOut,
 } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import {
   getFirestore,
   doc,
@@ -34,7 +36,6 @@ import {
   getDocs,
   where,
 } from 'firebase/firestore';
-import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import our components and screens
 import { MessageModal } from './src/components/MessageModal';
@@ -217,6 +218,7 @@ export default function App() {
   // --- NEW: Monthly Budgets State ---
   const [monthlyBudgets, setMonthlyBudgets] = useState<{ [key: string]: MonthlyBudget }>({});
   const isRebalancing = useRef(false);
+  const lastSyncTimeRef = useRef(0);
 
   // --- 1. Auth Listener ---
   useEffect(() => {
@@ -437,6 +439,11 @@ export default function App() {
     const userId = getUserId();
     if (!userId || !userProfile) return;
 
+    // Debounce: Skip if synced within 500ms
+    const now = Date.now();
+    if (now - lastSyncTimeRef.current < 500) return;
+    lastSyncTimeRef.current = now;
+
     try {
       const budgetData = calculateMonthlyStats(transactions, userProfile);
 
@@ -449,7 +456,7 @@ export default function App() {
 
       const currentMonthKey = budgetData.month;
       const budgetRef = doc(db, 'users', userId, 'monthlyBudgets', currentMonthKey);
-      const now = serverTimestamp();
+      const nowTs = serverTimestamp();
 
       const updateData = {
         userId,
@@ -464,7 +471,7 @@ export default function App() {
         savingsLeftoverSaved: budgetData.budget.leftover.saved,
         leftoverTarget: userProfile.allocatedSavingsTarget || 0,
         leftoverRemaining: budgetData.budget.leftover.pending,
-        updatedAt: now,
+        updatedAt: nowTs,
       };
 
       // Check if document exists
@@ -472,7 +479,7 @@ export default function App() {
       if (!budgetSnap.exists()) {
         await setDoc(budgetRef, {
           ...updateData,
-          createdAt: now,
+          createdAt: nowTs,
         });
       } else {
         await updateDoc(budgetRef, updateData);
@@ -489,6 +496,9 @@ export default function App() {
     const userId = getUserId();
     if (!userId || !userProfile || transactions.length === 0 || isRebalancing.current) return false;
 
+    // Set rebalancing flag BEFORE any state changes
+    isRebalancing.current = true;
+
     const { needs, wants, savings20 } = stats.budget;
     const currentMonthKey = stats.month;
 
@@ -497,19 +507,18 @@ export default function App() {
       (t) => t.type === 'expense' && getMonthKey(t.date) === currentMonthKey
     );
 
-    // RULE 1: Needs > Budget, Needs exceeded, but Wants has room
-    if (needs.spent > (needs.target + 0.01) && wants.remaining > 0.01) {
-      const excess = needs.spent - needs.target;
-      const amountToMove = Math.min(excess, wants.remaining);
+    try {
+      // RULE 1: Needs > Budget, Needs exceeded, but Wants has room
+      if (needs.spent > (needs.target + 0.01) && wants.remaining > 0.01) {
+        const excess = needs.spent - needs.target;
+        const amountToMove = Math.min(excess, wants.remaining);
 
-      // Find the latest 'needs' transaction to move/split
-      const needsTrans = currentMonthExpenses
-        .filter(t => t.category === 'needs')
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        // Find the latest 'needs' transaction to move/split
+        const needsTrans = currentMonthExpenses
+          .filter(t => t.category === 'needs')
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-      if (needsTrans.length > 0) {
-        isRebalancing.current = true;
-        try {
+        if (needsTrans.length > 0) {
           const trans = needsTrans[0];
           const batch = writeBatch(db);
 
@@ -536,27 +545,24 @@ export default function App() {
           }
           await batch.commit();
           handleAwardXP(XP_REWARDS.OVERSPENDING_PENALTY);
-          showMessage("Budget Shield: Your 'Needs' spending exceeded the budget. Excess has been moved to 'Wants' and XP penalized! 🐻");
+
+          // Delay message to prevent modal blocking
+          setTimeout(() => {
+            showMessage("Budget Shield: Your 'Needs' spending exceeded the budget. Excess has been moved to 'Wants' and XP penalized! 🐻");
+          }, 100);
           return true;
-        } catch (e) {
-          console.error("Error rebalancing Needs: ", e);
-        } finally {
-          isRebalancing.current = false;
         }
       }
-    }
-    // RULE 2: Wants > Budget, Wants exceeded, but Needs has room
-    else if (wants.spent > (wants.target + 0.01) && needs.remaining > 0.01) {
-      const excess = wants.spent - wants.target;
-      const amountToMove = Math.min(excess, needs.remaining);
+      // RULE 2: Wants > Budget, Wants exceeded, but Needs has room
+      else if (wants.spent > (wants.target + 0.01) && needs.remaining > 0.01) {
+        const excess = wants.spent - wants.target;
+        const amountToMove = Math.min(excess, needs.remaining);
 
-      const wantsTrans = currentMonthExpenses
-        .filter(t => t.category === 'wants')
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const wantsTrans = currentMonthExpenses
+          .filter(t => t.category === 'wants')
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-      if (wantsTrans.length > 0) {
-        isRebalancing.current = true;
-        try {
+        if (wantsTrans.length > 0) {
           const trans = wantsTrans[0];
           const batch = writeBatch(db);
 
@@ -583,32 +589,43 @@ export default function App() {
           }
           await batch.commit();
           handleAwardXP(XP_REWARDS.OVERSPENDING_PENALTY);
-          showMessage("Budget Shield: Your 'Wants' spending exceeded the budget. Excess has been moved to 'Needs' and XP penalized! 🐻");
-          return true;
-        } catch (e) {
-          console.error("Error rebalancing Wants: ", e);
-        } finally {
-          isRebalancing.current = false;
-        }
-      }
-    }
-    // RULE 3: Both Needs & Wants full, but Savings 20% not fully saved yet
-    // This allows the overflow to "eat into" the unsaved savings budget
-    else if (needs.remaining <= 0.01 && wants.remaining <= 0.01 && savings20.pending > 0.01) {
-      // Find the latest expense that caused the overflow
-      const latestExpense = currentMonthExpenses
-        .filter(t => t.category === 'needs' || t.category === 'wants')
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 
-      if (latestExpense) {
-        const excess = Math.abs(needs.remaining) + Math.abs(wants.remaining);
-        if (excess <= savings20.pending) {
-          // Allow but warn - the savings budget absorbs the overflow
-          handleAwardXP(XP_REWARDS.OVERSPENDING_PENALTY * 2); // Double penalty
-          showMessage("⚠️ Emergency: Both Needs & Wants are full! Using your unsaved Savings budget. Double XP penalty applied! 🐻");
-          return false; // Don't rebalance, just warn
+          // Delay message to prevent modal blocking
+          setTimeout(() => {
+            showMessage("Budget Shield: Your 'Wants' spending exceeded the budget. Excess has been moved to 'Needs' and XP penalized! 🐻");
+          }, 100);
+          return true;
         }
       }
+      // RULE 3: Both Needs & Wants full, but Savings 20% not fully saved yet
+      // This allows the overflow to "eat into" the unsaved savings budget
+      else if (needs.remaining <= 0.01 && wants.remaining <= 0.01 && savings20.pending > 0.01) {
+        // Find the latest expense that caused the overflow
+        const latestExpense = currentMonthExpenses
+          .filter(t => t.category === 'needs' || t.category === 'wants')
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+        if (latestExpense) {
+          const excess = Math.abs(needs.remaining) + Math.abs(wants.remaining);
+          if (excess <= savings20.pending) {
+            // Allow but warn - the savings budget absorbs the overflow
+            handleAwardXP(XP_REWARDS.OVERSPENDING_PENALTY * 2); // Double penalty
+
+            // Delay message to prevent modal blocking
+            setTimeout(() => {
+              showMessage("⚠️ Emergency: Both Needs & Wants are full! Using your unsaved Savings budget. Double XP penalty applied! 🐻");
+            }, 100);
+            return false; // Don't rebalance, just warn
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error rebalancing: ", e);
+    } finally {
+      // Delay reset to prevent immediate re-trigger
+      setTimeout(() => {
+        isRebalancing.current = false;
+      }, 500);
     }
     return false;
   };
@@ -1476,9 +1493,9 @@ export default function App() {
                         navigation.navigate(screen as keyof RootStackParamList)
                       }
                     }}
-                    onAskAI={async (message) => {
-                      const newChatId = await handleCreateNewChat(message);
-                      navigation.navigate('Chatbot', { chatId: newChatId });
+                    onAskAI={(message) => {
+                      // Navigate immediately, let ChatbotScreen handle the creation & sending
+                      navigation.navigate('Chatbot', { prefillMessage: message });
                     }}
                     onUpdateTransaction={handleUpdateTransaction}
                     onDeleteTransaction={handleDeleteTransaction}

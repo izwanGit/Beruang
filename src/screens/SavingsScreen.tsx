@@ -85,7 +85,7 @@ const SaveModal: React.FC<SaveModalProps> = ({
       setAmount(finalAmount > 0 ? finalAmount.toFixed(2) : '');
       setError('');
     }
-  }, [visible, saveType, monthlyBalance, remainingToSave20Percent, remainingToSaveLeftover, hasLeftoverGoal]);
+  }, [visible, monthlyBalance, remainingToSave20Percent, remainingToSaveLeftover, hasLeftoverGoal]);
 
   const handleSetAmount = (text: string) => {
     const num = parseFloat(text);
@@ -549,16 +549,16 @@ export const SavingsScreen = ({
             <TouchableOpacity
               style={[
                 styles.primarySaveButton,
-                monthlyBalance <= 0 && styles.saveButtonDisabled
+                (monthlyBalance <= 0 || remainingToSaveTotal <= 0) && styles.saveButtonDisabled
               ]}
               onPress={() => setShowSaveModal(true)}
-              disabled={monthlyBalance <= 0}
+              disabled={monthlyBalance <= 0 || remainingToSaveTotal <= 0}
             >
               <Icon name="heart" size={20} color={COLORS.white} style={{ marginRight: 10 }} />
               <Text style={styles.primarySaveButtonText}>
-                {monthlyBalance <= 0 ? "Saved & Sorted" : "Save Your Balance"}
+                {remainingToSaveTotal <= 0 ? "Mission Complete" : (monthlyBalance <= 0 ? "Saved & Sorted" : "Save Your Balance")}
               </Text>
-              {monthlyBalance > 0 && (
+              {remainingToSaveTotal > 0 && monthlyBalance > 0 && (
                 <View style={styles.saveBadge}>
                   <Text style={styles.saveBadgeText}>+ RM {monthlyBalance.toFixed(0)}</Text>
                 </View>

@@ -251,6 +251,10 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
 
   const lastMessageCountRef = useRef(currentChatMessages.length);
   const isEditingRef = useRef(false);
+  const hasInitializedRef = useRef(false);
+  const prevChatSessionsLengthRef = useRef(chatSessions?.length || 0);
+
+  const lastConsumedPrefillRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     const prefillMessage = route.params?.prefillMessage;
@@ -259,22 +263,54 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
 
     const sessions = chatSessions || [];
 
-    if (prefillMessage && !linkedChatId) {
+    // Guard: Skip if already handling, unless explicit navigation
+    if (hasInitializedRef.current && !prefillMessage && !linkedChatId) {
+      if (prevChatSessionsLengthRef.current === sessions.length) {
+        return;
+      }
+    }
+    prevChatSessionsLengthRef.current = sessions.length;
+
+    // 1. Handle Prefill (Priority 1)
+    if (prefillMessage && !linkedChatId && lastConsumedPrefillRef.current !== prefillMessage) {
+      lastConsumedPrefillRef.current = prefillMessage;
       const createAndNavigate = async () => {
         await onCreateNewChat(prefillMessage);
+        hasInitializedRef.current = true;
       };
       createAndNavigate();
-    } else if (linkedChatId) {
-      onSetCurrentChatId(linkedChatId);
-      if (linkedMessageId) {
-        setHighlightMessageId(linkedMessageId);
-      }
-    } else if (!currentChatId && sessions.length === 0) {
-      onCreateNewChat();
-    } else if (!currentChatId && sessions.length > 0) {
-      onSetCurrentChatId(sessions[0].id);
+      return;
     }
-  }, [route.params, chatSessions, currentChatId]);
+
+    // 2. Handle Linked Chat (Priority 2)
+    if (linkedChatId) {
+      const exists = sessions.find(s => s.id === linkedChatId);
+
+      if (exists || !hasInitializedRef.current || sessions.length === 0) {
+        if (currentChatId !== linkedChatId) {
+          lastConsumedPrefillRef.current = undefined;
+          onSetCurrentChatId(linkedChatId);
+        }
+        if (linkedMessageId) {
+          setHighlightMessageId(linkedMessageId);
+        }
+        hasInitializedRef.current = true;
+        return;
+      }
+    }
+
+    // 3. Restoration / Default Selection (Priority 3)
+    if ((!currentChatId || !sessions.find(s => s.id === currentChatId)) && sessions.length > 0) {
+      const targetId = sessions[0].id;
+      if (currentChatId !== targetId) {
+        onSetCurrentChatId(targetId);
+      }
+      hasInitializedRef.current = true;
+    } else if (!currentChatId && sessions.length === 0 && !hasInitializedRef.current) {
+      onCreateNewChat();
+      hasInitializedRef.current = true;
+    }
+  }, [route.params, chatSessions?.length, currentChatId]);
 
   useEffect(() => {
     if (editingMessage) {
@@ -321,6 +357,15 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
     setIsHistoryVisible(false);
   };
 
+  // --- STATE RESET ON CHAT SWITCH ---
+  useEffect(() => {
+    setIsTyping(false);
+    setEditText('');
+    setEditingMessage(null);
+    setIsHistoryVisible(false);
+    isEditingRef.current = false;
+  }, [currentChatId]);
+
   // --- UPDATED TYPING LOGIC FOR STREAMING ---
   useEffect(() => {
     // 1. If we have a streaming message, we are definitely typing
@@ -333,8 +378,10 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
     else if (currentChatMessages.length > 0) {
       const lastMessage = currentChatMessages[currentChatMessages.length - 1];
 
-      // If the last message is from bot and is new (count increased), stop typing
-      if (lastMessage.sender === 'bot' && currentChatMessages.length > lastMessageCountRef.current) {
+      // If the last message is from bot, we assume response is done.
+      // We removed the strict 'length > lastCount' check because Editing a message
+      // (replacing old bot response) might not change the total message count.
+      if (lastMessage.sender === 'bot') {
         setIsTyping(false);
         isEditingRef.current = false;
       }
