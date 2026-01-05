@@ -38,7 +38,7 @@ export const AddTransactionScreen = ({
   onAddTransaction,
   canAccommodateBudget,
 }: AddTransactionScreenProps) => {
-  const [amount, setAmount] = useState('');
+  const [amountCents, setAmountCents] = useState(0); // Store as cents for bank-style input
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionItems, setSessionItems] = useState<any[]>([]);
@@ -48,6 +48,21 @@ export const AddTransactionScreen = ({
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [bulkTextInput, setBulkTextInput] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+
+  // Format cents to currency display (e.g., 123 cents -> "1.23")
+  const formatCentsToCurrency = (cents: number): string => {
+    return (cents / 100).toFixed(2);
+  };
+
+  // Handle bank-style input: each digit shifts left
+  const handleAmountChange = (text: string) => {
+    // Remove any non-numeric characters
+    const numericOnly = text.replace(/[^0-9]/g, '');
+    // Parse as integer (cents)
+    const cents = parseInt(numericOnly, 10) || 0;
+    // Cap at reasonable max (e.g., RM 999,999.99 = 99999999 cents)
+    setAmountCents(Math.min(cents, 99999999));
+  };
 
   const handlePickImage = async (useCamera: boolean) => {
     const options: any = {
@@ -91,7 +106,8 @@ export const AddTransactionScreen = ({
       }
 
       if (data && (data.amount !== undefined)) {
-        setAmount(String(data.amount));
+        // Convert RM amount to cents for bank-style input
+        setAmountCents(Math.round(data.amount * 100));
         // Use the AI description if available, otherwise merchant
         const finalDesc = data.description || data.merchant || 'Unknown Transaction';
         setDescription(finalDesc);
@@ -159,12 +175,12 @@ export const AddTransactionScreen = ({
   };
 
   const handleSaveTransaction = async () => {
-    if (!amount || !description) {
+    if (amountCents === 0 || !description) {
       showMessage('Please fill in both amount and description');
       return;
     }
-    const amountNum = parseFloat(amount);
-    if (isNaN(amountNum) || amountNum <= 0) {
+    const amountNum = amountCents / 100; // Convert cents to RM
+    if (amountNum <= 0) {
       showMessage('Please enter a valid amount');
       return;
     }
@@ -199,7 +215,7 @@ export const AddTransactionScreen = ({
       onAddTransaction(newTransaction);
       setSessionItems(prev => [newTransaction, ...prev]);
       setLastAdded({ ...newTransaction, isAi: result.isAi });
-      setAmount('');
+      setAmountCents(0);
       setDescription('');
 
     } catch (error) {
@@ -251,11 +267,12 @@ export const AddTransactionScreen = ({
                       placeholder="0.00"
                       placeholderTextColor={COLORS.darkGray}
                       style={addTransactionStyles.amountInput}
-                      keyboardType="numeric"
-                      value={amount}
-                      onChangeText={setAmount}
+                      keyboardType="number-pad"
+                      value={formatCentsToCurrency(amountCents)}
+                      onChangeText={handleAmountChange}
                       editable={!isLoading}
                       autoFocus
+                      selection={{ start: formatCentsToCurrency(amountCents).length, end: formatCentsToCurrency(amountCents).length }}
                     />
                   </View>
                 </View>
