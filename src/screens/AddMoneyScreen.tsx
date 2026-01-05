@@ -25,10 +25,23 @@ export const AddMoneyScreen = ({
   showMessage,
   onAddTransaction,
 }: AddMoneyScreenProps) => {
-  const [amount, setAmount] = useState('');
+  const [amountCents, setAmountCents] = useState(0); // Bank-style: store as cents
   const [description, setDescription] = useState('');
   const [allocationMonths, setAllocationMonths] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Format cents to currency display (empty when 0)
+  const formatCentsToCurrency = (cents: number): string => {
+    if (cents === 0) return '';
+    return (cents / 100).toFixed(2);
+  };
+
+  // Handle bank-style input: digits shift left
+  const handleAmountChange = (text: string) => {
+    const numericOnly = text.replace(/[^0-9]/g, '');
+    const cents = parseInt(numericOnly, 10) || 0;
+    setAmountCents(Math.min(cents, 99999999));
+  };
 
   const addMonths = (date: Date, months: number): Date => {
     const d = new Date(date);
@@ -52,14 +65,14 @@ export const AddMoneyScreen = ({
   const decrementMonth = () => setAllocationMonths(prev => Math.max(1, prev - 1));
 
   const handleSaveIncome = async () => {
-    if (!amount || !description) {
+    if (amountCents === 0 || !description) {
       showMessage('Please fill in both amount and description');
       return;
     }
-    const amountNum = parseFloat(amount);
+    const amountNum = amountCents / 100; // Convert cents to RM
     const numMonths = allocationMonths;
 
-    if (isNaN(amountNum) || amountNum <= 0) {
+    if (amountNum <= 0) {
       showMessage('Please enter a valid amount');
       return;
     }
@@ -113,7 +126,7 @@ export const AddMoneyScreen = ({
 
       onAddTransaction(transactionsToCreate);
 
-      setAmount('');
+      setAmountCents(0);
       setDescription('');
       setAllocationMonths(1);
       const successMessage =
@@ -163,9 +176,9 @@ export const AddMoneyScreen = ({
                   placeholder="0.00"
                   placeholderTextColor={COLORS.darkGray + '80'}
                   style={addMoneyStyles.amountInput}
-                  keyboardType="numeric"
-                  value={amount}
-                  onChangeText={setAmount}
+                  keyboardType="number-pad"
+                  value={formatCentsToCurrency(amountCents)}
+                  onChangeText={handleAmountChange}
                   editable={!isLoading}
                   autoFocus
                 />

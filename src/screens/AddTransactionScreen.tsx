@@ -50,11 +50,13 @@ export const AddTransactionScreen = ({
   const [isImporting, setIsImporting] = useState(false);
 
   // Format cents to currency display (e.g., 123 cents -> "1.23")
+  // Show empty string when 0 so placeholder shows
   const formatCentsToCurrency = (cents: number): string => {
+    if (cents === 0) return '';
     return (cents / 100).toFixed(2);
   };
 
-  // Handle bank-style input: each digit shifts left
+  // Handle bank-style input: each digit shifts left, backspace shifts right
   const handleAmountChange = (text: string) => {
     // Remove any non-numeric characters
     const numericOnly = text.replace(/[^0-9]/g, '');
@@ -272,7 +274,6 @@ export const AddTransactionScreen = ({
                       onChangeText={handleAmountChange}
                       editable={!isLoading}
                       autoFocus
-                      selection={{ start: formatCentsToCurrency(amountCents).length, end: formatCentsToCurrency(amountCents).length }}
                     />
                   </View>
                 </View>

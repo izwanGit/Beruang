@@ -218,36 +218,38 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({
   onSubmit,
   totalSaved,
 }) => {
-  const [amount, setAmount] = useState('');
+  const [amountCents, setAmountCents] = useState(0); // Bank-style: store as cents
   const [error, setError] = useState('');
 
-  const handleSetAmount = (text: string) => {
-    if (text === '') {
-      setAmount('');
-      setError('');
-      return;
-    }
-    const num = parseFloat(text);
-    if (isNaN(num)) {
-      setAmount(text);
-      return;
-    }
-    if (num > totalSaved) {
-      setError(`Amount cannot exceed your total savings of RM ${totalSaved.toFixed(2)}`);
+  // Format cents to currency display (empty when 0)
+  const formatCentsToCurrency = (cents: number): string => {
+    if (cents === 0) return '';
+    return (cents / 100).toFixed(2);
+  };
+
+  // Handle bank-style input
+  const handleAmountChange = (text: string) => {
+    const numericOnly = text.replace(/[^0-9]/g, '');
+    const cents = parseInt(numericOnly, 10) || 0;
+    const maxCents = Math.round(totalSaved * 100);
+
+    if (cents > maxCents) {
+      setError(`Amount cannot exceed RM ${totalSaved.toFixed(2)}`);
+      setAmountCents(Math.min(cents, 99999999));
     } else {
       setError('');
+      setAmountCents(cents);
     }
-    setAmount(text);
   };
 
   const handleSubmit = (type: 'budget' | 'emergency') => {
-    const numAmount = parseFloat(amount);
-    if (isNaN(numAmount) || numAmount <= 0) {
+    const numAmount = amountCents / 100; // Convert cents to RM
+    if (numAmount <= 0) {
       setError('Please enter a valid positive amount.');
       return;
     }
     if (numAmount > totalSaved) {
-      setError(`Amount cannot exceed your total savings of RM ${totalSaved.toFixed(2)}`);
+      setError(`Amount cannot exceed RM ${totalSaved.toFixed(2)}`);
       return;
     }
     onSubmit(numAmount, type);
@@ -255,7 +257,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({
   };
 
   const handleClose = () => {
-    setAmount('');
+    setAmountCents(0);
     setError('');
     onClose();
   }
@@ -269,11 +271,11 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({
           <Text style={modalStyles.label}>Amount</Text>
           <TextInput
             style={modalStyles.input}
-            placeholder="RM 0.00"
+            placeholder="0.00"
             placeholderTextColor={COLORS.darkGray + '80'}
-            keyboardType="numeric"
-            value={amount}
-            onChangeText={handleSetAmount}
+            keyboardType="number-pad"
+            value={formatCentsToCurrency(amountCents)}
+            onChangeText={handleAmountChange}
           />
           <Text style={modalStyles.balanceInfo}>
             Available: <Text style={{ color: COLORS.accent }}>RM {totalSaved.toFixed(2)}</Text>
