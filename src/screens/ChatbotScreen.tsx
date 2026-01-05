@@ -168,7 +168,7 @@ const ChatHistoryDropdown = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={dropdownStyles.scroll} showsVerticalScrollIndicator={false}>
+          <ScrollView style={dropdownStyles.scroll} showsVerticalScrollIndicator={true}>
             {(sessions || []).length === 0 ? (
               <View style={dropdownStyles.emptyHistory}>
                 <Text style={dropdownStyles.emptyHistoryText}>No past conversations</Text>
@@ -241,6 +241,7 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [editText, setEditText] = useState('');
   const [cursorVisible, setCursorVisible] = useState(true);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const quickSuggestions = [
     "Check my balance",
     "Any saving tips?",
@@ -542,7 +543,20 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
               data={currentChatMessages}
               keyExtractor={(item) => item.id}
               contentContainerStyle={styles.messageList}
-              showsVerticalScrollIndicator={false}
+              onScroll={(event) => {
+                const offset = event.nativeEvent.contentOffset.y;
+                const contentHeight = event.nativeEvent.contentSize.height;
+                const layoutHeight = event.nativeEvent.layoutMeasurement.height;
+
+                // Show button if we are more than 200px from the bottom
+                if (contentHeight - layoutHeight - offset > 200) {
+                  setShowScrollToBottom(true);
+                } else {
+                  setShowScrollToBottom(false);
+                }
+              }}
+              scrollEventThrottle={16}
+              showsVerticalScrollIndicator={true}
               renderItem={({ item }) => {
                 const isLastUserMessage = item.sender === 'user' && item.id === lastUserMessage?.id;
                 const isEditing = editingMessage?.id === item.id;
@@ -715,6 +729,14 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
                   </TouchableOpacity>
                 </View>
               </View>
+            )}
+            {showScrollToBottom && (
+              <TouchableOpacity
+                style={styles.scrollToBottomButton}
+                onPress={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              >
+                <Icon name="chevron-down" size={20} color={COLORS.white} />
+              </TouchableOpacity>
             )}
           </ImageBackground>
         </KeyboardAvoidingView>
@@ -948,6 +970,23 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: '#CCC',
+  },
+  scrollToBottomButton: {
+    position: 'absolute',
+    bottom: 90,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    zIndex: 100,
   },
   emptyContainer: {
     flex: 1,
