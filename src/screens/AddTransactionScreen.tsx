@@ -608,8 +608,7 @@ const addTransactionStyles = StyleSheet.create({
   addMoneyLink: {
     fontSize: 13,
     fontWeight: '800',
-    color: COLORS.info,
-    textDecorationLine: 'underline',
+    color: COLORS.accent,
   },
   textInput: {
     backgroundColor: COLORS.lightGray,
