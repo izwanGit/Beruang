@@ -264,12 +264,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({
     <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={handleClose}>
       <View style={modalStyles.overlay}>
         <View style={modalStyles.container}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 16 }}>
-            <Text style={modalStyles.title}>Withdraw</Text>
-            <TouchableOpacity onPress={handleClose} style={{ padding: 8 }}>
-              <Icon name="x" size={24} color={COLORS.accent} />
-            </TouchableOpacity>
-          </View>
+          <Text style={modalStyles.title}>Withdraw</Text>
 
           <Text style={modalStyles.label}>Amount</Text>
           <TextInput
@@ -316,8 +311,11 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[modalStyles.button, modalStyles.cancelButton, { marginTop: 20 }]} onPress={handleClose}>
-            <Text style={modalStyles.cancelButtonText}>Cancel</Text>
+          <TouchableOpacity
+            style={[modalStyles.button, modalStyles.cancelButton, { marginTop: 20 }]}
+            onPress={handleClose}
+          >
+            <Text style={{ color: COLORS.accent, fontWeight: '800', fontSize: 15 }}>Close</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1342,6 +1340,7 @@ const modalStyles = StyleSheet.create({
   cancelButtonText: {
     color: COLORS.accent,
     fontWeight: '800',
+    fontSize: 15,
   },
   confirmButton: {
     backgroundColor: COLORS.accent,
