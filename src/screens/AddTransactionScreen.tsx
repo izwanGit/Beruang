@@ -315,10 +315,10 @@ export const AddTransactionScreen = ({
                   <TouchableOpacity
                     style={[
                       addTransactionStyles.confirmButton,
-                      isLoading && { opacity: 0.6 },
+                      (isLoading || (amountCents / 100) > monthlyBalance) && { opacity: 0.5 },
                     ]}
                     onPress={handleSaveTransaction}
-                    disabled={isLoading}
+                    disabled={isLoading || (amountCents / 100) > monthlyBalance}
                   >
                     {isLoading ? (
                       <ActivityIndicator color={COLORS.white} size="small" />
