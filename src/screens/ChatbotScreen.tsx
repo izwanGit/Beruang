@@ -372,6 +372,7 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
     setEditingMessage(null);
     setIsHistoryVisible(false);
     isEditingRef.current = false;
+    initialScrollDoneRef.current = false; // Reset for new chat
   }, [currentChatId]);
 
   // --- UPDATED TYPING LOGIC FOR STREAMING ---
@@ -398,11 +399,14 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
     }
   }, [currentChatMessages, streamingMessage]);
 
+  const initialScrollDoneRef = useRef(false);
+
   useEffect(() => {
-    if (currentChatMessages.length > 0 && !editingMessage) {
+    // Only auto-scroll for NEW messages (after the initial load is done)
+    if (initialScrollDoneRef.current && currentChatMessages.length > 0 && !editingMessage) {
       flatListRef.current?.scrollToEnd({ animated: true });
     }
-  }, [currentChatMessages, editingMessage]);
+  }, [currentChatMessages.length, editingMessage]);
 
   useEffect(() => {
     if (highlightMessageId && currentChatMessages.length > 0) {
@@ -543,6 +547,13 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
               data={currentChatMessages}
               keyExtractor={(item) => item.id}
               contentContainerStyle={styles.messageList}
+              onContentSizeChange={() => {
+                // Ensure chat starts at bottom on first load or when switching chats
+                if (!initialScrollDoneRef.current && currentChatMessages.length > 0) {
+                  flatListRef.current?.scrollToEnd({ animated: false });
+                  initialScrollDoneRef.current = true;
+                }
+              }}
               onScroll={(event) => {
                 const offset = event.nativeEvent.contentOffset.y;
                 const contentHeight = event.nativeEvent.contentSize.height;
