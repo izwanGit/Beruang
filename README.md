@@ -9,8 +9,8 @@
 
 [![Version](https://img.shields.io/badge/version-12.0-blue.svg?style=for-the-badge)](https://github.com/izwanGit/Beruang)
 [![Transaction AI](https://img.shields.io/badge/Transaction%20AI-99.88%25-brightgreen.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-ai-backend)
-[![Intent AI](https://img.shields.io/badge/Intent%20AI-99.41%25-green.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-server)
-[![Dataset](https://img.shields.io/badge/Dataset-150k-orange.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-ai-backend)
+[![Intent AI](https://img.shields.io/badge/Intent%20AI-99.57%25-green.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-server)
+[![Dataset](https://img.shields.io/badge/Dataset-237k-orange.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-ai-backend)
 
 **Final Year Project • UiTM Shah Alam • Intelligent Systems Engineering**
 
@@ -138,9 +138,9 @@ The core categorization engine uses a **Bi-directional Long Short-Term Memory** 
 | Inference Time | 8.4ms | 8.4ms |
 | Model Size | 2.1MB | 2.1MB |
 
-### The 150,381-Row Logic-Proof Dataset
+### The 237,351-Row Logic-Proof Dataset
 
-The dataset was engineered using a **Set-Theoretical Constraint System** to ensure zero logic collisions between categories.
+The dataset was engineered using a **Set-Theoretical Constraint System** to ensure zero logic collisions between categories. This combined dataset includes 150,381 transaction samples and 86,970 intent samples.
 
 #### Dataset Class Distribution
 
@@ -191,12 +191,10 @@ The chatbot uses a dedicated **56-class intent detection model** to route querie
 | **Greeting/Casual** | 4 | "Hello", "Thanks" |
 | **Out-of-Domain** | 6 | "What's the weather?" |
 
-#### Intent Model Performance
-
-| Metric | Score |
+| Intent Model Performance | Score |
 |:-------|:------|
-| Accuracy | 99.41% |
-| Macro F1 | 99.38% |
+| Accuracy | 99.57% |
+| Macro F1 | 99.51% |
 | OOD Detection | 98.7% |
 
 ### Vision OCR (Gemini 1.5 Flash)
