@@ -312,10 +312,18 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[modalStyles.button, modalStyles.cancelButton, { marginTop: 20 }]}
+            style={{
+              marginTop: 20,
+              backgroundColor: '#F0F0F0',
+              borderRadius: 16,
+              paddingVertical: 16,
+              borderWidth: 2,
+              borderColor: '#665A48',
+              alignItems: 'center',
+            }}
             onPress={handleClose}
           >
-            <Text style={{ color: COLORS.accent, fontWeight: '800', fontSize: 15 }}>Close</Text>
+            <Text style={{ color: '#665A48', fontWeight: '900', fontSize: 16 }}>Close</Text>
           </TouchableOpacity>
         </View>
       </View>
