@@ -557,6 +557,8 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
               }}
               scrollEventThrottle={16}
               showsVerticalScrollIndicator={true}
+              indicatorStyle="black"
+              scrollIndicatorInsets={{ right: 2 }}
               renderItem={({ item }) => {
                 const isLastUserMessage = item.sender === 'user' && item.id === lastUserMessage?.id;
                 const isEditing = editingMessage?.id === item.id;
@@ -973,20 +975,22 @@ const styles = StyleSheet.create({
   },
   scrollToBottomButton: {
     position: 'absolute',
-    bottom: 90,
+    bottom: 125, // Moved up to clear suggestions
     right: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.accent,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(74, 65, 52, 0.85)', // Added transparency for subtlety
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 5,
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    zIndex: 100,
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    zIndex: 1000,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.2)', // Subtle glass border
   },
   emptyContainer: {
     flex: 1,
