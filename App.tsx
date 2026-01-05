@@ -1423,14 +1423,20 @@ export default function App() {
                 )}
               </Stack.Screen>
               <Stack.Screen name="AddTransaction">
-                {({ navigation }) => (
-                  <AddTransactionScreen
-                    onBack={() => navigation.goBack()}
-                    showMessage={showMessage}
-                    onAddTransaction={(tx) => handleAddTransaction(tx)}
-                    canAccommodateBudget={canAccommodateTransaction}
-                  />
-                )}
+                {({ navigation }) => {
+                  const stats = calculateMonthlyStats(transactions, userProfile);
+                  const monthlyBalance = stats.budget.needs.remaining + stats.budget.wants.remaining + stats.budget.savings20.pending;
+                  return (
+                    <AddTransactionScreen
+                      onBack={() => navigation.goBack()}
+                      showMessage={showMessage}
+                      onAddTransaction={(tx) => handleAddTransaction(tx)}
+                      canAccommodateBudget={canAccommodateTransaction}
+                      monthlyBalance={Math.max(0, monthlyBalance)}
+                      onNavigateToAddMoney={() => navigation.navigate('AddMoney')}
+                    />
+                  );
+                }}
               </Stack.Screen>
               <Stack.Screen
                 name="Chatbot"

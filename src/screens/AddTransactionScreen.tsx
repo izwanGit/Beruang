@@ -30,6 +30,8 @@ type AddTransactionScreenProps = {
   showMessage: (message: string) => void;
   onAddTransaction: (transaction: any) => void;
   canAccommodateBudget?: (amount: number, category: 'needs' | 'wants') => boolean;
+  monthlyBalance?: number; // Available spending balance
+  onNavigateToAddMoney?: () => void;
 };
 
 export const AddTransactionScreen = ({
@@ -37,6 +39,8 @@ export const AddTransactionScreen = ({
   showMessage,
   onAddTransaction,
   canAccommodateBudget,
+  monthlyBalance = 0,
+  onNavigateToAddMoney,
 }: AddTransactionScreenProps) => {
   const [amountCents, setAmountCents] = useState(0); // Store as cents for bank-style input
   const [description, setDescription] = useState('');
@@ -275,6 +279,20 @@ export const AddTransactionScreen = ({
                       editable={!isLoading}
                       autoFocus
                     />
+                  </View>
+                  {/* Balance Display */}
+                  <View style={addTransactionStyles.balanceRow}>
+                    <Text style={[
+                      addTransactionStyles.balanceText,
+                      (amountCents / 100) > monthlyBalance && { color: '#E74C3C' }
+                    ]}>
+                      Balance: RM {monthlyBalance.toFixed(2)}
+                    </Text>
+                    {(amountCents / 100) > monthlyBalance && onNavigateToAddMoney && (
+                      <TouchableOpacity onPress={onNavigateToAddMoney}>
+                        <Text style={addTransactionStyles.addMoneyLink}>Add Money</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
 
@@ -575,6 +593,23 @@ const addTransactionStyles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.accent,
     padding: 0,
+  },
+  balanceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  balanceText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.darkGray,
+  },
+  addMoneyLink: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.info,
+    textDecorationLine: 'underline',
   },
   textInput: {
     backgroundColor: COLORS.lightGray,
