@@ -811,10 +811,6 @@ export default function App() {
 
       // Sync budget after adding transaction
       setTimeout(() => syncMonthlyBudget(), 100);
-
-      if (showMsg) {
-        showMessage('Transaction added.');
-      }
     } catch (e) {
       console.error('Error adding transaction: ', e);
       if (showMsg) {

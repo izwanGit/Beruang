@@ -192,7 +192,6 @@ export const AddTransactionScreen = ({
     }
 
     setIsLoading(true);
-    showMessage('Analyzing transaction...');
 
     try {
       const result = await categorizeTransaction(description);
