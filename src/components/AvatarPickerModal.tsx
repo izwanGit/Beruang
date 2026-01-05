@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../constants/colors';
-import { BEAR_AVATARS, DEFAULT_AVATARS } from '../constants/avatars';
+import { BEAR_AVATARS } from '../constants/avatars';
 import { calculateLevel, getAvatarForLevel } from '../utils/gamificationUtils';
 
 type AvatarPickerModalProps = {
@@ -91,21 +91,7 @@ export const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
               })}
             </View>
 
-            <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Default Icons</Text>
-            <View style={styles.gridRow}>
-              {DEFAULT_AVATARS.map((avatar) => (
-                <TouchableOpacity
-                  key={avatar}
-                  style={[
-                    styles.avatarCell,
-                    currentAvatar === avatar && styles.avatarCellSelected,
-                  ]}
-                  onPress={() => onSelect(avatar)}
-                >
-                  <MaterialCommunityIcon name={avatar} size={40} color={COLORS.accent} />
-                </TouchableOpacity>
-              ))}
-            </View>
+
           </ScrollView>
           <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={onClose}>
             <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
