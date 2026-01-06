@@ -75,10 +75,13 @@ export const HomeScreen = ({
   } = budgetData;
 
   const newMonthlyIncome = income.fresh;
-  const needsTotal = budget.needs.spent;
-  const wantsTotal = budget.wants.spent;
+  const needsTotal = budget.needs.spent; // Now capped at target
+  const wantsTotal = budget.wants.spent; // Now capped at target
   const totalExpenses = totals.totalExpenses;
   const actualSavings20Percent = budget.savings20.saved;
+  const savingsUsedByOverflow = budget.savings20.usedByOverflow || 0; // Overflow from Needs/Wants
+  const wantsReceivedOverflow = totals.wantsReceivedOverflow || false; // Wants received overflow from Needs
+  const needsReceivedOverflow = totals.needsReceivedOverflow || false; // Needs received overflow from Wants
   const cumulativeTotalSavings = totals.savedAllTime;
   const needsTarget = budget.needs.target;
   const wantsTarget = budget.wants.target;
@@ -95,40 +98,64 @@ export const HomeScreen = ({
     spent: number;
     total: number;
     color: string;
+    onPress?: () => void;
+    showWarning?: boolean;
   };
   const MiniBudgetCategory: React.FC<MiniBudgetCategoryProps> = ({
     name,
     spent,
     total,
     color,
-  }) => (
-    <View style={homeStyles.miniBudgetCategory}>
-      <View style={homeStyles.miniBudgetHeader}>
-        <Text style={homeStyles.miniBudgetName}>{name}</Text>
-        <Text style={homeStyles.miniBudgetAmount}>
-          RM {spent.toFixed(0)} / {total.toFixed(0)}
-        </Text>
-      </View>
-      <View style={homeStyles.miniProgressBarBackground}>
-        <View
-          style={[
-            homeStyles.miniProgressBar,
-            {
-              width: `${Math.max(0, Math.min((spent / (total || 1)) * 100, 100))}%`,
-              backgroundColor: color,
-            },
-          ]}
-        />
-      </View>
-    </View>
-  );
+    onPress,
+    showWarning = false, // New prop to explicitly show warning
+  }) => {
+    // Cap displayed spent at total (no 51/50, show 50/50)
+    const displaySpent = Math.min(spent, total);
+    const hasOverflow = spent > total || showWarning;
 
-  const filteredTransactions = transactions.filter(t => {
-    if (t.type === 'income' && t.isCarriedOver) {
-      return false;
+    const content = (
+      <View style={homeStyles.miniBudgetCategory}>
+        <View style={homeStyles.miniBudgetHeader}>
+          <Text style={homeStyles.miniBudgetName}>
+            {name} {hasOverflow && onPress && '⚠️'}
+          </Text>
+          <Text style={homeStyles.miniBudgetAmount}>
+            RM {displaySpent.toFixed(0)} / {total.toFixed(0)}
+          </Text>
+        </View>
+        <View style={homeStyles.miniProgressBarBackground}>
+          <View
+            style={[
+              homeStyles.miniProgressBar,
+              {
+                width: `${Math.max(0, Math.min((displaySpent / (total || 1)) * 100, 100))}%`,
+                backgroundColor: color,
+              },
+            ]}
+          />
+        </View>
+      </View>
+    );
+
+    if (onPress && hasOverflow) {
+      return (
+        <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+          {content}
+        </TouchableOpacity>
+      );
     }
-    return true;
-  });
+    return content;
+  };
+
+  const filteredTransactions = transactions
+    .filter(t => {
+      if (t.type === 'income' && t.isCarriedOver) {
+        return false;
+      }
+      return true;
+    })
+    // Sort by date, newest first
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const recentTransactions = filteredTransactions.slice(0, 3);
   const hasMoreTransactions = filteredTransactions.length > 3;
@@ -297,18 +324,42 @@ export const HomeScreen = ({
                 spent={needsTotal}
                 total={needsTarget}
                 color="#42a5f5"
+                showWarning={needsReceivedOverflow}
+                onPress={needsReceivedOverflow ? () => {
+                  Alert.alert(
+                    "⚠️ Wants Overflow",
+                    `Your Wants budget overflowed and some of it is being absorbed by your Needs budget allocation.`,
+                    [{ text: "Got it", style: "default" }]
+                  );
+                } : undefined}
               />
               <MiniBudgetCategory
                 name="Wants (30%)"
                 spent={wantsTotal}
                 total={wantsTarget}
                 color="#ff7043"
+                showWarning={wantsReceivedOverflow}
+                onPress={wantsReceivedOverflow ? () => {
+                  Alert.alert(
+                    "⚠️ Needs Overflow",
+                    `Your Needs budget overflowed by some amount.\n\nThis overflow is being absorbed by your Wants budget allocation.`,
+                    [{ text: "Got it", style: "default" }]
+                  );
+                } : undefined}
               />
               <MiniBudgetCategory
                 name="Savings (20%)"
-                spent={actualSavings20Percent}
+                spent={actualSavings20Percent + savingsUsedByOverflow}
                 total={savingsTarget20Percent}
-                color="#66bb6a"
+                color={savingsUsedByOverflow > 0 ? "#ff7043" : "#66bb6a"}
+                showWarning={savingsUsedByOverflow > 0}
+                onPress={savingsUsedByOverflow > 0 ? () => {
+                  Alert.alert(
+                    "⚠️ Budget Overflow",
+                    `You've exceeded your Needs/Wants budget by RM ${savingsUsedByOverflow.toFixed(2)}.\n\nThis extra spending is using your Savings allocation instead.`,
+                    [{ text: "Got it", style: "default" }]
+                  );
+                } : undefined}
               />
             </View>
           </View>

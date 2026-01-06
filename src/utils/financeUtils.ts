@@ -25,11 +25,11 @@ export const calculateMonthlyStats = (transactions: any[], userProfile?: any) =>
     (t) => t.type === 'expense' && getMonthKey(t.date) === currentMonthKey
   );
 
-  const needsSpent = monthlyExpenses
+  const needsSpentRaw = monthlyExpenses
     .filter((t) => t.category === 'needs')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const wantsSpent = monthlyExpenses
+  const wantsSpentRaw = monthlyExpenses
     .filter((t) => t.category === 'wants')
     .reduce((sum, t) => sum + t.amount, 0);
 
@@ -59,13 +59,142 @@ export const calculateMonthlyStats = (transactions: any[], userProfile?: any) =>
   const needsTarget = freshMonthlyIncome * 0.5;
   const wantsTarget = freshMonthlyIncome * 0.3;
 
-  // --- 5. Current Wallet Balance ---
-  const totalExpenses = needsSpent + wantsSpent;
+  // --- 5. CHRONOLOGICAL WATERFALL (Smart Cascade): Needs ↔ Wants → Savings ---
+  // To strictly respect "first come first served" and "fill vacancy" logic.
+
+  let currentNeedsCap = needsTarget;
+  let currentWantsCap = wantsTarget;
+
+  let needsToWants = 0;
+  let needsToSavings = 0;
+  let wantsToNeeds = 0;
+  let wantsToSavings = 0;
+
+  const txStatuses: Record<string, {
+    usedNeeds: number;
+    usedWants: number;
+    usedSavings: number;
+    overflowSource: 'needs' | 'wants' | null;
+  }> = {};
+
+  // Sort expenses by INSERTION ORDER (createdAt) to ensure "first come first served" logic
+  // This is critical: user expects Groceries (added first) to get priority over Starbucks (added second)
+  const sortedExpenses = monthlyExpenses
+    .filter((t: any) => t.type === 'expense' && (t.category === 'needs' || t.category === 'wants'))
+    .sort((a: any, b: any) => {
+      // Primary: createdAt (supports Firestore Timestamp, Date object, or ISO string)
+      const getCreatedTime = (tx: any) => {
+        if (tx.createdAt?.seconds) return tx.createdAt.seconds * 1000; // Firestore Timestamp
+        if (tx.createdAt instanceof Date) return tx.createdAt.getTime();
+        if (tx.createdAt) return new Date(tx.createdAt).getTime();
+        return 0; // No createdAt
+      };
+      const createdA = getCreatedTime(a);
+      const createdB = getCreatedTime(b);
+      if (createdA !== createdB) return createdA - createdB;
+      // Fallback: date field
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
+
+  sortedExpenses.forEach((t: any) => {
+    let remaining = t.amount;
+    let usedNeeds = 0;
+    let usedWants = 0;
+    let usedSavings = 0;
+
+    if (t.category === 'needs') {
+      // 1. Fill Needs Cap
+      const takeNeeds = Math.min(remaining, Math.max(0, currentNeedsCap));
+      currentNeedsCap -= takeNeeds;
+      remaining -= takeNeeds;
+      usedNeeds += takeNeeds;
+
+      // 2. Fill Wants Cap (Overflow)
+      if (remaining > 0) {
+        const takeWants = Math.min(remaining, Math.max(0, currentWantsCap));
+        currentWantsCap -= takeWants;
+        needsToWants += takeWants;
+        remaining -= takeWants;
+        usedWants += takeWants;
+      }
+
+      // 3. To Savings (Overflow)
+      if (remaining > 0) {
+        needsToSavings += remaining;
+        usedSavings += remaining;
+      }
+
+      txStatuses[t.id] = {
+        usedNeeds, usedWants, usedSavings,
+        overflowSource: (usedWants > 0 || usedSavings > 0) ? 'needs' : null
+      };
+
+    } else if (t.category === 'wants') {
+      // 1. Fill Wants Cap
+      const takeWants = Math.min(remaining, Math.max(0, currentWantsCap));
+      currentWantsCap -= takeWants;
+      remaining -= takeWants;
+      usedWants += takeWants;
+
+      // 2. Fill Needs Cap (Overflow)
+      if (remaining > 0) {
+        const takeNeeds = Math.min(remaining, Math.max(0, currentNeedsCap));
+        currentNeedsCap -= takeNeeds;
+        wantsToNeeds += takeNeeds;
+        remaining -= takeNeeds;
+        usedNeeds += takeNeeds;
+      }
+
+      // 3. To Savings (Overflow)
+      if (remaining > 0) {
+        wantsToSavings += remaining;
+        usedSavings += remaining;
+      }
+
+      txStatuses[t.id] = {
+        usedNeeds, usedWants, usedSavings,
+        overflowSource: (usedNeeds > 0 || usedSavings > 0) ? 'wants' : null
+      };
+    }
+  });
+
+  // Calculate totals for display
+  const needsOverflow = needsToWants + needsToSavings;
+  const wantsOverflow = wantsToNeeds + wantsToSavings;
+
+  // Effective Spent = Raw + Incoming Overflow
+  // Actually, visual display logic:
+  // User wants Needs Display to show "Using Wants" / "Using Savings"
+  // User wants Wants Display to show "Using Needs" / "Using Savings"
+
+  // Total Overflow to Savings is sum of both
+  const totalOverflowToSavings = needsToSavings + wantsToSavings;
+
+  // Display values: capped at target for clean display of the "Budget" bar
+  // But strictly, we might want to show "Filled by Neighbor"
+  const needsSpentDisplay = Math.min(needsSpentRaw + wantsToNeeds, needsTarget);
+  const wantsSpentDisplay = Math.min(wantsSpentRaw + needsToWants, wantsTarget);
+  // Wait, if wantsToNeeds > 0, Needs appears full. 
+  // needsSpentRaw might be small, but filled by wants.
+  // The 'SpentRaw' is total Needs transactions. 
+  // If Wants filled Needs, Needs bar should be full? 
+  // Yes.
+
+  // Track which categories are receiving overflow
+  const wantsReceivedOverflow = needsToWants > 0;
+  const needsReceivedOverflow = wantsToNeeds > 0; // New: Bidirectional
+  const savingsReceivedOverflow = totalOverflowToSavings > 0;
+
+  // Savings "used" = overflow that couldn't fit in Needs/Wants
+  const savingsUsedByOverflow = totalOverflowToSavings;
+
+  // --- 6. Current Wallet Balance ---
+  const totalExpenses = needsSpentRaw + wantsSpentRaw;
   const currentWalletBalance = totalMonthlyIncome - totalExpenses - totalMonthlySaved;
 
-  // Calculate Pending Savings
+  // Calculate Pending Savings (reduced by overflow)
   const pendingLeftoverSave = Math.max(0, leftoverTarget - monthlySavedLeftoverRealized);
-  const pending20Save = Math.max(0, savingsTarget20 - monthlySaved20Realized);
+  const pending20Save = Math.max(0, savingsTarget20 - monthlySaved20Realized - savingsUsedByOverflow);
 
   const displayBalance = currentWalletBalance - pendingLeftoverSave;
 
@@ -78,21 +207,32 @@ export const calculateMonthlyStats = (transactions: any[], userProfile?: any) =>
     budget: {
       needs: {
         target: needsTarget,
-        spent: needsSpent,
-        remaining: needsTarget - needsSpent,
-        percentage: needsTarget > 0 ? (needsSpent / needsTarget) * 100 : 0
+        spent: needsSpentDisplay,
+        spentRaw: needsSpentRaw,
+        overflow: needsOverflow,
+        overflowToWants: needsToWants,
+        overflowToSavings: needsToSavings,
+        receivedOverflow: needsReceivedOverflow, // New
+        remaining: Math.max(0, needsTarget - (needsSpentRaw + wantsToNeeds)),
+        percentage: needsTarget > 0 ? (needsSpentDisplay / needsTarget) * 100 : 0
       },
       wants: {
         target: wantsTarget,
-        spent: wantsSpent,
-        remaining: wantsTarget - wantsSpent,
-        percentage: wantsTarget > 0 ? (wantsSpent / wantsTarget) * 100 : 0
+        spent: wantsSpentDisplay,
+        spentRaw: wantsSpentRaw,
+        overflow: wantsOverflow,
+        overflowToNeeds: wantsToNeeds,
+        overflowToSavings: wantsToSavings,
+        receivedOverflow: wantsReceivedOverflow,
+        remaining: Math.max(0, wantsTarget - (wantsSpentRaw + needsToWants)),
+        percentage: wantsTarget > 0 ? (wantsSpentDisplay / wantsTarget) * 100 : 0
       },
       savings20: {
         target: savingsTarget20,
         saved: monthlySaved20Realized,
+        usedByOverflow: savingsUsedByOverflow,
         pending: pending20Save,
-        percentage: savingsTarget20 > 0 ? (monthlySaved20Realized / savingsTarget20) * 100 : 0
+        percentage: savingsTarget20 > 0 ? ((monthlySaved20Realized + savingsUsedByOverflow) / savingsTarget20) * 100 : 0
       },
       leftover: {
         target: leftoverTarget,
@@ -104,11 +244,15 @@ export const calculateMonthlyStats = (transactions: any[], userProfile?: any) =>
     totals: {
       savedThisMonth: totalMonthlySaved,
       savedAllTime: totalSavedAllTime,
-      walletBalance: currentWalletBalance,
-      displayBalance: displayBalance,
       totalExpenses: totalExpenses,
-      needsSpent,
-      wantsSpent
+      needsSpent: needsSpentRaw,
+      wantsSpent: wantsSpentRaw,
+      wantsReceivedOverflow,
+      needsReceivedOverflow,
+      savingsReceivedOverflow,
+      displayBalance: displayBalance,
+      walletBalance: currentWalletBalance,
+      txStatuses // PASS THIS TO UI
     }
   };
 };

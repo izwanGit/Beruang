@@ -34,6 +34,7 @@ import { DonutChart } from '../components/DonutChart';
 import { transactionItemStyles } from '../styles/transactionItemStyles';
 import { Screen } from './HomeScreen';
 import { Transaction } from '../../App';
+import { calculateMonthlyStats } from '../utils/financeUtils';
 
 type ExpensesScreenProps = {
   onBack: () => void;
@@ -188,18 +189,32 @@ export const ExpensesScreen = ({
 
   const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
 
-  // --- BUDGET LOGIC ---
-  const totalIncomeForMonth = allMonthlyTransactions
-    .filter((t) => t.type === 'income' && t.isCarriedOver !== true)
-    .reduce((sum, t) => sum + t.amount, 0);
+  // --- BUDGET LOGIC (Using centralized financeUtils) ---
+  const {
+    budget,
+    totals
+  } = React.useMemo(() => calculateMonthlyStats(allMonthlyTransactions, undefined), [allMonthlyTransactions]);
 
-  const needsBudget = totalIncomeForMonth * 0.5;
-  const wantsBudget = totalIncomeForMonth * 0.3;
+  const needsBudget = budget.needs.target;
+  const wantsBudget = budget.wants.target;
+  const needsForMonth = budget.needs.spentRaw; // Use raw for internal calculations if needed
+  const wantsForMonth = budget.wants.spentRaw;
 
+  // Use the values directly from financeUtils which has the correct cascade logic
+  const isNeedsOverBudget = budget.needs.overflow > 0;
+  // Wants is over budget if it has overflow (which accounts for Needs overflow pushing into it)
+  const isWantsOverBudget = budget.wants.overflow > 0;
+
+  // For transaction highlighting:
+  // If Needs has overflow, that amount reduces the effective budget for Wants
+  const needsOverflowAmount = budget.needs.overflow;
+
+  // Needed for chart data and other local logic
+  // Needed for chart data and other local logic
   const needsExpenses = expenses.filter((t) => t.category === 'needs');
   const wantsExpenses = expenses.filter((t) => t.category === 'wants');
-  const needsForMonth = needsExpenses.reduce((sum, t) => sum + t.amount, 0);
-  const wantsForMonth = wantsExpenses.reduce((sum, t) => sum + t.amount, 0);
+  const wantsReceivedOverflow = totals.wantsReceivedOverflow;
+  const needsReceivedOverflow = totals.needsReceivedOverflow || false;
 
   // --- CHART DATA PREPARATION ---
   const { chartData, totalForChart, colorMap, subCategoryGroups } = useMemo(() => {
@@ -398,15 +413,53 @@ export const ExpensesScreen = ({
   }> = ({ title, spent, total, color }) => {
     const spentPercentage = total > 0 ? Math.min((spent / total) * 100, 100) : 0;
     const remaining = total - spent;
+    const isOverBudget = remaining < 0;
+    const overflowPercentage = total > 0 ? Math.min(((spent - total) / total) * 100, 100) : 0;
+
+    // Use red for overflow
+    const displayColor = isOverBudget ? '#E53935' : color;
+
     return (
-      <View style={[expensesStyles.budgetBanner, { borderLeftWidth: 8, borderLeftColor: color }]}>
+      <View style={[
+        expensesStyles.budgetBanner,
+        {
+          borderLeftWidth: 8,
+          borderLeftColor: displayColor,
+          backgroundColor: isOverBudget ? '#FFF5F5' : COLORS.white,
+        }
+      ]}>
         <View style={expensesStyles.budgetBannerHeader}>
-          <View>
-            <Text style={expensesStyles.budgetBannerTitle}>{title}</Text>
-            <Text style={expensesStyles.budgetBannerSub}>{remaining >= 0 ? `RM ${remaining.toFixed(2)} remaining` : `Over by RM ${Math.abs(remaining).toFixed(2)}`}</Text>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={expensesStyles.budgetBannerTitle}>{title}</Text>
+              {isOverBudget && (
+                <View style={{
+                  backgroundColor: '#E53935',
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  borderRadius: 4,
+                  marginLeft: 8
+                }}>
+                  <Text style={{ color: '#FFF', fontSize: 9, fontWeight: 'bold' }}>⚠️ OVER</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[
+              expensesStyles.budgetBannerSub,
+              isOverBudget && { color: '#E53935', fontWeight: '600' }
+            ]}>
+              {remaining >= 0
+                ? `RM ${remaining.toFixed(2)} remaining`
+                : `Over by RM ${Math.abs(remaining).toFixed(2)}!`}
+            </Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={expensesStyles.budgetBannerAmount}>RM {spent.toFixed(0)}</Text>
+            <Text style={[
+              expensesStyles.budgetBannerAmount,
+              isOverBudget && { color: '#E53935' }
+            ]}>
+              RM {spent.toFixed(0)}
+            </Text>
             <Text style={expensesStyles.budgetBannerTotal}>of RM {total.toFixed(0)}</Text>
           </View>
         </View>
@@ -416,10 +469,26 @@ export const ExpensesScreen = ({
               expensesStyles.bannerProgressFill,
               {
                 width: `${spentPercentage}%`,
-                backgroundColor: color, // Themed progress fill
+                backgroundColor: displayColor,
               },
             ]}
           />
+          {/* Show overflow bar extending beyond */}
+          {isOverBudget && (
+            <View
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: 0,
+                bottom: 0,
+                width: `${Math.min(overflowPercentage, 20)}%`,
+                backgroundColor: '#E53935',
+                opacity: 0.7,
+                borderTopRightRadius: 6,
+                borderBottomRightRadius: 6,
+              }}
+            />
+          )}
         </View>
       </View>
     );
@@ -447,7 +516,9 @@ export const ExpensesScreen = ({
         return nameMatch || subCatMatch || catMatch || amountMatch;
       });
     }
+    // Simplified logic using txStatuses from financeUtils
     const sortedList = getSortedTransactions(filteredList);
+
     if (sortedList.length === 0) {
       return (
         <Text style={expensesStyles.merchantsText}>
@@ -455,9 +526,13 @@ export const ExpensesScreen = ({
         </Text>
       );
     }
+
     return sortedList.map((item) => {
       const subCat = item.subCategory || 'Others';
       const iconInfo = categoryIcons[subCat] || categoryIcons['Others'];
+
+      const txStatus = totals.txStatuses ? totals.txStatuses[item.id] : null;
+      const isOverflow = txStatus ? (txStatus.overflowSource !== null) : false;
 
       return (
         <View key={item.id} style={expensesStyles.transactionCard}>
@@ -472,6 +547,17 @@ export const ExpensesScreen = ({
                 size={22}
                 color={COLORS.accent}
               />
+              {isOverflow && (
+                <View style={{
+                  position: 'absolute',
+                  top: -2,
+                  right: -2,
+                  backgroundColor: '#E53935',
+                  borderRadius: 5,
+                  width: 10,
+                  height: 10,
+                }} />
+              )}
             </View>
             <View style={expensesStyles.transactionDetails}>
               <Text style={expensesStyles.transactionName} numberOfLines={1}>{item.name}</Text>
@@ -482,7 +568,7 @@ export const ExpensesScreen = ({
             <Text
               style={[
                 expensesStyles.transactionAmount,
-                { color: item.type === 'income' ? COLORS.success : COLORS.accent },
+                { color: item.type === 'income' ? COLORS.success : (isOverflow ? '#E53935' : COLORS.accent) },
               ]}
             >
               {item.type === 'income' ? '+' : '-'}RM{item.amount.toFixed(2)}
@@ -662,21 +748,50 @@ export const ExpensesScreen = ({
                     {activeTab === 'needs' ? '50%' : '30%'} of income
                   </Text>
                   <View style={expensesStyles.statsDivider} />
-                  <Text style={expensesStyles.statsLabel}>REMAINING</Text>
-                  <Text style={[
-                    expensesStyles.statsRemaining,
-                    {
-                      color: (activeTab === 'needs'
-                        ? (needsBudget - needsForMonth)
-                        : (wantsBudget - wantsForMonth)) >= 0
-                        ? COLORS.success
-                        : COLORS.danger
-                    }
-                  ]}>
-                    RM {(activeTab === 'needs'
-                      ? (needsBudget - needsForMonth)
-                      : (wantsBudget - wantsForMonth)).toFixed(2)}
-                  </Text>
+                  {/* Dynamic label based on over/under budget */}
+                  {/* Dynamic label based on over/under budget */}
+                  {(activeTab === 'needs' ? !isNeedsOverBudget : !isWantsOverBudget) ? (
+                    <>
+                      <Text style={expensesStyles.statsLabel}>
+                        {(activeTab === 'wants' && wantsReceivedOverflow) || (activeTab === 'needs' && needsReceivedOverflow) ? "REMAINING (REDUCED)" : "REMAINING"}
+                      </Text>
+                      <Text style={[expensesStyles.statsRemaining, { color: COLORS.success }]}>
+                        RM {(activeTab === 'needs'
+                          ? budget.needs.remaining
+                          : budget.wants.remaining).toFixed(2)}
+                      </Text>
+                      {activeTab === 'wants' && wantsReceivedOverflow && (
+                        <Text style={{ fontSize: 9, color: '#666', marginTop: 2 }}>
+                          ⚠️ Capacity reduced by Needs overflow
+                        </Text>
+                      )}
+                      {activeTab === 'needs' && needsReceivedOverflow && (
+                        <Text style={{ fontSize: 9, color: '#666', marginTop: 2 }}>
+                          ⚠️ Capacity reduced by Wants overflow
+                        </Text>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={[expensesStyles.statsLabel, { color: COLORS.danger }]}>
+                          OVERFLOW ⚠️
+                        </Text>
+                      </View>
+                      <Text style={[expensesStyles.statsRemaining, { color: COLORS.danger }]}>
+                        RM {Math.abs(activeTab === 'needs'
+                          ? budget.needs.overflow
+                          : budget.wants.overflow).toFixed(2)}
+                      </Text>
+                      <Text style={{ fontSize: 10, color: '#666', marginTop: 2 }}>
+                        → Using {
+                          activeTab === 'needs'
+                            ? [budget.needs.overflowToWants > 0 ? 'Wants' : null, budget.needs.overflowToSavings > 0 ? 'Savings' : null].filter(Boolean).join(' & ')
+                            : [budget.wants.overflowToNeeds > 0 ? 'Needs' : null, budget.wants.overflowToSavings > 0 ? 'Savings' : null].filter(Boolean).join(' & ')
+                        } allocation
+                      </Text>
+                    </>
+                  )}
                 </View>
               </View>
               {/* Progress Bar */}
@@ -859,7 +974,20 @@ export const ExpensesScreen = ({
                 <View style={expensesStyles.modalHeader}>
                   <View style={expensesStyles.modalHandle} />
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
-                    <Text style={expensesStyles.modalTitle}>Edit Transaction</Text>
+                    <View>
+                      <Text style={expensesStyles.modalTitle}>Edit Transaction</Text>
+                      {editingTransaction && totals.txStatuses?.[editingTransaction.id]?.overflowSource && (
+                        <Text style={{ fontSize: 11, color: '#E53935', marginTop: 2 }}>
+                          ⚠️ Using {
+                            [
+                              totals.txStatuses[editingTransaction.id].usedNeeds > 0 ? `Needs (RM ${totals.txStatuses[editingTransaction.id].usedNeeds.toFixed(2)})` : null,
+                              totals.txStatuses[editingTransaction.id].usedWants > 0 ? `Wants (RM ${totals.txStatuses[editingTransaction.id].usedWants.toFixed(2)})` : null,
+                              totals.txStatuses[editingTransaction.id].usedSavings > 0 ? `Savings (RM ${totals.txStatuses[editingTransaction.id].usedSavings.toFixed(2)})` : null
+                            ].filter(Boolean).join(' & ')
+                          } allocation
+                        </Text>
+                      )}
+                    </View>
                     <TouchableOpacity onPress={() => closeEditModal()} style={expensesStyles.closeButton} disabled={isSaving}>
                       <Icon name="x" size={22} color={COLORS.darkGray} />
                     </TouchableOpacity>
