@@ -289,6 +289,11 @@ export default function App() {
         unsubProfile = onSnapshot(doc(db, 'users', userId), (profileDoc) => {
           if (profileDoc.exists()) {
             const profileData = profileDoc.data() as User;
+            // --- FIX NEGATIVE XP USERS (Level Floor) ---
+            if ((profileData.totalXP || 0) < 0) {
+              updateDoc(doc(db, 'users', userId), { totalXP: 0 });
+              profileData.totalXP = 0;
+            }
             if (!profileData.name && firebaseUser.displayName) {
               updateDoc(doc(db, 'users', userId), { name: firebaseUser.displayName });
               profileData.name = firebaseUser.displayName;
@@ -463,13 +468,6 @@ export default function App() {
     try {
       const budgetData = calculateMonthlyStats(transactions, userProfile);
 
-      // 🛑 Check for global overspending rules before syncing
-      const rebalanced = await checkAndBalanceBudgets(budgetData);
-      if (rebalanced) {
-        console.log('🔄 Budget rebalanced, skipping sync until next snapshot.');
-        return;
-      }
-
       const currentMonthKey = budgetData.month;
       const budgetRef = doc(db, 'users', userId, 'monthlyBudgets', currentMonthKey);
       const nowTs = serverTimestamp();
@@ -505,145 +503,6 @@ export default function App() {
     } catch (e) {
       console.error('Error syncing monthly budget:', e);
     }
-  };
-
-  // --- NEW FUNCTION: Global Budget Rebalancing ---
-  const checkAndBalanceBudgets = async (stats: any) => {
-    const userId = getUserId();
-    if (!userId || !userProfile || transactions.length === 0 || isRebalancing.current) return false;
-
-    // Set rebalancing flag BEFORE any state changes
-    isRebalancing.current = true;
-
-    const { needs, wants, savings20 } = stats.budget;
-    const currentMonthKey = stats.month;
-
-    // Filter current month expenses
-    const currentMonthExpenses = transactions.filter(
-      (t) => t.type === 'expense' && getMonthKey(t.date) === currentMonthKey
-    );
-
-    try {
-      // RULE 1: Needs > Budget, Needs exceeded, but Wants has room
-      if (needs.spent > (needs.target + 0.01) && wants.remaining > 0.01) {
-        const excess = needs.spent - needs.target;
-        const amountToMove = Math.min(excess, wants.remaining);
-
-        // Find the latest 'needs' transaction to move/split
-        const needsTrans = currentMonthExpenses
-          .filter(t => t.category === 'needs')
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-        if (needsTrans.length > 0) {
-          const trans = needsTrans[0];
-          const batch = writeBatch(db);
-
-          if (trans.amount > amountToMove + 0.01) {
-            // Split
-            batch.update(doc(db, 'users', userId, 'transactions', trans.id), {
-              amount: trans.amount - amountToMove,
-            });
-            const newId = `${trans.id}_needs_overflow`;
-            batch.set(doc(db, 'users', userId, 'transactions', newId), {
-              ...trans,
-              id: newId,
-              amount: amountToMove,
-              category: 'wants',
-              name: `${trans.name} (Needs Overflow)`,
-              createdAt: serverTimestamp(),
-            });
-          } else {
-            // Move whole
-            batch.update(doc(db, 'users', userId, 'transactions', trans.id), {
-              category: 'wants',
-              name: `${trans.name} (Needs Overflow)`,
-            });
-          }
-          await batch.commit();
-          handleAwardXP(XP_REWARDS.OVERSPENDING_PENALTY);
-
-          // Delay message to prevent modal blocking
-          setTimeout(() => {
-            showMessage("Budget Shield: Your 'Needs' spending exceeded the budget. Excess has been moved to 'Wants' and XP penalized! 🐻");
-          }, 100);
-          return true;
-        }
-      }
-      // RULE 2: Wants > Budget, Wants exceeded, but Needs has room
-      else if (wants.spent > (wants.target + 0.01) && needs.remaining > 0.01) {
-        const excess = wants.spent - wants.target;
-        const amountToMove = Math.min(excess, needs.remaining);
-
-        const wantsTrans = currentMonthExpenses
-          .filter(t => t.category === 'wants')
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-        if (wantsTrans.length > 0) {
-          const trans = wantsTrans[0];
-          const batch = writeBatch(db);
-
-          if (trans.amount > amountToMove + 0.01) {
-            // Split
-            batch.update(doc(db, 'users', userId, 'transactions', trans.id), {
-              amount: trans.amount - amountToMove,
-            });
-            const newId = `${trans.id}_wants_overflow`;
-            batch.set(doc(db, 'users', userId, 'transactions', newId), {
-              ...trans,
-              id: newId,
-              amount: amountToMove,
-              category: 'needs',
-              name: `${trans.name} (Wants Overflow)`,
-              createdAt: serverTimestamp(),
-            });
-          } else {
-            // Move whole
-            batch.update(doc(db, 'users', userId, 'transactions', trans.id), {
-              category: 'needs',
-              name: `${trans.name} (Wants Overflow)`,
-            });
-          }
-          await batch.commit();
-          handleAwardXP(XP_REWARDS.OVERSPENDING_PENALTY);
-
-          // Delay message to prevent modal blocking
-          setTimeout(() => {
-            showMessage("Budget Shield: Your 'Wants' spending exceeded the budget. Excess has been moved to 'Needs' and XP penalized! 🐻");
-          }, 100);
-          return true;
-        }
-      }
-      // RULE 3: Both Needs & Wants full, but Savings 20% not fully saved yet
-      // This allows the overflow to "eat into" the unsaved savings budget
-      else if (needs.remaining <= 0.01 && wants.remaining <= 0.01 && savings20.pending > 0.01) {
-        // Find the latest expense that caused the overflow
-        const latestExpense = currentMonthExpenses
-          .filter(t => t.category === 'needs' || t.category === 'wants')
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-
-        if (latestExpense) {
-          const excess = Math.abs(needs.remaining) + Math.abs(wants.remaining);
-          if (excess <= savings20.pending) {
-            // Allow but warn - the savings budget absorbs the overflow
-            handleAwardXP(XP_REWARDS.OVERSPENDING_PENALTY * 2); // Double penalty
-
-            // Delay message to prevent modal blocking
-            setTimeout(() => {
-              showMessage("⚠️ Emergency: Both Needs & Wants are full! Using your unsaved Savings budget. Double XP penalty applied! 🐻");
-            }, 100);
-            return false; // Don't rebalance, just warn
-          }
-        }
-      }
-    } catch (e) {
-      console.error("Error rebalancing: ", e);
-    } finally {
-      // Delay reset to prevent immediate re-trigger
-      setTimeout(() => {
-        isRebalancing.current = false;
-      }, 500);
-    }
-    return false;
   };
 
   // --- NEW FUNCTION: Check if budget can accommodate transaction ---
@@ -1259,23 +1118,34 @@ export default function App() {
     const userId = getUserId();
     if (!userId || !userProfile) return;
     const currentXP = userProfile.totalXP || 0;
-    const newXP = currentXP + xp;
+    // --- 1. PREVENT NEGATIVE XP (Level Floor at 1) ---
+    const newXP = Math.max(0, currentXP + xp);
 
-    // Check if level up
     const oldLevel = calculateLevel(currentXP);
     const newLevel = calculateLevel(newXP);
 
-    await updateDoc(doc(db, 'users', userId), { totalXP: newXP });
+    // Prepare update object
+    const updateData: any = { totalXP: newXP };
 
     if (newLevel > oldLevel) {
       showMessage(`🎉 Level Up! You reached Level ${newLevel}!`);
       // Auto-evolve ONLY if they are using the generic 'bear' string
       if (userProfile.avatar === 'bear') {
-        await updateDoc(doc(db, 'users', userId), {
-          avatar: getAvatarForLevel(newLevel)
-        });
+        updateData.avatar = getAvatarForLevel(newLevel);
+      }
+    } else if (newLevel < oldLevel) {
+      // --- 2. AUTOMATIC DOWNGRADE ---
+      // If user's level drops, check if their current bear avatar is now "too high"
+      if (userProfile.avatar && userProfile.avatar.startsWith('bear_level_')) {
+        const avatarLevel = parseInt(userProfile.avatar.replace('bear_level_', ''), 10);
+        // If current avatar requirement is higher than new level, force downgrade
+        if (avatarLevel > newLevel) {
+          updateData.avatar = getAvatarForLevel(newLevel);
+        }
       }
     }
+
+    await updateDoc(doc(db, 'users', userId), updateData);
   };
 
   const handleOnboardingComplete = async (data: Partial<User>, isRetake: boolean) => {
@@ -1507,13 +1377,6 @@ export default function App() {
                       onBack={() => {
                         navigation.goBack();
                         setCurrentChatId(null);
-                      }}
-                      onNavigate={(screen: Screen) => {
-                        if (screen === 'Chatbot') {
-                          navigation.navigate('Chatbot', {});
-                        } else {
-                          navigation.navigate(screen as keyof RootStackParamList)
-                        }
                       }}
                       chatSessions={chatSessions}
                       currentChatMessages={currentChatMessages}
