@@ -9,7 +9,9 @@ export const MAX_LEVEL = 13;
  * @returns The level number (1-13).
  */
 export const calculateLevel = (totalXP: number): number => {
-    const level = Math.floor(totalXP / XP_PER_LEVEL) + 1;
+    // Floor XP at 0 conceptually for level calculation
+    const effectiveXP = Math.max(0, totalXP);
+    const level = Math.floor(effectiveXP / XP_PER_LEVEL) + 1;
     return Math.min(level, MAX_LEVEL);
 };
 

@@ -204,9 +204,6 @@ export const HomeScreen = ({
               onPress={() => onNavigate('Notifications')}
             >
               <Icon name="bell" size={24} color={COLORS.white} />
-              <View style={homeStyles.notificationBadge}>
-                <Text style={homeStyles.notificationBadgeText}>3</Text>
-              </View>
             </TouchableOpacity>
 
             <TouchableOpacity

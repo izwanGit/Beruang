@@ -6,6 +6,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   Text,
+  AppState,
 } from 'react-native';
 import {
   NavigationContainer,
@@ -78,6 +79,7 @@ import { isBearAvatar } from './src/constants/avatars';
 
 // Import URL config (HARDCODED VERSION)
 import { CHAT_STREAM_URL, CHAT_URL } from './src/config/urls';
+import NotificationService from './src/services/NotificationService';
 
 // --- Types for Navigation ---
 export type RootStackParamList = {
@@ -206,6 +208,8 @@ export default function App() {
   // --- STATE ---
   const [modalVisible, setModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
+
+
   const [showBalanceModal, setShowBalanceModal] = useState(false);
   const [showInitialBalanceModal, setShowInitialBalanceModal] = useState(false);
   const [pendingBalance, setPendingBalance] = useState(0);
@@ -235,6 +239,39 @@ export default function App() {
   const [monthlyBudgets, setMonthlyBudgets] = useState<{ [key: string]: MonthlyBudget }>({});
   const isRebalancing = useRef(false);
   const lastSyncTimeRef = useRef(0);
+  const hasScheduledNotification = useRef(false);
+
+  // --- Notification Setup (runs ONCE) ---
+  useEffect(() => {
+    const initNotifications = async () => {
+      try {
+        await NotificationService.requestUserPermission();
+        await NotificationService.getFCMToken();
+        NotificationService.setupListeners();
+      } catch (e) {
+        console.log('Notification init skipped:', e);
+      }
+    };
+    initNotifications();
+  }, []); // Empty dependency - runs only once
+
+  // --- AppState Listener for Smart Notifications ---
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'background' && !hasScheduledNotification.current) {
+        hasScheduledNotification.current = true;
+        const budgetData = userProfile && transactions.length > 0
+          ? calculateMonthlyStats(transactions, userProfile)
+          : null;
+        NotificationService.scheduleSmartReminder(budgetData);
+      } else if (nextAppState === 'active') {
+        hasScheduledNotification.current = false;
+        NotificationService.cancelAll();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [userProfile, transactions]);
 
   // --- 1. Auth Listener ---
   useEffect(() => {

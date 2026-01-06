@@ -27,6 +27,7 @@ import { AvatarPickerModal } from '../components/AvatarPickerModal';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { calculateLevel, calculateLevelProgress, getAvatarForLevel } from '../utils/gamificationUtils';
+import NotificationService from '../services/NotificationService';
 
 const { width } = Dimensions.get('window');
 
@@ -302,6 +303,17 @@ export const ProfileScreen = ({
                 text="Notifications"
                 description="View your alerts and reminders from Beruang"
                 onPress={() => onNavigate('Notifications')}
+                isLast={false}
+              />
+              <SettingRow
+                icon="zap"
+                text="Test Notification (5s)"
+                description="Demo: Triggers an alert in 5 seconds"
+                onPress={() => {
+                  Alert.alert('Triggered!', 'Close the app now. Notification comes in 5s.');
+                  NotificationService.testTrigger();
+                }}
+                color="#FF9800"
                 isLast={true}
               />
             </View>
