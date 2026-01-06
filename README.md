@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/beruang_logo.png" alt="Beruang Logo" width="150" height="150" style="border-radius: 32px;"/>
+<img src="assets/beruang_logo.png" alt="Beruang Logo" width="250" height="250" style="border-radius: 48px;"/>
 
 # 🐻 Beruang
 ### **AI-Powered Personal Finance for Malaysia**
@@ -8,9 +8,9 @@
 *A hybrid-intelligence financial ecosystem built with Deep Learning, SSE Streaming, and Behavioral Gamification.*
 
 [![Version](https://img.shields.io/badge/version-12.0-blue.svg?style=for-the-badge)](https://github.com/izwanGit/Beruang)
-[![Transaction AI](https://img.shields.io/badge/Transaction%20AI-99.88%25-brightgreen.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-ai-backend)
+[![Transaction AI](https://img.shields.io/badge/Transaction%20AI-99.6%25-brightgreen.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-ai-backend)
 [![Intent AI](https://img.shields.io/badge/Intent%20AI-99.57%25-green.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-server)
-[![Dataset](https://img.shields.io/badge/Dataset-237k-orange.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-ai-backend)
+[![Dataset](https://img.shields.io/badge/Dataset-307k-orange.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-ai-backend)
 
 **Final Year Project • UiTM Shah Alam • Intelligent Systems Engineering**
 
@@ -58,6 +58,12 @@
 | **Database** | Firebase Firestore | Real-time persistence |
 | **Auth** | Firebase Authentication | Secure identity |
 | **Streaming** | Server-Sent Events (SSE) | Real-time token delivery |
+
+#### 💎 Chronological Smart Waterfall
+- **Bidirectional Overflow**: Automatically moves overspending from `Wants` to `Needs` (or vice versa) based on transaction priority.
+- **Emergency Buffering**: Effectively uses unsaved `Savings` as a virtual buffer to prevent negative balances.
+- **Visual Feedback**: Real-time "Remaining (Reduced)" indicators and warning symbols in the dashboard.
+- **Logic-Proof Logic**: Uses insertion-order timestamps to simulate a real chronological budget waterfall.
 
 ---
 
@@ -138,18 +144,17 @@ The core categorization engine uses a **Bi-directional Long Short-Term Memory** 
 | Inference Time | 8.4ms | 8.4ms |
 | Model Size | 2.1MB | 2.1MB |
 
-### The 237,351-Row Logic-Proof Dataset
+### The 307,122-Row Logic-Proof Dataset
 
-The dataset was engineered using a **Set-Theoretical Constraint System** to ensure zero logic collisions between categories. This combined dataset includes 150,381 transaction samples and 86,970 intent samples.
+The dataset was engineered using a **Set-Theoretical Constraint System** to ensure zero logic collisions between categories. This combined dataset includes 220,152 transaction samples and 86,970 intent samples.
 
 #### Dataset Class Distribution
 
 | Category | Sample Count | Percentage | Description |
 |:---------|:-------------|:-----------|:------------|
-| **Needs** | 67,672 | 45% | Essential survival expenses |
-| **Wants** | 52,633 | 35% | Discretionary lifestyle spending |
-| **Savings** | 30,076 | 20% | Future wealth building |
-| **Total** | **150,381** | **100%** | Balanced for 50/30/20 rule |
+| **Needs** | 120,220 | 54.6% | Essential survival expenses |
+| **Wants** | 99,932 | 45.4% | Discretionary lifestyle spending |
+| **Total** | **220,152** | **100%** | Massive V2 Upgrade |
 
 #### Token Logic Pillars (Exclusive Sets)
 
