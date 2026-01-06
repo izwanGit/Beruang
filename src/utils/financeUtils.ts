@@ -311,17 +311,26 @@ Total Income: RM ${budgetData.income.fresh.toFixed(2)}
 
 BUDGET ALLOCATIONS:
 - Needs (50%): RM ${budgetData.budget.needs.target.toFixed(2)} allocated
-  • Spent: RM ${budgetData.budget.needs.spent.toFixed(2)}
+  • Raw Spent (Transactions): RM ${budgetData.budget.needs.spentRaw.toFixed(2)}
+  • Effective Spent (Display): RM ${budgetData.budget.needs.spent.toFixed(2)}
+  • Overflowing to Wants: RM ${budgetData.budget.needs.overflowToWants.toFixed(2)}
+  • Overflowing to Savings: RM ${budgetData.budget.needs.overflowToSavings.toFixed(2)}
+  • Received Overflow from Wants: ${budgetData.budget.needs.receivedOverflow ? 'YES' : 'NO'}
   • Remaining: RM ${budgetData.budget.needs.remaining.toFixed(2)}
   • ${budgetData.budget.needs.percentage.toFixed(0)}% of budget used
 
 - Wants (30%): RM ${budgetData.budget.wants.target.toFixed(2)} allocated
-  • Spent: RM ${budgetData.budget.wants.spent.toFixed(2)}
+  • Raw Spent (Transactions): RM ${budgetData.budget.wants.spentRaw.toFixed(2)}
+  • Effective Spent (Display): RM ${budgetData.budget.wants.spent.toFixed(2)}
+  • Overflowing to Needs: RM ${budgetData.budget.wants.overflowToNeeds.toFixed(2)}
+  • Overflowing to Savings: RM ${budgetData.budget.wants.overflowToSavings.toFixed(2)}
+  • Received Overflow from Needs: ${budgetData.budget.wants.receivedOverflow ? 'YES' : 'NO'}
   • Remaining: RM ${budgetData.budget.wants.remaining.toFixed(2)}
   • ${budgetData.budget.wants.percentage.toFixed(0)}% of budget used
 
 - Savings (20%): RM ${budgetData.budget.savings20.target.toFixed(2)} target
   • Saved: RM ${budgetData.budget.savings20.saved.toFixed(2)}
+  • Amount absorbed by Overflow: RM ${budgetData.budget.savings20.usedByOverflow.toFixed(2)}
   • Remaining to save: RM ${budgetData.budget.savings20.pending.toFixed(2)}
   • ${budgetData.budget.savings20.percentage.toFixed(0)}% of target achieved
 
@@ -334,9 +343,14 @@ LEFTOVER BALANCE SAVINGS:
 TOTALS:
 - Total Saved This Month: RM ${budgetData.totals.savedThisMonth.toFixed(2)}
 - Total Saved All Time: RM ${budgetData.totals.savedAllTime.toFixed(2)}
-- Total Needs Spent: RM ${budgetData.totals.needsSpent.toFixed(2)}
-- Total Wants Spent: RM ${budgetData.totals.wantsSpent.toFixed(2)}
+- Total Raw Needs Spent: RM ${budgetData.totals.needsSpent.toFixed(2)}
+- Total Raw Wants Spent: RM ${budgetData.totals.wantsSpent.toFixed(2)}
 - Current Available Balance: RM ${budgetData.totals.displayBalance.toFixed(2)}
+
+SYSTEM OVERFLOW SUMMARY:
+- Is Needs overflowing? ${budgetData.budget.needs.overflow > 0 ? 'YES (RM ' + budgetData.budget.needs.overflow.toFixed(2) + ')' : 'NO'}
+- Is Wants overflowing? ${budgetData.budget.wants.overflow > 0 ? 'YES (RM ' + budgetData.budget.wants.overflow.toFixed(2) + ')' : 'NO'}
+- Is Savings receiving overflow? ${budgetData.totals.savingsReceivedOverflow ? 'YES' : 'NO'}
 `.trim();
 };
 
