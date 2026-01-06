@@ -1,23 +1,112 @@
 import notifee, { AndroidImportance, TriggerType, EventType } from '@notifee/react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // NOTE: Using ONLY Notifee for notifications (no Firebase = no $99 fee)
 
+const NOTIFICATION_HISTORY_KEY = '@beruang_notification_history';
+
+export type StoredNotification = {
+    id: string;
+    title: string;
+    body: string;
+    type: 'info' | 'warning' | 'success' | 'alert';
+    timestamp: number;
+    isRead: boolean;
+};
+
 class NotificationService {
 
-    // 1. Request Permission
+    // ========================================
+    // NOTIFICATION HISTORY STORAGE
+    // ========================================
+
+    async saveToHistory(title: string, body: string, type: StoredNotification['type'] = 'info') {
+        try {
+            const history = await this.getHistory();
+            const newNotification: StoredNotification = {
+                id: Date.now().toString(),
+                title,
+                body,
+                type,
+                timestamp: Date.now(),
+                isRead: false,
+            };
+            const updated = [newNotification, ...history].slice(0, 20); // Keep max 20
+            await AsyncStorage.setItem(NOTIFICATION_HISTORY_KEY, JSON.stringify(updated));
+            console.log('📥 Notification saved to history:', title);
+        } catch (e) {
+            console.log('Error saving notification to history:', e);
+        }
+    }
+
+    async getHistory(): Promise<StoredNotification[]> {
+        try {
+            const data = await AsyncStorage.getItem(NOTIFICATION_HISTORY_KEY);
+            return data ? JSON.parse(data) : [];
+        } catch (e) {
+            console.log('Error getting notification history:', e);
+            return [];
+        }
+    }
+
+    async markAsRead(id: string) {
+        try {
+            const history = await this.getHistory();
+            const updated = history.map(n => n.id === id ? { ...n, isRead: true } : n);
+            await AsyncStorage.setItem(NOTIFICATION_HISTORY_KEY, JSON.stringify(updated));
+        } catch (e) {
+            console.log('Error marking notification as read:', e);
+        }
+    }
+
+    async markAllAsRead() {
+        try {
+            const history = await this.getHistory();
+            const updated = history.map(n => ({ ...n, isRead: true }));
+            await AsyncStorage.setItem(NOTIFICATION_HISTORY_KEY, JSON.stringify(updated));
+        } catch (e) {
+            console.log('Error marking all as read:', e);
+        }
+    }
+
+    async getUnreadCount(): Promise<number> {
+        const history = await this.getHistory();
+        return history.filter(n => !n.isRead).length;
+    }
+
+    async deleteNotification(id: string) {
+        try {
+            const history = await this.getHistory();
+            const updated = history.filter(n => n.id !== id);
+            await AsyncStorage.setItem(NOTIFICATION_HISTORY_KEY, JSON.stringify(updated));
+        } catch (e) {
+            console.log('Error deleting notification:', e);
+        }
+    }
+
+    async clearHistory() {
+        try {
+            await AsyncStorage.removeItem(NOTIFICATION_HISTORY_KEY);
+        } catch (e) {
+            console.log('Error clearing notification history:', e);
+        }
+    }
+
+    // ========================================
+    // PERMISSION & SETUP
+    // ========================================
+
     async requestUserPermission() {
         console.log('Requesting notification permission...');
         await notifee.requestPermission();
         console.log('Notification permission granted via Notifee');
     }
 
-    // 2. FCM Token - Disabled for FYP demo
     async getFCMToken() {
         console.log('FCM Token skipped (FYP demo mode - using local notifications only)');
         return null;
     }
 
-    // 3. Listeners
     setupListeners() {
         notifee.onForegroundEvent(({ type, detail }) => {
             switch (type) {
@@ -32,34 +121,18 @@ class NotificationService {
         console.log('Notifee foreground listeners set up');
     }
 
-    // 4. Display Local Notification
-    async displayLocalNotification(title: string, body: string, data = {}) {
-        const channelId = await notifee.createChannel({
-            id: 'default',
-            name: 'Default Channel',
-            importance: AndroidImportance.HIGH,
-        });
-
-        await notifee.displayNotification({
-            title,
-            body,
-            data,
-            android: {
-                channelId,
-                smallIcon: 'ic_launcher',
-                pressAction: { id: 'default' },
-            },
-            ios: { sound: 'default' },
-        });
-    }
-
     // ========================================
-    // 5. DEMO FUNCTIONS (FYP Special)
+    // DEMO FUNCTIONS (FYP Special)
     // ========================================
 
-    // Manual Test Button (5 seconds)
     async testTrigger() {
         console.log('Triggering test notification in 5 seconds...');
+
+        const title = '🔥 Live Demo Alert';
+        const body = 'This notification was triggered just now! The system is working perfectly.';
+
+        // Save to history immediately
+        await this.saveToHistory(title, body, 'success');
 
         const trigger: any = {
             type: TriggerType.TIMESTAMP,
@@ -74,8 +147,8 @@ class NotificationService {
 
         await notifee.createTriggerNotification(
             {
-                title: '🔥 Live Demo Alert',
-                body: 'This notification was triggered just now! The system is working perfectly.',
+                title,
+                body,
                 android: { channelId, pressAction: { id: 'default' } },
             },
             trigger,
@@ -83,10 +156,46 @@ class NotificationService {
     }
 
     // ========================================
-    // 6. SMART REMINDER (The "WOW" Factor)
+    // SMART REMINDER (The "WOW" Factor)
     // ========================================
     async scheduleSmartReminder(budgetData: any) {
         console.log('Scheduling smart reminder in 10 seconds...');
+
+        // Generate personalized message based on budget data
+        let title = '🐻 Beruang Misses You!';
+        let body = "Come back and check your budget!";
+        let type: StoredNotification['type'] = 'info';
+
+        if (budgetData) {
+            const { budget } = budgetData;
+            const needsRemaining = Math.max(0, budget.needs.remaining);
+            const wantsRemaining = Math.max(0, budget.wants.remaining);
+            const totalSafeToSpend = needsRemaining + wantsRemaining;
+            const savingsProgress = budget.savings20.target > 0
+                ? Math.round((budget.savings20.saved / budget.savings20.target) * 100)
+                : 0;
+
+            if (savingsProgress >= 100) {
+                title = '🏆 Savings Goal Achieved!';
+                body = `You've saved 100% of your monthly goal! Keep it up, financial master! 💪`;
+                type = 'success';
+            } else if (totalSafeToSpend < 50) {
+                title = '⚠️ Budget Running Low';
+                body = `You only have RM ${totalSafeToSpend.toFixed(0)} left to spend safely this month. Be careful!`;
+                type = 'warning';
+            } else if (wantsRemaining > 100) {
+                title = '💡 Smart Spending Tip';
+                body = `You still have RM ${wantsRemaining.toFixed(0)} in your "Wants" budget. Treat yourself wisely! 🛍️`;
+                type = 'info';
+            } else {
+                title = '📊 Your Budget Update';
+                body = `Safe to spend: RM ${totalSafeToSpend.toFixed(0)} | Savings: ${savingsProgress}% complete`;
+                type = 'info';
+            }
+        }
+
+        // Save to history immediately
+        await this.saveToHistory(title, body, type);
 
         const trigger: any = {
             type: TriggerType.TIMESTAMP,
@@ -99,49 +208,9 @@ class NotificationService {
             importance: AndroidImportance.DEFAULT,
         });
 
-        // Generate personalized message based on budget data
-        let title = '🐻 Beruang Misses You!';
-        let body = "Come back and check your budget!";
-
-        console.log('📊 Budget data received:', budgetData ? 'YES' : 'NO');
-        if (budgetData) {
-            console.log('📊 Budget details:', JSON.stringify({
-                needsRemaining: budgetData.budget?.needs?.remaining,
-                wantsRemaining: budgetData.budget?.wants?.remaining,
-                savingsTarget: budgetData.budget?.savings20?.target,
-                savingsSaved: budgetData.budget?.savings20?.saved,
-            }));
-            const { budget, totals } = budgetData;
-            const needsRemaining = Math.max(0, budget.needs.remaining);
-            const wantsRemaining = Math.max(0, budget.wants.remaining);
-            const totalSafeToSpend = needsRemaining + wantsRemaining;
-            const savingsProgress = budget.savings20.target > 0
-                ? Math.round((budget.savings20.saved / budget.savings20.target) * 100)
-                : 0;
-
-            // Choose the most relevant message
-            if (savingsProgress >= 100) {
-                title = '🏆 Savings Goal Achieved!';
-                body = `You've saved 100% of your monthly goal! Keep it up, financial master! 💪`;
-            } else if (totalSafeToSpend < 50) {
-                title = '⚠️ Budget Running Low';
-                body = `You only have RM ${totalSafeToSpend.toFixed(0)} left to spend safely this month. Be careful!`;
-            } else if (wantsRemaining > 100) {
-                title = '💡 Smart Spending Tip';
-                body = `You still have RM ${wantsRemaining.toFixed(0)} in your "Wants" budget. Treat yourself wisely! 🛍️`;
-            } else {
-                title = '📊 Your Budget Update';
-                body = `Safe to spend: RM ${totalSafeToSpend.toFixed(0)} | Savings: ${savingsProgress}% complete`;
-            }
-        }
-
         try {
             await notifee.createTriggerNotification(
-                {
-                    title,
-                    body,
-                    android: { channelId },
-                },
+                { title, body, android: { channelId } },
                 trigger,
             );
         } catch (e) {
@@ -149,7 +218,6 @@ class NotificationService {
         }
     }
 
-    // Cancel all pending notifications
     async cancelAll() {
         await notifee.cancelAllNotifications();
     }

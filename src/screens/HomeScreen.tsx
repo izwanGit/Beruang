@@ -53,6 +53,7 @@ type HomeScreenProps = {
   onResetMonth: () => void;
   refreshing: boolean;
   onRefresh: () => void;
+  unreadNotificationCount: number;
 };
 
 export const HomeScreen = ({
@@ -64,6 +65,7 @@ export const HomeScreen = ({
   onResetMonth,
   refreshing,
   onRefresh,
+  unreadNotificationCount,
 }: HomeScreenProps) => {
   // Calculate all budget data using financeUtils
   const budgetData = calculateMonthlyStats(transactions);
@@ -204,6 +206,13 @@ export const HomeScreen = ({
               onPress={() => onNavigate('Notifications')}
             >
               <Icon name="bell" size={24} color={COLORS.white} />
+              {unreadNotificationCount > 0 && (
+                <View style={homeStyles.notificationBadge}>
+                  <Text style={homeStyles.notificationBadgeText}>
+                    {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity

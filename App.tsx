@@ -237,6 +237,7 @@ export default function App() {
 
   // --- NEW: Monthly Budgets State ---
   const [monthlyBudgets, setMonthlyBudgets] = useState<{ [key: string]: MonthlyBudget }>({});
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const isRebalancing = useRef(false);
   const lastSyncTimeRef = useRef(0);
   const hasScheduledNotification = useRef(false);
@@ -267,6 +268,8 @@ export default function App() {
       } else if (nextAppState === 'active') {
         hasScheduledNotification.current = false;
         NotificationService.cancelAll();
+        // Refresh unread count when app becomes active
+        NotificationService.getUnreadCount().then(setUnreadNotificationCount);
       }
     });
 
@@ -632,6 +635,9 @@ export default function App() {
       checkLeftoverBalance(userProfile, transactions);
       await syncMonthlyBudget();
     }
+    // Refresh notification count
+    const count = await NotificationService.getUnreadCount();
+    setUnreadNotificationCount(count);
     // UX feedback delay
     setTimeout(() => setRefreshing(false), 800);
   };
@@ -1371,6 +1377,12 @@ export default function App() {
                       onNavigate={(screen: Screen) => {
                         if (screen === 'Chatbot') {
                           navigation.navigate('Chatbot', {});
+                        } else if (screen === 'Notifications') {
+                          navigation.navigate('Notifications');
+                          // Refresh count after viewing notifications
+                          setTimeout(() => {
+                            NotificationService.getUnreadCount().then(setUnreadNotificationCount);
+                          }, 500);
                         } else {
                           navigation.navigate(screen as keyof RootStackParamList)
                         }
@@ -1382,6 +1394,7 @@ export default function App() {
                       onResetMonth={handleResetMonth}
                       refreshing={refreshing}
                       onRefresh={handleRefresh}
+                      unreadNotificationCount={unreadNotificationCount}
                     />
                   )}
                 </Stack.Screen>
