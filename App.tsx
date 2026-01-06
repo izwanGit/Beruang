@@ -684,6 +684,26 @@ export default function App() {
         handleAwardXP(xpToAdd);
       }
 
+      // --- POST-TRANSACTION OVERFLOW CHECK ---
+      // Check if this transaction caused budget overflow and notify user
+      const updatedStats = calculateMonthlyStats(transactions, userProfile);
+      const { budget, totals } = updatedStats;
+      const savingsUsedByOverflow = budget.savings20.usedByOverflow || 0;
+      const wantsReceivedOverflow = totals.wantsReceivedOverflow;
+      const needsReceivedOverflow = totals.needsReceivedOverflow;
+
+      if (showMsg) {
+        if (savingsUsedByOverflow > 0) {
+          showMessage(`⚠️ Budget Overflow: RM ${savingsUsedByOverflow.toFixed(2)} used from Savings buffer`);
+        } else if (needsReceivedOverflow) {
+          showMessage(`⚠️ Wants overflow absorbed by Needs budget`);
+        } else if (wantsReceivedOverflow) {
+          showMessage(`⚠️ Needs overflow absorbed by Wants budget`);
+        } else {
+          showMessage('Transaction added.');
+        }
+      }
+
       // Sync budget after adding transaction
       setTimeout(() => syncMonthlyBudget(), 100);
     } catch (e) {
