@@ -428,104 +428,127 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
     }
     // 2. If no streaming message, check if a new REAL message arrived
     else if (currentChatMessages.length > 0) {
-  const lastMessage = currentChatMessages[currentChatMessages.length - 1];
+      const lastMessage = currentChatMessages[currentChatMessages.length - 1];
 
-  // If the last message is from bot, we assume response is done.
-  // FIX: Only turn off typing if:
-  // 1. We are NOT editing (normal flow)
-  // 2. OR We ARE editing, but this is a NEW message (length increased), implying the new response arrived.
-  const isNewMessage = currentChatMessages.length > lastMessageCountRef.current;
+      // If the last message is from bot, we assume response is done.
+      // FIX: Only turn off typing if:
+      // 1. We are NOT editing (normal flow)
+      // 2. OR We ARE editing, but this is a NEW message (length increased), implying the new response arrived.
+      const isNewMessage = currentChatMessages.length > lastMessageCountRef.current;
 
-  if (lastMessage.sender === 'bot') {
-    if (!isEditingRef.current || isNewMessage) {
-      setIsTyping(false);
-      isEditingRef.current = false;
+      if (lastMessage.sender === 'bot') {
+        if (!isEditingRef.current || isNewMessage) {
+          setIsTyping(false);
+          isEditingRef.current = false;
+        }
+      }
+
+      lastMessageCountRef.current = currentChatMessages.length;
     }
-  }
+  }, [currentChatMessages, streamingMessage, isBotThinking]);
 
-  lastMessageCountRef.current = currentChatMessages.length;
-}
-  }, [currentChatMessages, streamingMessage]);
+  const initialScrollDoneRef = useRef(false);
 
-const initialScrollDoneRef = useRef(false);
-
-useEffect(() => {
-  // Only auto-scroll for NEW messages (after the initial load is done)
-  if (initialScrollDoneRef.current && currentChatMessages.length > 0 && !editingMessage) {
-    flatListRef.current?.scrollToEnd({ animated: true });
-  }
-}, [currentChatMessages.length, editingMessage]);
-
-useEffect(() => {
-  if (highlightMessageId && currentChatMessages.length > 0) {
-    const index = currentChatMessages.findIndex(m => m.id === highlightMessageId);
-    if (index > -1) {
-      InteractionManager.runAfterInteractions(() => {
-        flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
-      });
-      const timer = setTimeout(() => {
-        setHighlightMessageId(null);
-      }, 3000);
-      return () => clearTimeout(timer);
+  useEffect(() => {
+    // Only auto-scroll for NEW messages (after the initial load is done)
+    if (initialScrollDoneRef.current && currentChatMessages.length > 0 && !editingMessage) {
+      flatListRef.current?.scrollToEnd({ animated: true });
     }
-  }
-}, [highlightMessageId, currentChatMessages]);
+  }, [currentChatMessages.length, editingMessage]);
 
-// --- NEW: Blinking cursor effect ---
-useEffect(() => {
-  if (streamingMessage && isTyping) {
-    const interval = setInterval(() => {
-      setCursorVisible((prev) => !prev);
-    }, 500); // Blink every 500ms
-    return () => clearInterval(interval);
-  } else {
-    setCursorVisible(true); // Reset when not streaming
-  }
-}, [streamingMessage, isTyping]);
-
-const chatTitle =
-  (chatSessions || []).find((s) => s.id === currentChatId)?.title || 'New Chat';
-
-const lastUserMessage = [...currentChatMessages].filter(m => m.sender === 'user').pop();
-
-const renderMessageContent = (text: string, isBot: boolean) => {
-  // 1. Handle partial widget blocks during streaming
-  const openTag = '[WIDGET_DATA]';
-  const closeTag = '[/WIDGET_DATA]';
-  let textToProcess = text;
-  let widgetIsStreaming = false;
-
-  if (isBot && text.includes(openTag) && !text.includes(closeTag)) {
-    widgetIsStreaming = true;
-    textToProcess = text.split(openTag)[0];
-  }
-
-  // 2. Regex to find complete [WIDGET_DATA]...[/WIDGET_DATA] blocks
-  const widgetRegex = /\[WIDGET_DATA\]([\s\S]*?)\[\/WIDGET_DATA\]/g;
-  const parts = [];
-  let lastIndex = 0;
-  let match;
-
-  while ((match = widgetRegex.exec(textToProcess)) !== null) {
-    // Add text before the widget
-    if (match.index > lastIndex) {
-      parts.push({ type: 'text', content: textToProcess.substring(lastIndex, match.index) });
+  useEffect(() => {
+    if (highlightMessageId && currentChatMessages.length > 0) {
+      const index = currentChatMessages.findIndex(m => m.id === highlightMessageId);
+      if (index > -1) {
+        InteractionManager.runAfterInteractions(() => {
+          flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+        });
+        const timer = setTimeout(() => {
+          setHighlightMessageId(null);
+        }, 3000);
+        return () => clearTimeout(timer);
+      }
     }
-    // Add the widget data
-    parts.push({ type: 'widget', content: match[1].trim() });
-    lastIndex = widgetRegex.lastIndex;
-  }
+  }, [highlightMessageId, currentChatMessages]);
 
-  // Add remaining text
-  if (lastIndex < textToProcess.length) {
-    parts.push({ type: 'text', content: textToProcess.substring(lastIndex) });
-  }
+  // --- NEW: Blinking cursor effect ---
+  useEffect(() => {
+    if (streamingMessage && isTyping) {
+      const interval = setInterval(() => {
+        setCursorVisible((prev) => !prev);
+      }, 500); // Blink every 500ms
+      return () => clearInterval(interval);
+    } else {
+      setCursorVisible(true); // Reset when not streaming
+    }
+  }, [streamingMessage, isTyping]);
 
-  // Default to markdown if no parts or user message
-  if (parts.length === 0 || !isBot) {
+  const chatTitle =
+    (chatSessions || []).find((s) => s.id === currentChatId)?.title || 'New Chat';
+
+  const lastUserMessage = [...currentChatMessages].filter(m => m.sender === 'user').pop();
+
+  const renderMessageContent = (text: string, isBot: boolean) => {
+    // 1. Handle partial widget blocks during streaming
+    const openTag = '[WIDGET_DATA]';
+    const closeTag = '[/WIDGET_DATA]';
+    let textToProcess = text;
+    let widgetIsStreaming = false;
+
+    if (isBot && text.includes(openTag) && !text.includes(closeTag)) {
+      widgetIsStreaming = true;
+      textToProcess = text.split(openTag)[0];
+    }
+
+    // 2. Regex to find complete [WIDGET_DATA]...[/WIDGET_DATA] blocks
+    const widgetRegex = /\[WIDGET_DATA\]([\s\S]*?)\[\/WIDGET_DATA\]/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = widgetRegex.exec(textToProcess)) !== null) {
+      // Add text before the widget
+      if (match.index > lastIndex) {
+        parts.push({ type: 'text', content: textToProcess.substring(lastIndex, match.index) });
+      }
+      // Add the widget data
+      parts.push({ type: 'widget', content: match[1].trim() });
+      lastIndex = widgetRegex.lastIndex;
+    }
+
+    // Add remaining text
+    if (lastIndex < textToProcess.length) {
+      parts.push({ type: 'text', content: textToProcess.substring(lastIndex) });
+    }
+
+    // Default to markdown if no parts or user message
+    if (parts.length === 0 || !isBot) {
+      return (
+        <View>
+          {isBot ? <Markdown style={markdownStyles}>{textToProcess}</Markdown> : <Text style={styles.userMessageText}>{textToProcess}</Text>}
+          {widgetIsStreaming && (
+            <View style={styles.streamingWidgetPlaceholder}>
+              <ActivityIndicator size="small" color={COLORS.accent} style={{ marginRight: 8 }} />
+              <Text style={styles.streamingWidgetText}>Generating visual...</Text>
+            </View>
+          )}
+        </View>
+      );
+    }
+
     return (
       <View>
-        {isBot ? <Markdown style={markdownStyles}>{textToProcess}</Markdown> : <Text style={styles.userMessageText}>{textToProcess}</Text>}
+        {parts.map((part, index) => (
+          part.type === 'widget' ? (
+            <SmartWidget key={`widget - ${index} `} dataString={part.content} />
+          ) : (
+            part.content.trim() !== '' && (
+              <Markdown key={`text - ${index} `} style={markdownStyles}>
+                {part.content}
+              </Markdown>
+            )
+          )
+        ))}
         {widgetIsStreaming && (
           <View style={styles.streamingWidgetPlaceholder}>
             <ActivityIndicator size="small" color={COLORS.accent} style={{ marginRight: 8 }} />
@@ -534,292 +557,272 @@ const renderMessageContent = (text: string, isBot: boolean) => {
         )}
       </View>
     );
-  }
+  };
 
   return (
-    <View>
-      {parts.map((part, index) => (
-        part.type === 'widget' ? (
-          <SmartWidget key={`widget - ${index} `} dataString={part.content} />
-        ) : (
-          part.content.trim() !== '' && (
-            <Markdown key={`text - ${index} `} style={markdownStyles}>
-              {part.content}
-            </Markdown>
-          )
-        )
-      ))}
-      {widgetIsStreaming && (
-        <View style={styles.streamingWidgetPlaceholder}>
-          <ActivityIndicator size="small" color={COLORS.accent} style={{ marginRight: 8 }} />
-          <Text style={styles.streamingWidgetText}>Generating visual...</Text>
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeAreaContent} edges={['top', 'left', 'right', 'bottom']}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onBack} style={styles.headerButton}>
+            <Icon name="arrow-left" size={24} color={COLORS.accent} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleTitleTripleTap}
+            activeOpacity={0.7}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', marginHorizontal: 8 }}
+          >
+            <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
+              {chatTitle}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setIsHistoryVisible(true)}
+            style={styles.headerButton}
+          >
+            <Icon name="clock" size={22} color={COLORS.accent} />
+          </TouchableOpacity>
         </View>
-      )}
-    </View>
-  );
-};
 
-return (
-  <View style={styles.container}>
-    <SafeAreaView style={styles.safeAreaContent} edges={['top', 'left', 'right', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.headerButton}>
-          <Icon name="arrow-left" size={24} color={COLORS.accent} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={handleTitleTripleTap}
-          activeOpacity={0.7}
-          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', marginHorizontal: 8 }}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
-          <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-            {chatTitle}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setIsHistoryVisible(true)}
-          style={styles.headerButton}
-        >
-          <Icon name="clock" size={22} color={COLORS.accent} />
-        </TouchableOpacity>
-      </View>
+          <ImageBackground
+            source={require('../../assets/wallpaper.png')}
+            style={styles.chatBackground}
+            imageStyle={styles.chatWallpaperStyle}
+            resizeMode="repeat"
+          >
+            <FlatList
+              ref={flatListRef}
+              data={currentChatMessages}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.messageList}
+              onContentSizeChange={() => {
+                // Ensure chat starts at bottom on first load or when switching chats
+                if (!initialScrollDoneRef.current && currentChatMessages.length > 0) {
+                  flatListRef.current?.scrollToEnd({ animated: false });
+                  initialScrollDoneRef.current = true;
+                }
+              }}
+              onScroll={(event) => {
+                const offset = event.nativeEvent.contentOffset.y;
+                const contentHeight = event.nativeEvent.contentSize.height;
+                const layoutHeight = event.nativeEvent.layoutMeasurement.height;
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-      >
-        <ImageBackground
-          source={require('../../assets/wallpaper.png')}
-          style={styles.chatBackground}
-          imageStyle={styles.chatWallpaperStyle}
-          resizeMode="repeat"
-        >
-          <FlatList
-            ref={flatListRef}
-            data={currentChatMessages}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.messageList}
-            onContentSizeChange={() => {
-              // Ensure chat starts at bottom on first load or when switching chats
-              if (!initialScrollDoneRef.current && currentChatMessages.length > 0) {
-                flatListRef.current?.scrollToEnd({ animated: false });
-                initialScrollDoneRef.current = true;
-              }
-            }}
-            onScroll={(event) => {
-              const offset = event.nativeEvent.contentOffset.y;
-              const contentHeight = event.nativeEvent.contentSize.height;
-              const layoutHeight = event.nativeEvent.layoutMeasurement.height;
+                // Show button if we are more than 200px from the bottom
+                if (contentHeight - layoutHeight - offset > 200) {
+                  setShowScrollToBottom(true);
+                } else {
+                  setShowScrollToBottom(false);
+                }
+              }}
+              scrollEventThrottle={16}
+              showsVerticalScrollIndicator={true}
+              indicatorStyle="black"
+              scrollIndicatorInsets={{ right: 2 }}
+              renderItem={({ item }) => {
+                const isLastUserMessage = item.sender === 'user' && item.id === lastUserMessage?.id;
+                const isEditing = editingMessage?.id === item.id;
 
-              // Show button if we are more than 200px from the bottom
-              if (contentHeight - layoutHeight - offset > 200) {
-                setShowScrollToBottom(true);
-              } else {
-                setShowScrollToBottom(false);
-              }
-            }}
-            scrollEventThrottle={16}
-            showsVerticalScrollIndicator={true}
-            indicatorStyle="black"
-            scrollIndicatorInsets={{ right: 2 }}
-            renderItem={({ item }) => {
-              const isLastUserMessage = item.sender === 'user' && item.id === lastUserMessage?.id;
-              const isEditing = editingMessage?.id === item.id;
-
-              return (
-                <View style={styles.messageWrapper}>
-                  {isEditing ? (
-                    <View style={[styles.messageBubble, styles.userBubble, styles.editingBubble]}>
-                      <TextInput
-                        style={[styles.userMessageText, styles.inlineEditInput]}
-                        value={editText}
-                        onChangeText={setEditText}
-                        autoFocus={true}
-                        multiline
-                      />
-                      <View style={styles.inlineEditActions}>
-                        <TouchableOpacity
-                          style={[styles.inlineEditButton, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
-                          onPress={() => setEditingMessage(null)}
-                        >
-                          <Icon name="x" size={16} color={COLORS.white} />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.inlineEditButton, { backgroundColor: COLORS.white }]}
-                          onPress={handleConfirmEdit}
-                        >
-                          <Icon name="check" size={16} color={COLORS.accent} />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ) : (
-                    <View
-                      style={[
-                        styles.messageBubble,
-                        item.sender === 'user' ? styles.userBubble : styles.botBubble,
-                        item.id === highlightMessageId && styles.highlightedBubble,
-                      ]}
-                    >
-                      {item.sender === 'user' ? (
-                        renderMessageContent(item.text, false)
-                      ) : (
-                        renderMessageContent(item.text, true)
-                      )}
-                    </View>
-                  )}
-
-                  {!isEditing && (
-                    <View style={[
-                      styles.actionBar,
-                      item.sender === 'user' ? styles.userActionBar : styles.botActionBar
-                    ]}>
-                      {item.sender === 'bot' && (
-                        <View style={styles.actionGroup}>
+                return (
+                  <View style={styles.messageWrapper}>
+                    {isEditing ? (
+                      <View style={[styles.messageBubble, styles.userBubble, styles.editingBubble]}>
+                        <TextInput
+                          style={[styles.userMessageText, styles.inlineEditInput]}
+                          value={editText}
+                          onChangeText={setEditText}
+                          autoFocus={true}
+                          multiline
+                        />
+                        <View style={styles.inlineEditActions}>
                           <TouchableOpacity
-                            style={styles.miniActionButton}
-                            onPress={() => onSaveAdvice(item.text, currentChatId!, item.id)}
+                            style={[styles.inlineEditButton, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
+                            onPress={() => setEditingMessage(null)}
                           >
-                            <Icon name="bookmark" size={14} color={COLORS.darkGray} />
+                            <Icon name="x" size={16} color={COLORS.white} />
                           </TouchableOpacity>
                           <TouchableOpacity
-                            style={styles.miniActionButton}
-                            onPress={() => Clipboard.setString(item.text)}
+                            style={[styles.inlineEditButton, { backgroundColor: COLORS.white }]}
+                            onPress={handleConfirmEdit}
                           >
-                            <Icon name="copy" size={14} color={COLORS.darkGray} />
+                            <Icon name="check" size={16} color={COLORS.accent} />
                           </TouchableOpacity>
                         </View>
-                      )}
+                      </View>
+                    ) : (
+                      <View
+                        style={[
+                          styles.messageBubble,
+                          item.sender === 'user' ? styles.userBubble : styles.botBubble,
+                          item.id === highlightMessageId && styles.highlightedBubble,
+                        ]}
+                      >
+                        {item.sender === 'user' ? (
+                          renderMessageContent(item.text, false)
+                        ) : (
+                          renderMessageContent(item.text, true)
+                        )}
+                      </View>
+                    )}
 
-                      {item.sender === 'user' && (
-                        <View style={styles.actionGroup}>
-                          <TouchableOpacity
-                            style={styles.miniActionButton}
-                            onPress={() => Clipboard.setString(item.text)}
-                          >
-                            <Icon name="copy" size={14} color={COLORS.darkGray} />
-                          </TouchableOpacity>
-                          {isLastUserMessage && !isTyping && (
+                    {!isEditing && (
+                      <View style={[
+                        styles.actionBar,
+                        item.sender === 'user' ? styles.userActionBar : styles.botActionBar
+                      ]}>
+                        {item.sender === 'bot' && (
+                          <View style={styles.actionGroup}>
                             <TouchableOpacity
                               style={styles.miniActionButton}
-                              onPress={() => setEditingMessage(item)}
+                              onPress={() => onSaveAdvice(item.text, currentChatId!, item.id)}
                             >
-                              <Icon name="edit-3" size={14} color={COLORS.darkGray} />
+                              <Icon name="bookmark" size={14} color={COLORS.darkGray} />
                             </TouchableOpacity>
-                          )}
-                        </View>
-                      )}
-                    </View>
-                  )}
-                </View>
-              );
-            }}
-            ListFooterComponent={
-              isTyping ? (
-                <View style={styles.messageWrapper}>
-                  {streamingMessage ? (
-                    <View style={[styles.messageBubble, styles.botBubble, styles.streamingBubble]}>
-                      {renderMessageContent(streamingMessage + (cursorVisible ? ' |' : ''), true)}
-                    </View>
-                  ) : (
-                    <View style={[styles.messageBubble, styles.botBubble, styles.typingBubble]}>
-                      <ActivityIndicator size="small" color={COLORS.accent} />
-                    </View>
-                  )}
-                </View>
-              ) : (
-                <View style={{ height: 20 }} />
-              )
-            }
-            ListEmptyComponent={
-              !isTyping ? (
-                <View style={styles.emptyContainer}>
-                  <Image
-                    source={require('../../assets/chatbot_mascot.png')}
-                    style={styles.emptyMascot}
-                    resizeMode="contain"
+                            <TouchableOpacity
+                              style={styles.miniActionButton}
+                              onPress={() => Clipboard.setString(item.text)}
+                            >
+                              <Icon name="copy" size={14} color={COLORS.darkGray} />
+                            </TouchableOpacity>
+                          </View>
+                        )}
+
+                        {item.sender === 'user' && (
+                          <View style={styles.actionGroup}>
+                            <TouchableOpacity
+                              style={styles.miniActionButton}
+                              onPress={() => Clipboard.setString(item.text)}
+                            >
+                              <Icon name="copy" size={14} color={COLORS.darkGray} />
+                            </TouchableOpacity>
+                            {isLastUserMessage && !isTyping && (
+                              <TouchableOpacity
+                                style={styles.miniActionButton}
+                                onPress={() => setEditingMessage(item)}
+                              >
+                                <Icon name="edit-3" size={14} color={COLORS.darkGray} />
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                );
+              }}
+              ListFooterComponent={
+                isTyping ? (
+                  <View style={styles.messageWrapper}>
+                    {streamingMessage ? (
+                      <View style={[styles.messageBubble, styles.botBubble, styles.streamingBubble]}>
+                        {/* Render plain text during streaming to avoid Markdown flicker */}
+                        <Text style={styles.streamingText}>
+                          {streamingMessage}{cursorVisible ? ' |' : ''}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={[styles.messageBubble, styles.botBubble, styles.typingBubble]}>
+                        <ActivityIndicator size="small" color={COLORS.accent} />
+                      </View>
+                    )}
+                  </View>
+                ) : (
+                  <View style={{ height: 20 }} />
+                )
+              }
+              ListEmptyComponent={
+                !isTyping ? (
+                  <View style={styles.emptyContainer}>
+                    <Image
+                      source={require('../../assets/chatbot_mascot.png')}
+                      style={styles.emptyMascot}
+                      resizeMode="contain"
+                    />
+                    <Text style={styles.emptyText}>Beruang AI Assistant</Text>
+                    <Text style={styles.emptySubtext}>
+                      Ask me anything about your finances. I'm here to help you save and manage your money better.
+                    </Text>
+                  </View>
+                ) : null
+              }
+              onScrollToIndexFailed={(info) => {
+                setTimeout(() => {
+                  flatListRef.current?.scrollToIndex({ index: info.index, animated: true, viewPosition: 0.5 });
+                }, 200);
+              }}
+            />
+
+            {!editingMessage && (
+              <View style={styles.inputWrapper}>
+                {!input.trim() && !isTyping && (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.suggestionsScroll}
+                    contentContainerStyle={styles.suggestionsContent}
+                  >
+                    {quickSuggestions.map((text, i) => (
+                      <TouchableOpacity
+                        key={i}
+                        style={styles.suggestionBubble}
+                        onPress={() => setInput(text)}
+                      >
+                        <Text style={styles.suggestionText}>{text}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={styles.input}
+                    value={input}
+                    onChangeText={setInput}
+                    placeholder="Type your message..."
+                    placeholderTextColor={COLORS.darkGray}
+                    editable={!isTyping && !!currentChatId}
+                    multiline
                   />
-                  <Text style={styles.emptyText}>Beruang AI Assistant</Text>
-                  <Text style={styles.emptySubtext}>
-                    Ask me anything about your finances. I'm here to help you save and manage your money better.
-                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.sendButton,
+                      (!input.trim() || isTyping || !currentChatId) && styles.sendButtonDisabled,
+                    ]}
+                    onPress={handleSend}
+                    disabled={!input.trim() || isTyping || !currentChatId}
+                  >
+                    <Icon name="send" size={20} color={COLORS.white} />
+                  </TouchableOpacity>
                 </View>
-              ) : null
-            }
-            onScrollToIndexFailed={(info) => {
-              setTimeout(() => {
-                flatListRef.current?.scrollToIndex({ index: info.index, animated: true, viewPosition: 0.5 });
-              }, 200);
-            }}
-          />
-
-          {!editingMessage && (
-            <View style={styles.inputWrapper}>
-              {!input.trim() && !isTyping && (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.suggestionsScroll}
-                  contentContainerStyle={styles.suggestionsContent}
-                >
-                  {quickSuggestions.map((text, i) => (
-                    <TouchableOpacity
-                      key={i}
-                      style={styles.suggestionBubble}
-                      onPress={() => setInput(text)}
-                    >
-                      <Text style={styles.suggestionText}>{text}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              )}
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  value={input}
-                  onChangeText={setInput}
-                  placeholder="Type your message..."
-                  placeholderTextColor={COLORS.darkGray}
-                  editable={!isTyping && !!currentChatId}
-                  multiline
-                />
-                <TouchableOpacity
-                  style={[
-                    styles.sendButton,
-                    (!input.trim() || isTyping || !currentChatId) && styles.sendButtonDisabled,
-                  ]}
-                  onPress={handleSend}
-                  disabled={!input.trim() || isTyping || !currentChatId}
-                >
-                  <Icon name="send" size={20} color={COLORS.white} />
-                </TouchableOpacity>
               </View>
-            </View>
-          )}
-          {showScrollToBottom && (
-            <TouchableOpacity
-              style={styles.scrollToBottomButton}
-              onPress={() => flatListRef.current?.scrollToEnd({ animated: true })}
-            >
-              <Icon name="chevron-down" size={20} color={COLORS.white} />
-            </TouchableOpacity>
-          )}
-        </ImageBackground>
-      </KeyboardAvoidingView>
+            )}
+            {showScrollToBottom && (
+              <TouchableOpacity
+                style={styles.scrollToBottomButton}
+                onPress={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              >
+                <Icon name="chevron-down" size={20} color={COLORS.white} />
+              </TouchableOpacity>
+            )}
+          </ImageBackground>
+        </KeyboardAvoidingView>
 
-      {isHistoryVisible && (
-        <ChatHistoryDropdown
-          sessions={chatSessions}
-          onSetChat={handleSetChat}
-          onCreateNew={handleCreateNew}
-          onClose={() => setIsHistoryVisible(false)}
-          onDeleteChat={onDeleteChatSession}
-        />
-      )}
-    </SafeAreaView>
-  </View>
-);
+        {isHistoryVisible && (
+          <ChatHistoryDropdown
+            sessions={chatSessions}
+            onSetChat={handleSetChat}
+            onCreateNew={handleCreateNew}
+            onClose={() => setIsHistoryVisible(false)}
+            onDeleteChat={onDeleteChatSession}
+          />
+        )}
+      </SafeAreaView>
+    </View>
+  );
 };
 
 const markdownStyles = StyleSheet.create({
@@ -1144,6 +1147,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderWidth: 1,
     borderColor: COLORS.primary + '30',
+  },
+  streamingText: {
+    color: COLORS.darkGray,
+    fontSize: 14,
+    lineHeight: 22,
   },
   streamingWidgetText: {
     color: COLORS.accent,
