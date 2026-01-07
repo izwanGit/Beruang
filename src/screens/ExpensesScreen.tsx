@@ -35,6 +35,8 @@ import { transactionItemStyles } from '../styles/transactionItemStyles';
 import { Screen } from './HomeScreen';
 import { Transaction } from '../../App';
 import { calculateMonthlyStats } from '../utils/financeUtils';
+import { ReallocateModal } from '../components/ReallocateModal';
+import { v4 as uuidv4 } from 'uuid';
 
 type ExpensesScreenProps = {
   onBack: () => void;
@@ -43,6 +45,8 @@ type ExpensesScreenProps = {
   onAskAI: (message: string) => void;
   onUpdateTransaction: (transactionId: string, updatedData: Partial<Transaction>) => Promise<void>;
   onDeleteTransaction: (transactionId: string) => Promise<void>;
+  onDeleteTransactions: (transactionIds: string[]) => Promise<void>;
+  onAddTransaction: (transaction: Transaction | Transaction[], showMsg?: boolean) => Promise<void>;
   refreshing: boolean;
   onRefresh: () => void;
 };
@@ -97,6 +101,8 @@ export const ExpensesScreen = ({
   onAskAI,
   onUpdateTransaction,
   onDeleteTransaction,
+  onDeleteTransactions,
+  onAddTransaction,
   refreshing,
   onRefresh,
 }: ExpensesScreenProps) => {
@@ -114,6 +120,10 @@ export const ExpensesScreen = ({
   const [editCategory, setEditCategory] = useState<'needs' | 'wants' | 'savings' | 'income'>('needs');
   const [editSubCategory, setEditSubCategory] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // --- REALLOCATE MODAL STATE ---
+  const [isReallocateModalVisible, setIsReallocateModalVisible] = useState(false);
+  const [reallocateTotalRemaining, setReallocateTotalRemaining] = useState(0);
 
   // --- ANIMATION REFS ---
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -307,6 +317,125 @@ export const ExpensesScreen = ({
     animateModal(true, slideAnim);
   };
 
+  const handleOpenReallocate = () => {
+    console.log('[DEBUG] handleOpenReallocate called');
+    if (!editingTransaction?.allocationId) {
+      console.log('[DEBUG] No allocationId on editingTransaction');
+      return;
+    }
+
+    try {
+      // 1. Calculate Remaining Pool (This tx + all future tx of same series)
+      const seriesId = editingTransaction.allocationId;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // We only want THIS specific transaction + any with a date in the future
+      const relatedTransactions = transactions.filter(t =>
+        t.allocationId === seriesId &&
+        (t.id === editingTransaction.id || new Date(t.date) >= today)
+      );
+
+      console.log(`[DEBUG] Found ${relatedTransactions.length} related transactions for pool`);
+
+      // Sum them up safely
+      const totalRem = relatedTransactions.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+      console.log(`[DEBUG] Calculated totalRem: ${totalRem}`);
+
+      setReallocateTotalRemaining(totalRem);
+
+      // Close edit modal first, THEN open reallocate modal in the cleanup callback
+      // This prevents React Native from trying to manage two Modal components toggling in the same frame
+      closeEditModal(() => {
+        console.log('[DEBUG] Callback from closeEditModal: Opening ReallocateModal');
+        setIsReallocateModalVisible(true);
+      });
+    } catch (err) {
+      console.error('[ERROR] handleOpenReallocate logic failed:', err);
+      Alert.alert('Error', 'Something went wrong opening the reallocation tool.');
+    }
+  };
+
+  const handleConfirmRelocate = async (numMonths: number) => {
+    if (!editingTransaction?.allocationId) return;
+
+    setIsReallocateModalVisible(false); // Close reallocate modal
+    setIsSaving(true); // Show loading somewhere if possible, or just blocking
+
+    try {
+      const seriesId = editingTransaction.allocationId;
+      const currentTxId = editingTransaction.id;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // 1. Identify transactions to replace (This one + all future)
+      // We do NOT touch past transactions (history preservation)
+      const allTransactionsInSeries = transactions.filter(t => t.allocationId === seriesId);
+
+      // Split into "Keep" (Past) and "Replace" (Current + Future)
+      // Current transaction is always "Replace" because we are reallocating it
+      const txToReplace = allTransactionsInSeries.filter(t => {
+        const tDate = new Date(t.date);
+        // Delete if it is THIS transaction OR if it is in the future
+        return t.id === currentTxId || tDate > today;
+      });
+
+      // 2. Identify Total Amount to Redistribute
+      // Logic: The 'totalRemaining' passed to modal is trustable, recalculate to be safe
+      const totalAmountToRedistribute = txToReplace.reduce((acc, t) => acc + t.amount, 0);
+
+      // 3. Delete Old Transactions in Batch
+      const idsToDelete = txToReplace.map(t => t.id);
+      console.log(`[DEBUG] Deleting ${idsToDelete.length} transactions in batch...`);
+      await onDeleteTransactions(idsToDelete);
+
+      // 4. Create New Transactions
+      const baseDate = new Date(editingTransaction.date);
+      const amountPerMonth = totalAmountToRedistribute / numMonths;
+      let totalAllocated = 0;
+      const newTransactions: any[] = [];
+
+      for (let i = 0; i < numMonths; i++) {
+        const d = new Date(baseDate);
+        d.setMonth(d.getMonth() + i);
+        if (d.getDate() !== baseDate.getDate()) {
+          d.setDate(0);
+        }
+
+        let amt = amountPerMonth;
+        if (i === numMonths - 1) {
+          amt = totalAmountToRedistribute - totalAllocated;
+        } else {
+          totalAllocated += amt;
+        }
+
+        const newTx = {
+          ...editingTransaction,
+          id: undefined,
+          name: editingTransaction.name.replace(/\(\d+\/\d+\)/, '').trim() + ` (${i + 1}/${numMonths})`,
+          date: d.toISOString().split('T')[0],
+          amount: parseFloat(amt.toFixed(2)),
+          allocationId: seriesId,
+          allocationIndex: i + 1,
+          allocationTotalMonths: numMonths,
+          isAllocated: true,
+        };
+        newTransactions.push(newTx);
+      }
+
+      await onAddTransaction(newTransactions, false);
+      Alert.alert("Success", `Reallocated into ${numMonths} months.`);
+
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Failed to reallocate.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // --- END REALLOCATE LOGIC ---
+
   const closeEditModal = (callback?: () => void) => {
     Keyboard.dismiss();
     animateModal(false, slideAnim);
@@ -344,6 +473,72 @@ export const ExpensesScreen = ({
       Alert.alert('Invalid Description', 'Please enter a description.');
       return;
     }
+
+    // SMART EDIT LOGIC
+    // If allocated, and amount changed, adjust future months
+    if (editingTransaction.allocationId && Math.abs(amountNum - editingTransaction.amount) > 0.01) {
+      // Calculate diff
+      const diff = amountNum - editingTransaction.amount; // e.g. +200
+
+      // Find future transactions in series
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Future = Date > Today
+      const futureTxs = transactions.filter(t =>
+        t.allocationId === editingTransaction.allocationId &&
+        t.id !== editingTransaction.id &&
+        new Date(t.date) > today
+      );
+
+      if (futureTxs.length > 0) {
+        // Distribute diff inverse? 
+        // User says: "If he edit 1200 (was 1000), the next 2 months will be 900 (was 1000)"
+        // So if I INCREASE current, I DECREASE future.
+
+        // Total adjustment needed = -diff
+        // Spread evenly
+        const adjustmentPerTx = -diff / futureTxs.length;
+
+        // Validation: Ensure no future tx goes below 0
+        const invalid = futureTxs.some(t => (t.amount + adjustmentPerTx) < 0);
+        if (invalid) {
+          Alert.alert("Cannot Update", "Increasing this amount would reduce future months below zero. Please use 'Reallocate' instead.");
+          return;
+        }
+
+        // Proceed with multi-update
+        setIsSaving(true);
+        closeEditModal(async () => {
+          try {
+            // 1. Update THIS transaction
+            await onUpdateTransaction(editingTransaction.id, {
+              amount: amountNum,
+              name: editDescription,
+              category: editCategory,
+              subCategory: editSubCategory,
+            });
+
+            // 2. Update FUTURE transactions
+            for (const fTx of futureTxs) {
+              await onUpdateTransaction(fTx.id, {
+                amount: fTx.amount + adjustmentPerTx,
+                // Don't change name/cat usually, but maybe should sync? 
+                // Let's sync category/subCategory/name(base)
+                category: editCategory,
+                subCategory: editSubCategory,
+              });
+            }
+          } catch (e) {
+            Alert.alert("Error", "Failed to update series.");
+          } finally {
+            setIsSaving(false);
+          }
+        });
+        return; // Exit early
+      }
+    }
+
     const transactionId = editingTransaction.id;
     const updatedData = {
       amount: amountNum,
@@ -1057,6 +1252,18 @@ export const ExpensesScreen = ({
                 <TouchableOpacity style={expensesStyles.deleteButton} onPress={handleDelete} disabled={isSaving} activeOpacity={isSaving ? 1 : 0.7}>
                   {isSaving ? <ActivityIndicator color={COLORS.danger} /> : <Icon name="trash-2" size={20} color={COLORS.danger} />}
                 </TouchableOpacity>
+
+                {editingTransaction?.isAllocated && (
+                  <TouchableOpacity
+                    style={expensesStyles.reallocateInlineButton}
+                    onPress={handleOpenReallocate}
+                    disabled={isSaving}
+                  >
+                    <MaterialCommunityIcon name="refresh" size={18} color={COLORS.primary} />
+                    <Text style={expensesStyles.reallocateInlineButtonText}>Reallocate</Text>
+                  </TouchableOpacity>
+                )}
+
                 <TouchableOpacity style={[expensesStyles.saveButton, isSaving && { opacity: 0.7 }]} onPress={handleSaveEdit} disabled={isSaving}>
                   <Text style={expensesStyles.saveButtonText}>{isSaving ? 'Saving...' : 'Save Changes'}</Text>
                 </TouchableOpacity>
@@ -1118,6 +1325,14 @@ export const ExpensesScreen = ({
           </Animated.View>
         </View>
       </Modal>
+      {/* --- REALLOCATE MODAL --- */}
+      <ReallocateModal
+        isVisible={isReallocateModalVisible}
+        onClose={() => setIsReallocateModalVisible(false)}
+        totalRemaining={reallocateTotalRemaining}
+        initialMonths={editingTransaction?.allocationTotalMonths}
+        onConfirm={handleConfirmRelocate}
+      />
     </View>
   );
 };
@@ -2025,5 +2240,23 @@ const expensesStyles = StyleSheet.create({
   },
   scrollContainer: {
     paddingBottom: 100,
+  },
+  reallocateInlineButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(200, 219, 190, 0.3)',
+    borderRadius: 16,
+    height: 52,
+    marginHorizontal: 8,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary + '20',
+  },
+  reallocateInlineButtonText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '700',
+    marginLeft: 6,
   },
 });

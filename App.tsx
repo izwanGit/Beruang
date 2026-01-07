@@ -153,6 +153,11 @@ export type Transaction = {
   category: 'income' | 'needs' | 'wants' | 'savings';
   subCategory: string;
   isCarriedOver?: boolean;
+  allocationId?: string;
+  allocationIndex?: number;
+  allocationTotalMonths?: number;
+  isAllocated?: boolean;
+  createdAt?: any;
 };
 
 // --- NEW TYPE: Monthly Budget ---
@@ -794,6 +799,24 @@ export default function App() {
     }
   };
 
+  const handleDeleteTransactions = async (transactionIds: string[]) => {
+    const userId = getUserId();
+    if (!userId || transactionIds.length === 0) return;
+    try {
+      const batch = writeBatch(db);
+      transactionIds.forEach((tid) => {
+        batch.delete(doc(db, 'users', userId, 'transactions', tid));
+      });
+      await batch.commit();
+
+      // Sync budget after deletion
+      setTimeout(() => syncMonthlyBudget(), 100);
+    } catch (e) {
+      console.error('Error deleting transactions: ', e);
+      showMessage('Error deleting transactions.');
+    }
+  };
+
   const handleCreateNewChat = async (prefillMessage?: string) => {
     const userId = getUserId();
     if (!userId) return;
@@ -1016,592 +1039,594 @@ export default function App() {
   };
 
 
-const handleEditMessage = async (chatId: string, messageId: string, newText: string) => {
-  const userId = getUserId();
-  if (!userId || !userProfile) return;
+  const handleEditMessage = async (chatId: string, messageId: string, newText: string) => {
+    const userId = getUserId();
+    if (!userId || !userProfile) return;
 
-  // Update the edited message
-  const messageRef = doc(db, 'users', userId, 'chatSessions', chatId, 'messages', messageId);
-  await updateDoc(messageRef, {
-    text: newText,
-    editedAt: serverTimestamp()
-  });
-
-  // Re-fetch history and remove subsequent bot messages
-  const messagesRef = collection(db, 'users', userId, 'chatSessions', chatId, 'messages');
-  const q = query(messagesRef, orderBy('createdAt', 'asc'));
-  const messagesSnap = await getDocs(q);
-
-  let foundMessage = false;
-  const batch = writeBatch(db);
-  const historyForServer = [];
-
-  for (const docSnap of messagesSnap.docs) {
-    const messageData = docSnap.data();
-
-    if (foundMessage && messageData.sender === 'bot') {
-      batch.delete(docSnap.ref);
-    } else if (docSnap.id === messageId) {
-      foundMessage = true;
-      historyForServer.push({
-        role: 'user',
-        parts: [{ text: newText }]
-      });
-    } else if (!foundMessage) {
-      historyForServer.push({
-        role: messageData.sender === 'user' ? 'user' : 'model',
-        parts: [{ text: messageData.text }]
-      });
-    }
-  }
-  await batch.commit();
-
-  const sessionRef = doc(db, 'users', userId, 'chatSessions', chatId);
-  await updateDoc(sessionRef, { lastMessage: newText });
-
-  // Calculate budget data for edit
-  const budgetData = calculateMonthlyStats(transactions, userProfile);
-  const budgetContext = formatBudgetForRAG(budgetData);
-
-  // Use regular endpoint for edits
-  try {
-    const response = await fetch(CHAT_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true'
-      },
-      body: JSON.stringify({
-        message: newText,
-        history: historyForServer,
-        transactions: transactions.slice(0, 20),
-        userProfile: userProfile,
-        budgetContext: budgetContext,
-      }),
+    // Update the edited message
+    const messageRef = doc(db, 'users', userId, 'chatSessions', chatId, 'messages', messageId);
+    await updateDoc(messageRef, {
+      text: newText,
+      editedAt: serverTimestamp()
     });
 
-    if (!response.ok) throw new Error('Server error');
-
-    const { message: botResponseText } = await response.json();
-
-    const botMessage: Omit<Message, 'id'> = {
-      text: botResponseText,
-      sender: 'bot',
-      createdAt: serverTimestamp(),
-    };
-    await addDoc(messagesRef, botMessage);
-
-  } catch (error) {
-    console.error('Failed to get bot response after edit:', error);
-    await addDoc(messagesRef, {
-      text: 'Sorry, I ran into an error after editing. Please try again.',
-      sender: 'bot',
-      createdAt: serverTimestamp(),
-    });
-  } finally {
-    setIsBotThinking(false);
-  }
-};
-
-const handleDeleteChatSession = async (chatId: string) => {
-  const userId = getUserId();
-  if (!userId) return;
-
-  try {
+    // Re-fetch history and remove subsequent bot messages
     const messagesRef = collection(db, 'users', userId, 'chatSessions', chatId, 'messages');
-    const messagesSnap = await getDocs(messagesRef);
+    const q = query(messagesRef, orderBy('createdAt', 'asc'));
+    const messagesSnap = await getDocs(q);
+
+    let foundMessage = false;
     const batch = writeBatch(db);
-    messagesSnap.docs.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
+    const historyForServer = [];
+
+    for (const docSnap of messagesSnap.docs) {
+      const messageData = docSnap.data();
+
+      if (foundMessage && messageData.sender === 'bot') {
+        batch.delete(docSnap.ref);
+      } else if (docSnap.id === messageId) {
+        foundMessage = true;
+        historyForServer.push({
+          role: 'user',
+          parts: [{ text: newText }]
+        });
+      } else if (!foundMessage) {
+        historyForServer.push({
+          role: messageData.sender === 'user' ? 'user' : 'model',
+          parts: [{ text: messageData.text }]
+        });
+      }
+    }
     await batch.commit();
 
     const sessionRef = doc(db, 'users', userId, 'chatSessions', chatId);
-    await deleteDoc(sessionRef);
+    await updateDoc(sessionRef, { lastMessage: newText });
 
-    if (currentChatId === chatId) {
-      setCurrentChatId(null);
+    // Calculate budget data for edit
+    const budgetData = calculateMonthlyStats(transactions, userProfile);
+    const budgetContext = formatBudgetForRAG(budgetData);
+
+    // Use regular endpoint for edits
+    try {
+      const response = await fetch(CHAT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: JSON.stringify({
+          message: newText,
+          history: historyForServer,
+          transactions: transactions.slice(0, 20),
+          userProfile: userProfile,
+          budgetContext: budgetContext,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Server error');
+
+      const { message: botResponseText } = await response.json();
+
+      const botMessage: Omit<Message, 'id'> = {
+        text: botResponseText,
+        sender: 'bot',
+        createdAt: serverTimestamp(),
+      };
+      await addDoc(messagesRef, botMessage);
+
+    } catch (error) {
+      console.error('Failed to get bot response after edit:', error);
+      await addDoc(messagesRef, {
+        text: 'Sorry, I ran into an error after editing. Please try again.',
+        sender: 'bot',
+        createdAt: serverTimestamp(),
+      });
+    } finally {
+      setIsBotThinking(false);
     }
-    showMessage('Chat deleted.');
-  } catch (error) {
-    console.error("Error deleting chat session: ", error);
-    showMessage('Error deleting chat.');
-  }
-};
+  };
 
-const handleDeleteSavedAdvice = async (adviceId: string) => {
-  const userId = getUserId();
-  if (!userId) return;
-  try {
-    const adviceRef = doc(db, 'users', userId, 'savedAdvices', adviceId);
-    await deleteDoc(adviceRef);
-    showMessage('Advice deleted.');
-  } catch (e) {
-    console.error('Error deleting advice: ', e);
-    showMessage('Error deleting advice.');
-  }
-};
+  const handleDeleteChatSession = async (chatId: string) => {
+    const userId = getUserId();
+    if (!userId) return;
 
-const handleSaveAdvice = async (text: string, chatId: string, messageId: string) => {
-  const userId = getUserId();
-  if (!userId || !chatId || !messageId) {
-    console.error("Missing IDs for saving advice:", { userId, chatId, messageId });
-    showMessage('Error: Could not save advice. Missing context.');
-    return;
-  }
-  try {
-    await addDoc(collection(db, 'users', userId, 'savedAdvices'), {
-      text: text,
-      date: new Date().toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      }),
-      chatId: chatId,
-      messageId: messageId,
-      createdAt: serverTimestamp(),
-    });
-    showMessage('Advice saved.');
-  } catch (e) {
-    console.error('Error saving advice: ', e);
-    showMessage('Error saving advice.');
-  }
-};
+    try {
+      const messagesRef = collection(db, 'users', userId, 'chatSessions', chatId, 'messages');
+      const messagesSnap = await getDocs(messagesRef);
+      const batch = writeBatch(db);
+      messagesSnap.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
 
-const handleUpdateUser = async (updatedData: Partial<User>) => {
-  const userId = getUserId();
-  if (!userId) return;
-  try {
-    await updateDoc(doc(db, 'users', userId), updatedData);
+      const sessionRef = doc(db, 'users', userId, 'chatSessions', chatId);
+      await deleteDoc(sessionRef);
 
-    // Sync budget after user update
-    setTimeout(() => syncMonthlyBudget(), 100);
-
-    showMessage('Profile updated.');
-  } catch (e) {
-    console.error('Error updating profile: ', e);
-    showMessage('Error updating profile.');
-  }
-};
-
-const handleAwardXP = async (xp: number) => {
-  const userId = getUserId();
-  if (!userId || !userProfile) return;
-  const currentXP = userProfile.totalXP || 0;
-  // --- 1. PREVENT NEGATIVE XP (Level Floor at 1) ---
-  const newXP = Math.max(0, currentXP + xp);
-
-  const oldLevel = calculateLevel(currentXP);
-  const newLevel = calculateLevel(newXP);
-
-  // Prepare update object
-  const updateData: any = { totalXP: newXP };
-
-  if (newLevel > oldLevel) {
-    showMessage(`🎉 Level Up! You reached Level ${newLevel}!`);
-    // Auto-evolve ONLY if they are using the generic 'bear' string
-    if (userProfile.avatar === 'bear') {
-      updateData.avatar = getAvatarForLevel(newLevel);
+      if (currentChatId === chatId) {
+        setCurrentChatId(null);
+      }
+      showMessage('Chat deleted.');
+    } catch (error) {
+      console.error("Error deleting chat session: ", error);
+      showMessage('Error deleting chat.');
     }
-  } else if (newLevel < oldLevel) {
-    // --- 2. AUTOMATIC DOWNGRADE ---
-    // If user's level drops, check if their current bear avatar is now "too high"
-    if (userProfile.avatar && userProfile.avatar.startsWith('bear_level_')) {
-      const avatarLevel = parseInt(userProfile.avatar.replace('bear_level_', ''), 10);
-      // If current avatar requirement is higher than new level, force downgrade
-      if (avatarLevel > newLevel) {
+  };
+
+  const handleDeleteSavedAdvice = async (adviceId: string) => {
+    const userId = getUserId();
+    if (!userId) return;
+    try {
+      const adviceRef = doc(db, 'users', userId, 'savedAdvices', adviceId);
+      await deleteDoc(adviceRef);
+      showMessage('Advice deleted.');
+    } catch (e) {
+      console.error('Error deleting advice: ', e);
+      showMessage('Error deleting advice.');
+    }
+  };
+
+  const handleSaveAdvice = async (text: string, chatId: string, messageId: string) => {
+    const userId = getUserId();
+    if (!userId || !chatId || !messageId) {
+      console.error("Missing IDs for saving advice:", { userId, chatId, messageId });
+      showMessage('Error: Could not save advice. Missing context.');
+      return;
+    }
+    try {
+      await addDoc(collection(db, 'users', userId, 'savedAdvices'), {
+        text: text,
+        date: new Date().toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }),
+        chatId: chatId,
+        messageId: messageId,
+        createdAt: serverTimestamp(),
+      });
+      showMessage('Advice saved.');
+    } catch (e) {
+      console.error('Error saving advice: ', e);
+      showMessage('Error saving advice.');
+    }
+  };
+
+  const handleUpdateUser = async (updatedData: Partial<User>) => {
+    const userId = getUserId();
+    if (!userId) return;
+    try {
+      await updateDoc(doc(db, 'users', userId), updatedData);
+
+      // Sync budget after user update
+      setTimeout(() => syncMonthlyBudget(), 100);
+
+      showMessage('Profile updated.');
+    } catch (e) {
+      console.error('Error updating profile: ', e);
+      showMessage('Error updating profile.');
+    }
+  };
+
+  const handleAwardXP = async (xp: number) => {
+    const userId = getUserId();
+    if (!userId || !userProfile) return;
+    const currentXP = userProfile.totalXP || 0;
+    // --- 1. PREVENT NEGATIVE XP (Level Floor at 1) ---
+    const newXP = Math.max(0, currentXP + xp);
+
+    const oldLevel = calculateLevel(currentXP);
+    const newLevel = calculateLevel(newXP);
+
+    // Prepare update object
+    const updateData: any = { totalXP: newXP };
+
+    if (newLevel > oldLevel) {
+      showMessage(`🎉 Level Up! You reached Level ${newLevel}!`);
+      // Auto-evolve ONLY if they are using the generic 'bear' string
+      if (userProfile.avatar === 'bear') {
         updateData.avatar = getAvatarForLevel(newLevel);
       }
+    } else if (newLevel < oldLevel) {
+      // --- 2. AUTOMATIC DOWNGRADE ---
+      // If user's level drops, check if their current bear avatar is now "too high"
+      if (userProfile.avatar && userProfile.avatar.startsWith('bear_level_')) {
+        const avatarLevel = parseInt(userProfile.avatar.replace('bear_level_', ''), 10);
+        // If current avatar requirement is higher than new level, force downgrade
+        if (avatarLevel > newLevel) {
+          updateData.avatar = getAvatarForLevel(newLevel);
+        }
+      }
     }
-  }
 
-  await updateDoc(doc(db, 'users', userId), updateData);
-};
-
-const handleOnboardingComplete = async (data: Partial<User>, isRetake: boolean) => {
-  const userId = getUserId();
-  if (!userId) {
-    showMessage('No user ID found.');
-    return;
-  }
-  try {
-    const updateData: Partial<User> = { ...data };
-    if (firebaseUser?.displayName) {
-      updateData.name = firebaseUser.displayName;
-    }
-    if (!isRetake) {
-      updateData.hasSetInitialBalance = false;
-    }
     await updateDoc(doc(db, 'users', userId), updateData);
-  } catch (e) {
-    console.error('Error completing onboarding: ', e);
-    showMessage('Error saving profile.');
-    throw e;
-  }
-};
+  };
 
-const handleSetInitialBalance = async (amount: number) => {
-  const userId = getUserId();
-  if (!userId) {
-    showMessage('No user ID found.');
-    return;
-  }
-  try {
-    const batch = writeBatch(db);
-    const profileRef = doc(db, 'users', userId);
-    if (amount > 0) {
-      const transRef = collection(db, 'users', userId, 'transactions');
-      const docRef = doc(transRef);
-      batch.set(docRef, {
-        id: docRef.id,
-        icon: 'wallet',
-        name: 'Initial Balance',
-        date: new Date().toISOString().split('T')[0],
-        amount: amount,
-        type: 'income',
-        category: 'income',
-        subCategory: 'Initial',
-        isCarriedOver: false,
-        createdAt: serverTimestamp()
-      });
+  const handleOnboardingComplete = async (data: Partial<User>, isRetake: boolean) => {
+    const userId = getUserId();
+    if (!userId) {
+      showMessage('No user ID found.');
+      return;
     }
-    batch.update(profileRef, { hasSetInitialBalance: true });
-    await batch.commit();
+    try {
+      const updateData: Partial<User> = { ...data };
+      if (firebaseUser?.displayName) {
+        updateData.name = firebaseUser.displayName;
+      }
+      if (!isRetake) {
+        updateData.hasSetInitialBalance = false;
+      }
+      await updateDoc(doc(db, 'users', userId), updateData);
+    } catch (e) {
+      console.error('Error completing onboarding: ', e);
+      showMessage('Error saving profile.');
+      throw e;
+    }
+  };
 
-    // Sync budget after setting initial balance
-    setTimeout(() => syncMonthlyBudget(), 100);
+  const handleSetInitialBalance = async (amount: number) => {
+    const userId = getUserId();
+    if (!userId) {
+      showMessage('No user ID found.');
+      return;
+    }
+    try {
+      const batch = writeBatch(db);
+      const profileRef = doc(db, 'users', userId);
+      if (amount > 0) {
+        const transRef = collection(db, 'users', userId, 'transactions');
+        const docRef = doc(transRef);
+        batch.set(docRef, {
+          id: docRef.id,
+          icon: 'wallet',
+          name: 'Initial Balance',
+          date: new Date().toISOString().split('T')[0],
+          amount: amount,
+          type: 'income',
+          category: 'income',
+          subCategory: 'Initial',
+          isCarriedOver: false,
+          createdAt: serverTimestamp()
+        });
+      }
+      batch.update(profileRef, { hasSetInitialBalance: true });
+      await batch.commit();
 
-    setShowInitialBalanceModal(false);
-    showMessage('Your starting balance is set!');
-  } catch (e) {
-    console.error('Error setting initial balance: ', e);
-    showMessage('Error saving your balance.');
-  }
-};
+      // Sync budget after setting initial balance
+      setTimeout(() => syncMonthlyBudget(), 100);
 
-const handleLogout = async () => {
-  await signOut(auth);
-};
+      setShowInitialBalanceModal(false);
+      showMessage('Your starting balance is set!');
+    } catch (e) {
+      console.error('Error setting initial balance: ', e);
+      showMessage('Error saving your balance.');
+    }
+  };
 
-if (!isAuthReady) {
-  return <LoadingScreen />;
-}
+  const handleLogout = async () => {
+    await signOut(auth);
+  };
 
-
-let initialRoute: keyof RootStackParamList = 'Login';
-if (firebaseUser) {
-  if (!userProfile) {
+  if (!isAuthReady) {
     return <LoadingScreen />;
-  } else if (!userProfile.financialGoals) {
-    initialRoute = 'Onboarding';
-  } else {
-    initialRoute = 'Home';
   }
-}
 
-const handleGlobalNavigate = (screen: string) => {
-  if (navigationRef.isReady()) {
-    // @ts-ignore
-    navigationRef.navigate(screen as any, screen === 'Chatbot' ? {} : undefined);
+
+  let initialRoute: keyof RootStackParamList = 'Login';
+  if (firebaseUser) {
+    if (!userProfile) {
+      return <LoadingScreen />;
+    } else if (!userProfile.financialGoals) {
+      initialRoute = 'Onboarding';
+    } else {
+      initialRoute = 'Home';
+    }
   }
-};
 
-// Show bottom nav on screens that should have it
-const showBottomNav = ['Home', 'Expenses', 'Profile'].includes(currentRoute);
+  const handleGlobalNavigate = (screen: string) => {
+    if (navigationRef.isReady()) {
+      // @ts-ignore
+      navigationRef.navigate(screen as any, screen === 'Chatbot' ? {} : undefined);
+    }
+  };
 
-return (
-  <SafeAreaProvider>
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer
-        ref={navigationRef}
-        onStateChange={(state) => {
-          // Get the current route from the state
-          const routes = state?.routes;
-          if (routes && routes.length > 0) {
-            const currentRouteName = routes[routes.length - 1].name;
-            setCurrentRoute(currentRouteName);
-          }
-        }}
-        onReady={() => {
-          const routeName = navigationRef.getCurrentRoute()?.name;
-          if (routeName) setCurrentRoute(routeName);
-        }}
-      >
-        <Stack.Navigator
-          initialRouteName={initialRoute}
-          screenOptions={{
-            headerShown: false,
-            animation: 'none',
+  // Show bottom nav on screens that should have it
+  const showBottomNav = ['Home', 'Expenses', 'Profile'].includes(currentRoute);
+
+  return (
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <NavigationContainer
+          ref={navigationRef}
+          onStateChange={(state) => {
+            // Get the current route from the state
+            const routes = state?.routes;
+            if (routes && routes.length > 0) {
+              const currentRouteName = routes[routes.length - 1].name;
+              setCurrentRoute(currentRouteName);
+            }
+          }}
+          onReady={() => {
+            const routeName = navigationRef.getCurrentRoute()?.name;
+            if (routeName) setCurrentRoute(routeName);
           }}
         >
-          {!firebaseUser ? (
-            <>
-              <Stack.Screen name="Login">
-                {({ navigation }) => (
-                  <LoginScreen
-                    key="login-screen-v1"
-                    onSignUp={() => navigation.navigate('SignUp')}
-                    showMessage={showMessage}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="SignUp">
-                {({ navigation }) => (
-                  <SignUpScreen
-                    key="signup-screen-v1"
-                    onBack={() => navigation.goBack()}
-                    showMessage={showMessage}
-                  />
-                )}
-              </Stack.Screen>
-            </>
-          ) : (
-            <>
-              <Stack.Screen
-                name="Onboarding"
-                options={{ gestureEnabled: false }}
-              >
-                {({ navigation, route }) => (
-                  <OnboardingScreen
-                    onComplete={(data, isRetake) =>
-                      handleOnboardingComplete(data, isRetake)
-                    }
-                    showMessage={showMessage}
-                    initialData={
-                      route.params?.initialData ||
-                      (userProfile
-                        ? userProfile
-                        : { name: firebaseUser?.displayName || '' })
-                    }
-                    isRetake={route.params?.isRetake}
-                    navigation={navigation}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="Home">
-                {({ navigation }) => (
-                  <HomeScreen
-                    onNavigate={(screen: Screen) => {
-                      if (screen === 'Chatbot') {
-                        navigation.navigate('Chatbot', {});
-                      } else if (screen === 'Notifications') {
-                        navigation.navigate('Notifications');
-                        // Refresh count after viewing notifications
-                        setTimeout(() => {
-                          NotificationService.getUnreadCount().then(setUnreadNotificationCount);
-                        }, 500);
-                      } else {
-                        navigation.navigate(screen as keyof RootStackParamList)
-                      }
-                    }}
-                    transactions={transactions}
-                    userName={userProfile?.name || 'User'}
-                    userAvatar={userProfile?.avatar || 'bear'}
-                    userXP={userProfile?.totalXP || 0}
-                    onResetMonth={handleResetMonth}
-                    refreshing={refreshing}
-                    onRefresh={handleRefresh}
-                    unreadNotificationCount={unreadNotificationCount}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="AddMoney">
-                {({ navigation }) => (
-                  <AddMoneyScreen
-                    onBack={() => navigation.goBack()}
-                    showMessage={showMessage}
-                    onAddTransaction={handleAddTransaction}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="SavedAdvice">
-                {({ navigation }) => (
-                  <SavedAdviceScreen
-                    onBack={() => navigation.goBack()}
-                    savedAdvices={savedAdvices}
-                    onGoToChat={(chatId, messageId) => {
-                      setCurrentChatId(chatId);
-                      navigation.navigate('Chatbot', { chatId, messageId });
-                    }}
-                    onDeleteAdvice={handleDeleteSavedAdvice}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="AddTransaction">
-                {({ navigation }) => {
-                  const stats = calculateMonthlyStats(transactions, userProfile);
-                  const monthlyBalance = stats.budget.needs.remaining + stats.budget.wants.remaining + stats.budget.savings20.pending;
-                  return (
-                    <AddTransactionScreen
+          <Stack.Navigator
+            initialRouteName={initialRoute}
+            screenOptions={{
+              headerShown: false,
+              animation: 'none',
+            }}
+          >
+            {!firebaseUser ? (
+              <>
+                <Stack.Screen name="Login">
+                  {({ navigation }) => (
+                    <LoginScreen
+                      key="login-screen-v1"
+                      onSignUp={() => navigation.navigate('SignUp')}
+                      showMessage={showMessage}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="SignUp">
+                  {({ navigation }) => (
+                    <SignUpScreen
+                      key="signup-screen-v1"
                       onBack={() => navigation.goBack()}
                       showMessage={showMessage}
-                      onAddTransaction={(tx) => handleAddTransaction(tx)}
-                      canAccommodateBudget={canAccommodateTransaction}
-                      monthlyBalance={Math.max(0, monthlyBalance)}
-                      onNavigateToAddMoney={() => navigation.navigate('AddMoney')}
                     />
-                  );
-                }}
-              </Stack.Screen>
-              <Stack.Screen
-                name="Chatbot"
-                options={{
-                  animation: 'slide_from_bottom',
-                }}
+                  )}
+                </Stack.Screen>
+              </>
+            ) : (
+              <>
+                <Stack.Screen
+                  name="Onboarding"
+                  options={{ gestureEnabled: false }}
+                >
+                  {({ navigation, route }) => (
+                    <OnboardingScreen
+                      onComplete={(data, isRetake) =>
+                        handleOnboardingComplete(data, isRetake)
+                      }
+                      showMessage={showMessage}
+                      initialData={
+                        route.params?.initialData ||
+                        (userProfile
+                          ? userProfile
+                          : { name: firebaseUser?.displayName || '' })
+                      }
+                      isRetake={route.params?.isRetake}
+                      navigation={navigation}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="Home">
+                  {({ navigation }) => (
+                    <HomeScreen
+                      onNavigate={(screen: Screen) => {
+                        if (screen === 'Chatbot') {
+                          navigation.navigate('Chatbot', {});
+                        } else if (screen === 'Notifications') {
+                          navigation.navigate('Notifications');
+                          // Refresh count after viewing notifications
+                          setTimeout(() => {
+                            NotificationService.getUnreadCount().then(setUnreadNotificationCount);
+                          }, 500);
+                        } else {
+                          navigation.navigate(screen as keyof RootStackParamList)
+                        }
+                      }}
+                      transactions={transactions}
+                      userName={userProfile?.name || 'User'}
+                      userAvatar={userProfile?.avatar || 'bear'}
+                      userXP={userProfile?.totalXP || 0}
+                      onResetMonth={handleResetMonth}
+                      refreshing={refreshing}
+                      onRefresh={handleRefresh}
+                      unreadNotificationCount={unreadNotificationCount}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="AddMoney">
+                  {({ navigation }) => (
+                    <AddMoneyScreen
+                      onBack={() => navigation.goBack()}
+                      showMessage={showMessage}
+                      onAddTransaction={handleAddTransaction}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="SavedAdvice">
+                  {({ navigation }) => (
+                    <SavedAdviceScreen
+                      onBack={() => navigation.goBack()}
+                      savedAdvices={savedAdvices}
+                      onGoToChat={(chatId, messageId) => {
+                        setCurrentChatId(chatId);
+                        navigation.navigate('Chatbot', { chatId, messageId });
+                      }}
+                      onDeleteAdvice={handleDeleteSavedAdvice}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="AddTransaction">
+                  {({ navigation }) => {
+                    const stats = calculateMonthlyStats(transactions, userProfile);
+                    const monthlyBalance = stats.budget.needs.remaining + stats.budget.wants.remaining + stats.budget.savings20.pending;
+                    return (
+                      <AddTransactionScreen
+                        onBack={() => navigation.goBack()}
+                        showMessage={showMessage}
+                        onAddTransaction={(tx) => handleAddTransaction(tx)}
+                        canAccommodateBudget={canAccommodateTransaction}
+                        monthlyBalance={Math.max(0, monthlyBalance)}
+                        onNavigateToAddMoney={() => navigation.navigate('AddMoney')}
+                      />
+                    );
+                  }}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="Chatbot"
+                  options={{
+                    animation: 'slide_from_bottom',
+                  }}
+                >
+                  {({ navigation, route }) => (
+                    <ChatbotScreen
+                      onBack={() => {
+                        navigation.goBack();
+                        setCurrentChatId(null);
+                      }}
+                      chatSessions={chatSessions}
+                      currentChatMessages={currentChatMessages}
+                      currentChatId={currentChatId}
+                      userProfile={userProfile!}
+                      transactions={transactions}
+                      isBotThinking={isBotThinking}
+                      onSetCurrentChatId={setCurrentChatId}
+                      onCreateNewChat={handleCreateNewChat}
+                      onSendMessage={handleSendMessage}
+                      onSaveAdvice={handleSaveAdvice}
+                      onDeleteChatSession={handleDeleteChatSession}
+                      onEditMessage={handleEditMessage}
+                      route={route}
+                      streamingMessage={streamingResponse}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="Expenses">
+                  {({ navigation }) => (
+                    <ExpensesScreen
+                      onBack={() => navigation.goBack()}
+                      transactions={transactions}
+                      onNavigate={(screen: Screen) => {
+                        if (screen === 'Chatbot') {
+                          navigation.navigate('Chatbot', {});
+                        } else {
+                          navigation.navigate(screen as keyof RootStackParamList)
+                        }
+                      }}
+                      onAskAI={(message) => {
+                        // Navigate immediately, let ChatbotScreen handle the creation & sending
+                        navigation.navigate('Chatbot', { prefillMessage: message });
+                      }}
+                      onUpdateTransaction={handleUpdateTransaction}
+                      onDeleteTransaction={handleDeleteTransaction}
+                      onDeleteTransactions={handleDeleteTransactions}
+                      onAddTransaction={handleAddTransaction}
+                      refreshing={refreshing}
+                      onRefresh={handleRefresh}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="Savings">
+                  {({ navigation }) => (
+                    <SavingsScreen
+                      onBack={() => navigation.goBack()}
+                      transactions={transactions}
+                      onAddTransaction={(tx) => handleAddTransaction(tx)}
+                      refreshing={refreshing}
+                      onRefresh={handleRefresh}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="Profile">
+                  {({ navigation }) => (
+                    <ProfileScreen
+                      onNavigate={(screen: Screen) => {
+                        if (screen === 'Chatbot') {
+                          navigation.navigate('Chatbot', {});
+                        } else {
+                          navigation.navigate(screen as keyof RootStackParamList)
+                        }
+                      }}
+                      user={userProfile!}
+                      transactions={transactions}
+                      onUpdateUser={handleUpdateUser}
+                      onLogout={handleLogout}
+                      navigation={navigation}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="Notifications">
+                  {({ navigation }) => (
+                    <NotificationsScreen
+                      onBack={() => navigation.goBack()}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="PrivacySecurity">
+                  {({ navigation }) => (
+                    <PrivacySecurityScreen
+                      onBack={() => navigation.goBack()}
+                    />
+                  )}
+                </Stack.Screen>
+              </>
+            )}
+          </Stack.Navigator>
+        </NavigationContainer>
+
+        {/* Global Bottom Nav */}
+        {showBottomNav && (
+          <SafeAreaView style={styles.bottomNavSafeArea} edges={['bottom']}>
+            <View style={styles.bottomNav}>
+              <TouchableOpacity
+                style={styles.navItem}
+                onPress={() => handleGlobalNavigate('Home')}
               >
-                {({ navigation, route }) => (
-                  <ChatbotScreen
-                    onBack={() => {
-                      navigation.goBack();
-                      setCurrentChatId(null);
-                    }}
-                    chatSessions={chatSessions}
-                    currentChatMessages={currentChatMessages}
-                    currentChatId={currentChatId}
-                    userProfile={userProfile!}
-                    transactions={transactions}
-                    isBotThinking={isBotThinking}
-                    onSetCurrentChatId={setCurrentChatId}
-                    onCreateNewChat={handleCreateNewChat}
-                    onSendMessage={handleSendMessage}
-                    onSaveAdvice={handleSaveAdvice}
-                    onDeleteChatSession={handleDeleteChatSession}
-                    onEditMessage={handleEditMessage}
-                    route={route}
-                    streamingMessage={streamingResponse}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="Expenses">
-                {({ navigation }) => (
-                  <ExpensesScreen
-                    onBack={() => navigation.goBack()}
-                    transactions={transactions}
-                    onNavigate={(screen: Screen) => {
-                      if (screen === 'Chatbot') {
-                        navigation.navigate('Chatbot', {});
-                      } else {
-                        navigation.navigate(screen as keyof RootStackParamList)
-                      }
-                    }}
-                    onAskAI={(message) => {
-                      // Navigate immediately, let ChatbotScreen handle the creation & sending
-                      navigation.navigate('Chatbot', { prefillMessage: message });
-                    }}
-                    onUpdateTransaction={handleUpdateTransaction}
-                    onDeleteTransaction={handleDeleteTransaction}
-                    refreshing={refreshing}
-                    onRefresh={handleRefresh}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="Savings">
-                {({ navigation }) => (
-                  <SavingsScreen
-                    onBack={() => navigation.goBack()}
-                    transactions={transactions}
-                    onAddTransaction={(tx) => handleAddTransaction(tx)}
-                    refreshing={refreshing}
-                    onRefresh={handleRefresh}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="Profile">
-                {({ navigation }) => (
-                  <ProfileScreen
-                    onNavigate={(screen: Screen) => {
-                      if (screen === 'Chatbot') {
-                        navigation.navigate('Chatbot', {});
-                      } else {
-                        navigation.navigate(screen as keyof RootStackParamList)
-                      }
-                    }}
-                    user={userProfile!}
-                    transactions={transactions}
-                    onUpdateUser={handleUpdateUser}
-                    onLogout={handleLogout}
-                    navigation={navigation}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="Notifications">
-                {({ navigation }) => (
-                  <NotificationsScreen
-                    onBack={() => navigation.goBack()}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="PrivacySecurity">
-                {({ navigation }) => (
-                  <PrivacySecurityScreen
-                    onBack={() => navigation.goBack()}
-                  />
-                )}
-              </Stack.Screen>
-            </>
-          )}
-        </Stack.Navigator>
-      </NavigationContainer>
+                <Icon name="home" size={26} color={currentRoute === 'Home' ? COLORS.accent : COLORS.darkGray} />
+                <Text style={currentRoute === 'Home' ? styles.navTextActive : styles.navText}>Home</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.navItem}
+                onPress={() => handleGlobalNavigate('Expenses')}
+              >
+                <Icon name="pie-chart" size={26} color={currentRoute === 'Expenses' ? COLORS.accent : COLORS.darkGray} />
+                <Text style={currentRoute === 'Expenses' ? styles.navTextActive : styles.navText}>Expenses</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.navItem}
+                onPress={() => handleGlobalNavigate('Chatbot')}
+              >
+                <Icon name="message-square" size={26} color={currentRoute === 'Chatbot' ? COLORS.accent : COLORS.darkGray} />
+                <Text style={currentRoute === 'Chatbot' ? styles.navTextActive : styles.navText}>Chatbot</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.navItem}
+                onPress={() => handleGlobalNavigate('Profile')}
+              >
+                <Icon name="user" size={26} color={currentRoute === 'Profile' ? COLORS.accent : COLORS.darkGray} />
+                <Text style={currentRoute === 'Profile' ? styles.navTextActive : styles.navText}>Profile</Text>
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        )}
 
-      {/* Global Bottom Nav */}
-      {showBottomNav && (
-        <SafeAreaView style={styles.bottomNavSafeArea} edges={['bottom']}>
-          <View style={styles.bottomNav}>
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() => handleGlobalNavigate('Home')}
-            >
-              <Icon name="home" size={26} color={currentRoute === 'Home' ? COLORS.accent : COLORS.darkGray} />
-              <Text style={currentRoute === 'Home' ? styles.navTextActive : styles.navText}>Home</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() => handleGlobalNavigate('Expenses')}
-            >
-              <Icon name="pie-chart" size={26} color={currentRoute === 'Expenses' ? COLORS.accent : COLORS.darkGray} />
-              <Text style={currentRoute === 'Expenses' ? styles.navTextActive : styles.navText}>Expenses</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() => handleGlobalNavigate('Chatbot')}
-            >
-              <Icon name="message-square" size={26} color={currentRoute === 'Chatbot' ? COLORS.accent : COLORS.darkGray} />
-              <Text style={currentRoute === 'Chatbot' ? styles.navTextActive : styles.navText}>Chatbot</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() => handleGlobalNavigate('Profile')}
-            >
-              <Icon name="user" size={26} color={currentRoute === 'Profile' ? COLORS.accent : COLORS.darkGray} />
-              <Text style={currentRoute === 'Profile' ? styles.navTextActive : styles.navText}>Profile</Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      )}
-
-      <BalanceAllocationModal
-        key={pendingBalance}
-        visible={showBalanceModal}
-        balance={pendingBalance}
-        onAllocate={handleBalanceAllocation}
-      />
-      <InitialBalanceModal
-        visible={showInitialBalanceModal}
-        onSubmit={handleSetInitialBalance}
-      />
-      <BudgetExceededModal
-        visible={showBudgetExceededModal}
-        onClose={() => setShowBudgetExceededModal(false)}
-        budgetStatus={budgetExceededInfo}
-      />
-      <MessageModal
-        visible={modalVisible}
-        message={modalMessage}
-        onDismiss={() => setModalVisible(false)}
-      />
-    </GestureHandlerRootView>
-  </SafeAreaProvider>
-);
+        <BalanceAllocationModal
+          key={pendingBalance}
+          visible={showBalanceModal}
+          balance={pendingBalance}
+          onAllocate={handleBalanceAllocation}
+        />
+        <InitialBalanceModal
+          visible={showInitialBalanceModal}
+          onSubmit={handleSetInitialBalance}
+        />
+        <BudgetExceededModal
+          visible={showBudgetExceededModal}
+          onClose={() => setShowBudgetExceededModal(false)}
+          budgetStatus={budgetExceededInfo}
+        />
+        <MessageModal
+          visible={modalVisible}
+          message={modalMessage}
+          onDismiss={() => setModalVisible(false)}
+        />
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
+  );
 }
 
 // --- Styles ---

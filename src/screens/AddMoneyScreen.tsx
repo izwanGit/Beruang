@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import { COLORS } from '../constants/colors';
+import { v4 as uuidv4 } from 'uuid';
 
 type AddMoneyScreenProps = {
   onBack: () => void;
@@ -102,6 +103,7 @@ export const AddMoneyScreen = ({
       } else {
         const amountPerMonth = amountNum / numMonths;
         let totalAllocated = 0;
+        const allocationId = uuidv4();
 
         for (let i = 0; i < numMonths; i++) {
           const transactionDate = addMonths(baseDate, i);
@@ -122,6 +124,10 @@ export const AddMoneyScreen = ({
             category: 'income',
             subCategory: 'Income',
             isCarriedOver: false,
+            allocationId, // Link all parts of the series
+            allocationIndex: i + 1,
+            allocationTotalMonths: numMonths,
+            isAllocated: true,
           };
           transactionsToCreate.push(newTransaction);
         }
@@ -142,6 +148,7 @@ export const AddMoneyScreen = ({
         onBack();
       }, 1500);
     } catch (error) {
+      console.error('Debug: Error saving income:', error);
       showMessage('Error saving income. Please try again.');
     } finally {
       setIsLoading(false);

@@ -17,7 +17,7 @@ import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIc
 import { COLORS } from '../constants/colors';
 import { transactionItemStyles } from '../styles/transactionItemStyles';
 import { calculateMonthlyStats } from '../utils/financeUtils';
-import { calculateLevel } from '../utils/gamificationUtils';
+import { calculateLevel, getAvatarForLevel } from '../utils/gamificationUtils';
 import { BEAR_AVATARS, isBearAvatar } from '../constants/avatars';
 
 const categoryIcons: Record<string, { icon: string; color: string }> = {
@@ -95,6 +95,9 @@ export const HomeScreen = ({
   const displayBalance = totals.displayBalance;
   const level = calculateLevel(userXP);
 
+  // Auto-evolve avatar if user has generic 'bear' set
+  const effectiveAvatar = userAvatar === 'bear' ? getAvatarForLevel(level) : userAvatar;
+
   // --- Mini Budget Bar Component ---
   type MiniBudgetCategoryProps = {
     name: string;
@@ -158,7 +161,9 @@ export const HomeScreen = ({
       return true;
     })
     // Sort by date, newest first
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    // Filter out future transactions
+    .filter(t => new Date(t.date) <= new Date());
 
   const recentTransactions = filteredTransactions.slice(0, 3);
   const hasMoreTransactions = filteredTransactions.length > 3;
@@ -221,10 +226,10 @@ export const HomeScreen = ({
               onPress={() => onNavigate('Profile')}
             >
               <View style={homeStyles.avatarRing}>
-                {isBearAvatar(userAvatar) ? (
-                  <Image source={BEAR_AVATARS[userAvatar]} style={homeStyles.avatarImage} />
+                {isBearAvatar(effectiveAvatar) ? (
+                  <Image source={BEAR_AVATARS[effectiveAvatar]} style={homeStyles.avatarImage} />
                 ) : (
-                  <MaterialCommunityIcon name={userAvatar as any || 'account'} size={28} color={COLORS.white} />
+                  <MaterialCommunityIcon name={effectiveAvatar as any || 'account'} size={28} color={COLORS.white} />
                 )}
               </View>
               <View style={homeStyles.levelBadge}>
