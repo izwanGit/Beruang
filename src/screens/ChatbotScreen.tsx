@@ -256,6 +256,40 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
   const hasInitializedRef = useRef(false);
   const lastConsumedPrefillRef = useRef<string | undefined>(undefined);
   const lastConsumedLinkedChatIdRef = useRef<string | undefined>(undefined);
+  const titleTapCountRef = useRef(0);
+  const titleTapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Secret feature: Triple-tap chat title to copy entire conversation
+  const handleTitleTripleTap = () => {
+    titleTapCountRef.current += 1;
+
+    if (titleTapTimeoutRef.current) {
+      clearTimeout(titleTapTimeoutRef.current);
+    }
+
+    if (titleTapCountRef.current >= 3) {
+      // Export conversation
+      titleTapCountRef.current = 0;
+
+      if (currentChatMessages.length === 0) {
+        Alert.alert('No Messages', 'This chat is empty.');
+        return;
+      }
+
+      const exportData = currentChatMessages.map((msg, index) => {
+        return `[${msg.sender.toUpperCase()}] ${msg.text}`;
+      }).join('\n\n---\n\n');
+
+      const fullExport = `=== CHAT EXPORT: ${chatTitle} ===\nDate: ${new Date().toISOString()}\nMessages: ${currentChatMessages.length}\n\n${exportData}\n\n=== END EXPORT ===`;
+
+      Clipboard.setString(fullExport);
+      Alert.alert('Copied!', `${currentChatMessages.length} messages copied to clipboard.`);
+    } else {
+      titleTapTimeoutRef.current = setTimeout(() => {
+        titleTapCountRef.current = 0;
+      }, 500);
+    }
+  };
 
   useEffect(() => {
     const prefillMessage = route.params?.prefillMessage;
@@ -492,10 +526,10 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
       <View>
         {parts.map((part, index) => (
           part.type === 'widget' ? (
-            <SmartWidget key={`widget-${index}`} dataString={part.content} />
+            <SmartWidget key={`widget - ${index} `} dataString={part.content} />
           ) : (
             part.content.trim() !== '' && (
-              <Markdown key={`text-${index}`} style={markdownStyles}>
+              <Markdown key={`text - ${index} `} style={markdownStyles}>
                 {part.content}
               </Markdown>
             )
@@ -520,9 +554,11 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
           <TouchableOpacity onPress={onBack} style={styles.headerButton}>
             <Icon name="arrow-left" size={24} color={COLORS.accent} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {chatTitle}
-          </Text>
+          <TouchableOpacity onPress={handleTitleTripleTap} activeOpacity={0.7}>
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {chatTitle}
+            </Text>
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setIsHistoryVisible(true)}
             style={styles.headerButton}
