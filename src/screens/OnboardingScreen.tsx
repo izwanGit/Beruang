@@ -13,6 +13,8 @@ import {
   ActivityIndicator,
   Dimensions,
   LayoutAnimation,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
@@ -271,127 +273,131 @@ export const OnboardingScreen = ({
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
-              <Icon name="chevron-left" size={24} color={COLORS.accent} />
-            </TouchableOpacity>
-            <View style={styles.progressSection}>
-              <Text style={styles.groupTitle}>{getCurrentGroup()}</Text>
-              <View style={styles.progressDots}>
-                {questions.map((_, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.dot,
-                      i <= currentStep && styles.dotActive,
-                      i === currentStep && styles.dotCurrent
-                    ]}
-                  />
-                ))}
-              </View>
-            </View>
-            <View style={{ width: 40 }} />
-          </View>
-
-          <View style={styles.questionCard}>
-            <View style={styles.qHeader}>
-              <MaterialCommunityIcon name={currentQuestion.icon} size={28} color={COLORS.accent} />
-              <Text style={styles.qIndicator}>STEP {currentStep + 1} OF 9</Text>
-            </View>
-            <Text style={styles.questionText}>{currentQuestion.question}</Text>
-            <Text style={styles.hintText}>{currentQuestion.hint}</Text>
-          </View>
-
-          <View style={styles.inputArea}>
-            {currentQuestion.type === 'radio' ? (
-              <View style={styles.radioList}>
-                {currentQuestion.options.map((option) => {
-                  const isSelected = currentQuestion.value === option;
-                  return (
-                    <TouchableOpacity
-                      key={option}
-                      activeOpacity={0.7}
-                      onPress={() => currentQuestion.setValue(option)}
-                      style={[styles.optionItem, isSelected && styles.optionItemSelected]}
-                    >
-                      <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{option}</Text>
-                      <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
-                        {isSelected && <Icon name="check" size={12} color="#FFF" />}
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            ) : currentQuestion.type === 'grid' ? (
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.gridContainer}>
-                {currentQuestion.options.map((option) => {
-                  const isSelected = currentQuestion.value === option;
-                  return (
-                    <TouchableOpacity
-                      key={option}
-                      activeOpacity={0.7}
-                      onPress={() => currentQuestion.setValue(option)}
-                      style={[styles.gridItem, isSelected && styles.gridItemSelected]}
-                    >
-                      <Text style={[styles.gridText, isSelected && styles.gridTextSelected]}>{option}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            ) : (
-              <View>
-                <View style={[styles.field, currentQuestion.value && styles.fieldActive]}>
-                  {currentQuestion.prefix && <Text style={styles.fieldPrefix}>{currentQuestion.prefix}</Text>}
-                  <TextInput
-                    style={styles.textInput}
-                    value={currentQuestion.value}
-                    onChangeText={currentQuestion.setValue}
-                    placeholder={currentQuestion.placeholder}
-                    placeholderTextColor="#BBB"
-                    keyboardType={currentQuestion.keyboardType}
-                    autoFocus
-                    selectionColor={COLORS.accent}
-                  />
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={{ flex: 1 }}>
+            <View style={styles.content}>
+              <View style={styles.header}>
+                <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
+                  <Icon name="chevron-left" size={24} color={COLORS.accent} />
+                </TouchableOpacity>
+                <View style={styles.progressSection}>
+                  <Text style={styles.groupTitle}>{getCurrentGroup()}</Text>
+                  <View style={styles.progressDots}>
+                    {questions.map((_, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          styles.dot,
+                          i <= currentStep && styles.dotActive,
+                          i === currentStep && styles.dotCurrent
+                        ]}
+                      />
+                    ))}
+                  </View>
                 </View>
-                {currentQuestion.suggestions && (
-                  <View style={styles.suggestionBox}>
-                    <Text style={styles.suggestLabel}>QUICK SELECT</Text>
-                    <View style={styles.chipRow}>
-                      {currentQuestion.suggestions.map((s) => (
+                <View style={{ width: 40 }} />
+              </View>
+
+              <View style={styles.questionCard}>
+                <View style={styles.qHeader}>
+                  <MaterialCommunityIcon name={currentQuestion.icon} size={28} color={COLORS.accent} />
+                  <Text style={styles.qIndicator}>STEP {currentStep + 1} OF 9</Text>
+                </View>
+                <Text style={styles.questionText}>{currentQuestion.question}</Text>
+                <Text style={styles.hintText}>{currentQuestion.hint}</Text>
+              </View>
+
+              <View style={styles.inputArea}>
+                {currentQuestion.type === 'radio' ? (
+                  <View style={styles.radioList}>
+                    {currentQuestion.options.map((option) => {
+                      const isSelected = currentQuestion.value === option;
+                      return (
                         <TouchableOpacity
-                          key={s}
-                          onPress={() => currentQuestion.setValue(s)}
-                          style={[styles.chip, currentQuestion.value === s && styles.chipActive]}
+                          key={option}
+                          activeOpacity={0.7}
+                          onPress={() => currentQuestion.setValue(option)}
+                          style={[styles.optionItem, isSelected && styles.optionItemSelected]}
                         >
-                          <Text style={[styles.chipText, currentQuestion.value === s && styles.chipTextActive]}>{s}</Text>
+                          <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{option}</Text>
+                          <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
+                            {isSelected && <Icon name="check" size={12} color="#FFF" />}
+                          </View>
                         </TouchableOpacity>
-                      ))}
+                      );
+                    })}
+                  </View>
+                ) : currentQuestion.type === 'grid' ? (
+                  <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.gridContainer}>
+                    {currentQuestion.options.map((option) => {
+                      const isSelected = currentQuestion.value === option;
+                      return (
+                        <TouchableOpacity
+                          key={option}
+                          activeOpacity={0.7}
+                          onPress={() => currentQuestion.setValue(option)}
+                          style={[styles.gridItem, isSelected && styles.gridItemSelected]}
+                        >
+                          <Text style={[styles.gridText, isSelected && styles.gridTextSelected]}>{option}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                ) : (
+                  <View>
+                    <View style={[styles.field, currentQuestion.value && styles.fieldActive]}>
+                      {currentQuestion.prefix && <Text style={styles.fieldPrefix}>{currentQuestion.prefix}</Text>}
+                      <TextInput
+                        style={styles.textInput}
+                        value={currentQuestion.value}
+                        onChangeText={currentQuestion.setValue}
+                        placeholder={currentQuestion.placeholder}
+                        placeholderTextColor="#BBB"
+                        keyboardType={currentQuestion.keyboardType}
+                        autoFocus
+                        selectionColor={COLORS.accent}
+                      />
                     </View>
+                    {currentQuestion.suggestions && (
+                      <View style={styles.suggestionBox}>
+                        <Text style={styles.suggestLabel}>QUICK SELECT</Text>
+                        <View style={styles.chipRow}>
+                          {currentQuestion.suggestions.map((s) => (
+                            <TouchableOpacity
+                              key={s}
+                              onPress={() => currentQuestion.setValue(s)}
+                              style={[styles.chip, currentQuestion.value === s && styles.chipActive]}
+                            >
+                              <Text style={[styles.chipText, currentQuestion.value === s && styles.chipTextActive]}>{s}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                    )}
                   </View>
                 )}
               </View>
-            )}
-          </View>
-        </View>
+            </View>
 
-        <View style={styles.footer}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={handleNext}
-            style={[styles.nextBtn, !currentQuestion.value && styles.nextBtnDisabled]}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <>
-                <Text style={styles.nextText}>{currentStep === 8 ? 'FINISH' : 'CONTINUE'}</Text>
-                <Icon name="arrow-right" size={20} color="#FFF" />
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
+            <View style={styles.footer}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={handleNext}
+                style={[styles.nextBtn, !currentQuestion.value && styles.nextBtnDisabled]}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <>
+                    <Text style={styles.nextText}>{currentStep === 8 ? 'FINISH' : 'CONTINUE'}</Text>
+                    <Icon name="arrow-right" size={20} color="#FFF" />
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

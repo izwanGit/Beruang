@@ -10,6 +10,8 @@ import {
   Alert,
   TextInput,
   Dimensions,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
@@ -146,78 +148,80 @@ export const SavedAdviceScreen = ({
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-      <View style={styles.safeArea}>
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>
-          <TouchableOpacity onPress={onBack} style={styles.headerButton}>
-            <Icon name="arrow-left" size={24} color={COLORS.accent} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Knowledge Base</Text>
-          <View style={{ width: 40 }} />
-        </View>
-
-        <ScrollView
-          stickyHeaderIndices={[1]}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 50 }}
-        >
-          {/* Top Hero - Sage Green Focus - COMPACT VERSION */}
-          <View style={styles.hero}>
-            <View style={styles.heroContent}>
-              <View style={styles.iconBox}>
-                <Icon name="bookmark" size={20} color={COLORS.white} />
-              </View>
-              <View>
-                <Text style={styles.heroLabel}>Preserved Wisdom</Text>
-                <Text style={styles.heroCount}>{savedAdvices.length} saved items</Text>
-              </View>
-            </View>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={styles.safeArea}>
+          {/* Header */}
+          <View style={[styles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>
+            <TouchableOpacity onPress={onBack} style={styles.headerButton}>
+              <Icon name="arrow-left" size={24} color={COLORS.accent} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Knowledge Base</Text>
+            <View style={{ width: 40 }} />
           </View>
 
-          {/* Minimal Search Bar */}
-          <View style={styles.searchSection}>
-            <View style={styles.searchBar}>
-              <Icon name="search" size={16} color={COLORS.accent} style={{ marginRight: 10, opacity: 0.5 }} />
-              <TextInput
-                placeholder="Find a saved tip..."
-                placeholderTextColor={COLORS.accent + '50'}
-                style={styles.searchInput}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Icon name="x-circle" size={16} color={COLORS.accent + '40'} />
-                </TouchableOpacity>
+          <ScrollView
+            stickyHeaderIndices={[1]}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 50 }}
+          >
+            {/* Top Hero - Sage Green Focus - COMPACT VERSION */}
+            <View style={styles.hero}>
+              <View style={styles.heroContent}>
+                <View style={styles.iconBox}>
+                  <Icon name="bookmark" size={20} color={COLORS.white} />
+                </View>
+                <View>
+                  <Text style={styles.heroLabel}>Preserved Wisdom</Text>
+                  <Text style={styles.heroCount}>{savedAdvices.length} saved items</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Minimal Search Bar */}
+            <View style={styles.searchSection}>
+              <View style={styles.searchBar}>
+                <Icon name="search" size={16} color={COLORS.accent} style={{ marginRight: 10, opacity: 0.5 }} />
+                <TextInput
+                  placeholder="Find a saved tip..."
+                  placeholderTextColor={COLORS.accent + '50'}
+                  style={styles.searchInput}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <Icon name="x-circle" size={16} color={COLORS.accent + '40'} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            {/* Advice List */}
+            <View style={styles.listContainer}>
+              {filteredAdvices.length === 0 ? (
+                <View style={styles.empty}>
+                  <View style={styles.emptyCircle}>
+                    <Icon name="feather" size={40} color={COLORS.primary} />
+                  </View>
+                  <Text style={styles.emptyTitle}>Nothing here yet</Text>
+                  <Text style={styles.emptyText}>
+                    {searchQuery ? "No matches found." : "Long-press helpful AI messages to save them here."}
+                  </Text>
+                </View>
+              ) : (
+                filteredAdvices.map((advice) => (
+                  <AdviceCard
+                    key={advice.id}
+                    advice={advice}
+                    onGoToChat={onGoToChat}
+                    onDelete={onDeleteAdvice}
+                  />
+                ))
               )}
             </View>
-          </View>
-
-          {/* Advice List */}
-          <View style={styles.listContainer}>
-            {filteredAdvices.length === 0 ? (
-              <View style={styles.empty}>
-                <View style={styles.emptyCircle}>
-                  <Icon name="feather" size={40} color={COLORS.primary} />
-                </View>
-                <Text style={styles.emptyTitle}>Nothing here yet</Text>
-                <Text style={styles.emptyText}>
-                  {searchQuery ? "No matches found." : "Long-press helpful AI messages to save them here."}
-                </Text>
-              </View>
-            ) : (
-              filteredAdvices.map((advice) => (
-                <AdviceCard
-                  key={advice.id}
-                  advice={advice}
-                  onGoToChat={onGoToChat}
-                  onDelete={onDeleteAdvice}
-                />
-              ))
-            )}
-          </View>
-        </ScrollView>
-      </View>
+          </ScrollView>
+        </View>
+      </TouchableWithoutFeedback>
     </View >
   );
 };

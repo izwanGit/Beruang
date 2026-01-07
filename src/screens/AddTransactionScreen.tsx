@@ -13,6 +13,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
@@ -244,275 +245,279 @@ export const AddTransactionScreen = ({
   return (
     <View style={addTransactionStyles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-      <View style={addTransactionStyles.safeArea}>
-        {/* --- Standardized Header --- */}
-        <View style={[addTransactionStyles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>
-          <TouchableOpacity onPress={onBack} style={addTransactionStyles.headerButton}>
-            <Icon name="arrow-left" size={24} color={COLORS.accent} />
-          </TouchableOpacity>
-          <Text style={addTransactionStyles.headerTitle}>Add Expense</Text>
-          <View style={{ width: 40 }} />
-        </View>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={addTransactionStyles.safeArea}>
+          {/* --- Standardized Header --- */}
+          <View style={[addTransactionStyles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>
+            <TouchableOpacity onPress={onBack} style={addTransactionStyles.headerButton}>
+              <Icon name="arrow-left" size={24} color={COLORS.accent} />
+            </TouchableOpacity>
+            <Text style={addTransactionStyles.headerTitle}>Add Expense</Text>
+            <View style={{ width: 40 }} />
+          </View>
 
-        <ScrollView
-          contentContainerStyle={addTransactionStyles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* --- Manual Entry Card --- */}
-          <View style={addTransactionStyles.card}>
-            {!lastAdded ? (
-              <>
-                <View style={addTransactionStyles.cardHeader}>
-                  <Icon name="edit-3" size={20} color={COLORS.secondary} />
-                  <Text style={addTransactionStyles.cardTitle}>Manual Entry</Text>
-                </View>
+          <ScrollView
+            contentContainerStyle={addTransactionStyles.scrollContainer}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* --- Manual Entry Card --- */}
+            <View style={addTransactionStyles.card}>
+              {!lastAdded ? (
+                <>
+                  <View style={addTransactionStyles.cardHeader}>
+                    <Icon name="edit-3" size={20} color={COLORS.secondary} />
+                    <Text style={addTransactionStyles.cardTitle}>Manual Entry</Text>
+                  </View>
 
-                <View style={addTransactionStyles.inputGroup}>
-                  <Text style={addTransactionStyles.label}>AMOUNT SPENT (RM)</Text>
-                  <View style={addTransactionStyles.amountRow}>
+                  <View style={addTransactionStyles.inputGroup}>
+                    <Text style={addTransactionStyles.label}>AMOUNT SPENT (RM)</Text>
+                    <View style={addTransactionStyles.amountRow}>
+                      <TextInput
+                        ref={amountInputRef}
+                        placeholder="0.00"
+                        placeholderTextColor={COLORS.darkGray}
+                        style={addTransactionStyles.amountInput}
+                        keyboardType="number-pad"
+                        value={formatCentsToCurrency(amountCents)}
+                        onChangeText={handleAmountChange}
+                        editable={!isLoading}
+                        autoFocus
+                      />
+                    </View>
+                    {/* Balance Display */}
+                    <View style={addTransactionStyles.balanceRow}>
+                      <Text style={[
+                        addTransactionStyles.balanceText,
+                        (amountCents / 100) > monthlyBalance && { color: '#E74C3C' }
+                      ]}>
+                        Balance: RM {monthlyBalance.toFixed(2)}
+                      </Text>
+                      {(amountCents / 100) > monthlyBalance && onNavigateToAddMoney && (
+                        <TouchableOpacity onPress={onNavigateToAddMoney}>
+                          <Text style={addTransactionStyles.addMoneyLink}>Add Money</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+
+                  <View style={addTransactionStyles.inputGroup}>
+                    <View style={addTransactionStyles.labelWithIcon}>
+                      <Icon name="tag" size={14} color={COLORS.primary} />
+                      <Text style={addTransactionStyles.label}>DESCRIPTION</Text>
+                    </View>
                     <TextInput
-                      ref={amountInputRef}
-                      placeholder="0.00"
+                      placeholder="e.g., Starbucks Lunch, Spotify, Groceries"
                       placeholderTextColor={COLORS.darkGray}
-                      style={addTransactionStyles.amountInput}
-                      keyboardType="number-pad"
-                      value={formatCentsToCurrency(amountCents)}
-                      onChangeText={handleAmountChange}
+                      style={addTransactionStyles.textInput}
+                      value={description}
+                      onChangeText={setDescription}
                       editable={!isLoading}
-                      autoFocus
                     />
                   </View>
-                  {/* Balance Display */}
-                  <View style={addTransactionStyles.balanceRow}>
-                    <Text style={[
-                      addTransactionStyles.balanceText,
-                      (amountCents / 100) > monthlyBalance && { color: '#E74C3C' }
-                    ]}>
-                      Balance: RM {monthlyBalance.toFixed(2)}
-                    </Text>
-                    {(amountCents / 100) > monthlyBalance && onNavigateToAddMoney && (
-                      <TouchableOpacity onPress={onNavigateToAddMoney}>
-                        <Text style={addTransactionStyles.addMoneyLink}>Add Money</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
 
-                <View style={addTransactionStyles.inputGroup}>
-                  <View style={addTransactionStyles.labelWithIcon}>
-                    <Icon name="tag" size={14} color={COLORS.primary} />
-                    <Text style={addTransactionStyles.label}>DESCRIPTION</Text>
+                  <View style={addTransactionStyles.actionRow}>
+                    <TouchableOpacity
+                      style={[
+                        addTransactionStyles.confirmButton,
+                        (isLoading || (amountCents / 100) > monthlyBalance) && { opacity: 0.5 },
+                      ]}
+                      onPress={handleSaveTransaction}
+                      disabled={isLoading || (amountCents / 100) > monthlyBalance}
+                    >
+                      {isLoading ? (
+                        <ActivityIndicator color={COLORS.white} size="small" />
+                      ) : (
+                        <>
+                          <Text style={addTransactionStyles.confirmButtonText}>Confirm Entry</Text>
+                          <Icon name="check" size={14} color={COLORS.white} style={{ marginLeft: 6 }} />
+                        </>
+                      )}
+                    </TouchableOpacity>
                   </View>
-                  <TextInput
-                    placeholder="e.g., Starbucks Lunch, Spotify, Groceries"
-                    placeholderTextColor={COLORS.darkGray}
-                    style={addTransactionStyles.textInput}
-                    value={description}
-                    onChangeText={setDescription}
-                    editable={!isLoading}
-                  />
-                </View>
-
-                <View style={addTransactionStyles.actionRow}>
-                  <TouchableOpacity
-                    style={[
-                      addTransactionStyles.confirmButton,
-                      (isLoading || (amountCents / 100) > monthlyBalance) && { opacity: 0.5 },
-                    ]}
-                    onPress={handleSaveTransaction}
-                    disabled={isLoading || (amountCents / 100) > monthlyBalance}
-                  >
-                    {isLoading ? (
-                      <ActivityIndicator color={COLORS.white} size="small" />
-                    ) : (
-                      <>
-                        <Text style={addTransactionStyles.confirmButtonText}>Confirm Entry</Text>
-                        <Icon name="check" size={14} color={COLORS.white} style={{ marginLeft: 6 }} />
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </>
-            ) : (
-              <View style={addTransactionStyles.successState}>
-                <View style={addTransactionStyles.successHeader}>
-                  <View style={addTransactionStyles.checkCircle}>
-                    <Icon name="check" size={28} color={COLORS.white} />
+                </>
+              ) : (
+                <View style={addTransactionStyles.successState}>
+                  <View style={addTransactionStyles.successHeader}>
+                    <View style={addTransactionStyles.checkCircle}>
+                      <Icon name="check" size={28} color={COLORS.white} />
+                    </View>
+                    <Text style={addTransactionStyles.successText}>Item Saved!</Text>
                   </View>
-                  <Text style={addTransactionStyles.successText}>Item Saved!</Text>
-                </View>
 
-                <View style={addTransactionStyles.resultBox}>
-                  <Text style={addTransactionStyles.resultLabel}>AI CATEGORIZATION</Text>
-                  <View style={addTransactionStyles.resultRow}>
-                    <View style={addTransactionStyles.categoryBadge}>
-                      <Text style={addTransactionStyles.categoryBadgeText}>
-                        {lastAdded.category.toUpperCase()}
+                  <View style={addTransactionStyles.resultBox}>
+                    <Text style={addTransactionStyles.resultLabel}>AI CATEGORIZATION</Text>
+                    <View style={addTransactionStyles.resultRow}>
+                      <View style={addTransactionStyles.categoryBadge}>
+                        <Text style={addTransactionStyles.categoryBadgeText}>
+                          {lastAdded.category.toUpperCase()}
+                        </Text>
+                      </View>
+                      <Icon name="chevron-right" size={14} color={COLORS.darkGray} />
+                      <Text style={addTransactionStyles.subCategoryText}>
+                        {lastAdded.subCategory}
                       </Text>
                     </View>
-                    <Icon name="chevron-right" size={14} color={COLORS.darkGray} />
-                    <Text style={addTransactionStyles.subCategoryText}>
-                      {lastAdded.subCategory}
-                    </Text>
+                  </View>
+
+                  <View style={addTransactionStyles.buttonRow}>
+                    <TouchableOpacity
+                      style={addTransactionStyles.addMoreButton}
+                      onPress={handleAddMore}
+                    >
+                      <Icon name="plus-circle" size={18} color={COLORS.white} />
+                      <Text style={addTransactionStyles.addMoreText}>Add Another</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={addTransactionStyles.finishButton}
+                      onPress={onBack}
+                    >
+                      <Text style={addTransactionStyles.finishText}>I'm Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* --- Receipt Quick Actions --- */}
+            <View style={addTransactionStyles.receiptSection}>
+              <Text style={addTransactionStyles.labelSmall}>USE A RECEIPT (BETA)</Text>
+
+              <View style={addTransactionStyles.receiptRow}>
+                <TouchableOpacity
+                  style={[
+                    addTransactionStyles.receiptCard,
+                    isProcessingImage && { opacity: 0.6 }
+                  ]}
+                  onPress={() => handlePickImage(true)}
+                  disabled={isProcessingImage}
+                >
+                  <View style={[addTransactionStyles.iconCircle, { backgroundColor: COLORS.primary }]}>
+                    {isProcessingImage ? (
+                      <ActivityIndicator color={COLORS.white} size="small" />
+                    ) : (
+                      <Icon name="camera" size={18} color={COLORS.white} />
+                    )}
+                  </View>
+                  <Text style={addTransactionStyles.receiptCardText}>Scan</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    addTransactionStyles.receiptCard,
+                    isProcessingImage && { opacity: 0.6 }
+                  ]}
+                  onPress={() => handlePickImage(false)}
+                  disabled={isProcessingImage}
+                >
+                  <View style={[addTransactionStyles.iconCircle, { backgroundColor: COLORS.secondary }]}>
+                    {isProcessingImage ? (
+                      <ActivityIndicator color={COLORS.white} size="small" />
+                    ) : (
+                      <Icon name="image" size={18} color={COLORS.white} />
+                    )}
+                  </View>
+                  <Text style={addTransactionStyles.receiptCardText}>Gallery</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* --- Bulk Import Quick Action --- */}
+            <View style={addTransactionStyles.bulkSection}>
+              <Text style={addTransactionStyles.labelSmall}>BULK IMPORT (EXCEL/TEXT)</Text>
+              <TouchableOpacity
+                style={addTransactionStyles.bulkCard}
+                onPress={() => setIsImportModalVisible(true)}
+              >
+                <View style={[addTransactionStyles.iconCircle, { backgroundColor: COLORS.accent }]}>
+                  <Icon name="file-text" size={18} color={COLORS.white} />
+                </View>
+                <View style={addTransactionStyles.bulkCardInfo}>
+                  <Text style={addTransactionStyles.bulkCardTitle}>Paste from Excel/Notes</Text>
+                  <Text style={addTransactionStyles.bulkCardSub}>AI will auto-organize your messy data</Text>
+                </View>
+                <Icon name="chevron-right" size={20} color={COLORS.darkGray} />
+              </TouchableOpacity>
+            </View>
+
+            {/* --- Session History --- */}
+            {sessionItems.length > 0 && (
+              <View style={addTransactionStyles.sessionHistory}>
+                <View style={addTransactionStyles.historyHeader}>
+                  <Text style={addTransactionStyles.historyTitle}>RECENTLY ADDED</Text>
+                  <View style={addTransactionStyles.itemCount}>
+                    <Text style={addTransactionStyles.itemCountText}>{sessionItems.length}</Text>
                   </View>
                 </View>
 
-                <View style={addTransactionStyles.buttonRow}>
-                  <TouchableOpacity
-                    style={addTransactionStyles.addMoreButton}
-                    onPress={handleAddMore}
-                  >
-                    <Icon name="plus-circle" size={18} color={COLORS.white} />
-                    <Text style={addTransactionStyles.addMoreText}>Add Another</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={addTransactionStyles.finishButton}
-                    onPress={onBack}
-                  >
-                    <Text style={addTransactionStyles.finishText}>I'm Done</Text>
-                  </TouchableOpacity>
-                </View>
+                {sessionItems.map((item, index) => (
+                  <View key={index} style={addTransactionStyles.historyItem}>
+                    <View style={addTransactionStyles.itemDot} />
+                    <Text style={addTransactionStyles.itemName}>{item.name}</Text>
+                    <Text style={addTransactionStyles.itemAmount}>- RM {item.amount.toFixed(2)}</Text>
+                  </View>
+                ))}
               </View>
             )}
-          </View>
+          </ScrollView>
 
-          {/* --- Receipt Quick Actions --- */}
-          <View style={addTransactionStyles.receiptSection}>
-            <Text style={addTransactionStyles.labelSmall}>USE A RECEIPT (BETA)</Text>
+          {/* --- Bulk Import Modal --- */}
+          <Modal
+            visible={isImportModalVisible}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => setIsImportModalVisible(false)}
+          >
+            <View style={addTransactionStyles.modalOverlay}>
+              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
+                  <View style={addTransactionStyles.modalContent}>
+                    <View style={addTransactionStyles.modalHeader}>
+                      <Text style={addTransactionStyles.modalTitle}>Bulk Import</Text>
+                      <TouchableOpacity onPress={() => setIsImportModalVisible(false)}>
+                        <Icon name="x" size={24} color={COLORS.accent} />
+                      </TouchableOpacity>
+                    </View>
 
-            <View style={addTransactionStyles.receiptRow}>
-              <TouchableOpacity
-                style={[
-                  addTransactionStyles.receiptCard,
-                  isProcessingImage && { opacity: 0.6 }
-                ]}
-                onPress={() => handlePickImage(true)}
-                disabled={isProcessingImage}
-              >
-                <View style={[addTransactionStyles.iconCircle, { backgroundColor: COLORS.primary }]}>
-                  {isProcessingImage ? (
-                    <ActivityIndicator color={COLORS.white} size="small" />
-                  ) : (
-                    <Icon name="camera" size={18} color={COLORS.white} />
-                  )}
-                </View>
-                <Text style={addTransactionStyles.receiptCardText}>Scan</Text>
-              </TouchableOpacity>
+                    <TextInput
+                      style={addTransactionStyles.bulkInput}
+                      multiline
+                      placeholder="Paste your transaction history here (e.g. from Excel, Notes, or WhatsApp)..."
+                      placeholderTextColor={COLORS.darkGray}
+                      value={bulkTextInput}
+                      onChangeText={setBulkTextInput}
+                    />
 
-              <TouchableOpacity
-                style={[
-                  addTransactionStyles.receiptCard,
-                  isProcessingImage && { opacity: 0.6 }
-                ]}
-                onPress={() => handlePickImage(false)}
-                disabled={isProcessingImage}
-              >
-                <View style={[addTransactionStyles.iconCircle, { backgroundColor: COLORS.secondary }]}>
-                  {isProcessingImage ? (
-                    <ActivityIndicator color={COLORS.white} size="small" />
-                  ) : (
-                    <Icon name="image" size={18} color={COLORS.white} />
-                  )}
-                </View>
-                <Text style={addTransactionStyles.receiptCardText}>Gallery</Text>
-              </TouchableOpacity>
+                    <View style={addTransactionStyles.importActions}>
+                      <TouchableOpacity
+                        style={[addTransactionStyles.importBtn, isImporting && { opacity: 0.7 }]}
+                        onPress={handleBulkImport}
+                        disabled={isImporting}
+                      >
+                        {isImporting ? (
+                          <ActivityIndicator color={COLORS.white} />
+                        ) : (
+                          <>
+                            <Text style={addTransactionStyles.importBtnText}>Process with AI</Text>
+                            <Icon name="zap" size={18} color={COLORS.white} />
+                          </>
+                        )}
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={addTransactionStyles.cancelBtn}
+                        onPress={() => setIsImportModalVisible(false)}
+                      >
+                        <Text style={addTransactionStyles.cancelBtnText}>Cancel</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </KeyboardAvoidingView>
+              </TouchableWithoutFeedback>
             </View>
-          </View>
-
-          {/* --- Bulk Import Quick Action --- */}
-          <View style={addTransactionStyles.bulkSection}>
-            <Text style={addTransactionStyles.labelSmall}>BULK IMPORT (EXCEL/TEXT)</Text>
-            <TouchableOpacity
-              style={addTransactionStyles.bulkCard}
-              onPress={() => setIsImportModalVisible(true)}
-            >
-              <View style={[addTransactionStyles.iconCircle, { backgroundColor: COLORS.accent }]}>
-                <Icon name="file-text" size={18} color={COLORS.white} />
-              </View>
-              <View style={addTransactionStyles.bulkCardInfo}>
-                <Text style={addTransactionStyles.bulkCardTitle}>Paste from Excel/Notes</Text>
-                <Text style={addTransactionStyles.bulkCardSub}>AI will auto-organize your messy data</Text>
-              </View>
-              <Icon name="chevron-right" size={20} color={COLORS.darkGray} />
-            </TouchableOpacity>
-          </View>
-
-          {/* --- Session History --- */}
-          {sessionItems.length > 0 && (
-            <View style={addTransactionStyles.sessionHistory}>
-              <View style={addTransactionStyles.historyHeader}>
-                <Text style={addTransactionStyles.historyTitle}>RECENTLY ADDED</Text>
-                <View style={addTransactionStyles.itemCount}>
-                  <Text style={addTransactionStyles.itemCountText}>{sessionItems.length}</Text>
-                </View>
-              </View>
-
-              {sessionItems.map((item, index) => (
-                <View key={index} style={addTransactionStyles.historyItem}>
-                  <View style={addTransactionStyles.itemDot} />
-                  <Text style={addTransactionStyles.itemName}>{item.name}</Text>
-                  <Text style={addTransactionStyles.itemAmount}>- RM {item.amount.toFixed(2)}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </ScrollView>
-
-        {/* --- Bulk Import Modal --- */}
-        <Modal
-          visible={isImportModalVisible}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setIsImportModalVisible(false)}
-        >
-          <View style={addTransactionStyles.modalOverlay}>
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
-              <View style={addTransactionStyles.modalContent}>
-                <View style={addTransactionStyles.modalHeader}>
-                  <Text style={addTransactionStyles.modalTitle}>Bulk Import</Text>
-                  <TouchableOpacity onPress={() => setIsImportModalVisible(false)}>
-                    <Icon name="x" size={24} color={COLORS.accent} />
-                  </TouchableOpacity>
-                </View>
-
-                <TextInput
-                  style={addTransactionStyles.bulkInput}
-                  multiline
-                  placeholder="Paste your transaction history here (e.g. from Excel, Notes, or WhatsApp)..."
-                  placeholderTextColor={COLORS.darkGray}
-                  value={bulkTextInput}
-                  onChangeText={setBulkTextInput}
-                />
-
-                <View style={addTransactionStyles.importActions}>
-                  <TouchableOpacity
-                    style={[addTransactionStyles.importBtn, isImporting && { opacity: 0.7 }]}
-                    onPress={handleBulkImport}
-                    disabled={isImporting}
-                  >
-                    {isImporting ? (
-                      <ActivityIndicator color={COLORS.white} />
-                    ) : (
-                      <>
-                        <Text style={addTransactionStyles.importBtnText}>Process with AI</Text>
-                        <Icon name="zap" size={18} color={COLORS.white} />
-                      </>
-                    )}
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={addTransactionStyles.cancelBtn}
-                    onPress={() => setIsImportModalVisible(false)}
-                  >
-                    <Text style={addTransactionStyles.cancelBtnText}>Cancel</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </KeyboardAvoidingView>
-          </View>
-        </Modal>
-      </View>
+          </Modal>
+        </View>
+      </TouchableWithoutFeedback>
     </View>
   );
 };

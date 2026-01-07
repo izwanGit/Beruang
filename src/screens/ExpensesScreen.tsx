@@ -115,7 +115,7 @@ export const ExpensesScreen = ({
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isSortModalVisible, setIsSortModalVisible] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  const [editAmount, setEditAmount] = useState('');
+  const [editAmountCents, setEditAmountCents] = useState(0);
   const [editDescription, setEditDescription] = useState('');
   const [editCategory, setEditCategory] = useState<'needs' | 'wants' | 'savings' | 'income'>('needs');
   const [editSubCategory, setEditSubCategory] = useState('');
@@ -297,6 +297,18 @@ export const ExpensesScreen = ({
     ]).start();
   };
 
+  // Format cents to currency display
+  const formatCentsToCurrency = (cents: number): string => {
+    if (cents === 0) return '';
+    return (cents / 100).toFixed(2);
+  };
+
+  const handleEditAmountChange = (text: string) => {
+    const numericOnly = text.replace(/[^0-9]/g, '');
+    const cents = parseInt(numericOnly, 10) || 0;
+    setEditAmountCents(Math.min(cents, 99999999));
+  };
+
   // --- EDIT MODAL ---
   const openEditModal = (transaction: Transaction) => {
     if (transaction.category === 'savings' && transaction.isCarriedOver) {
@@ -304,7 +316,7 @@ export const ExpensesScreen = ({
       return;
     }
     setEditingTransaction(transaction);
-    setEditAmount(transaction.amount.toString());
+    setEditAmountCents(Math.round(transaction.amount * 100));
     setEditDescription(transaction.name);
     const cat = transaction.category;
     if (cat === 'needs' || cat === 'wants' || cat === 'savings' || cat === 'income') {
@@ -464,8 +476,8 @@ export const ExpensesScreen = ({
 
   const handleSaveEdit = async () => {
     if (!editingTransaction || isSaving) return;
-    const amountNum = parseFloat(editAmount);
-    if (isNaN(amountNum) || amountNum <= 0) {
+    const amountNum = editAmountCents / 100;
+    if (amountNum <= 0) {
       Alert.alert('Invalid Amount', 'Please enter a valid positive number.');
       return;
     }
@@ -854,303 +866,307 @@ export const ExpensesScreen = ({
 
   return (
     <View style={expensesStyles.container}>
-      <View style={expensesStyles.safeAreaContent}>
-        <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-        <View style={[expensesStyles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>
-          <TouchableOpacity onPress={onBack} style={expensesStyles.headerButton}>
-            <Icon name="arrow-left" size={24} color={COLORS.accent} />
-          </TouchableOpacity>
-          <Text style={expensesStyles.headerTitle}>Expenses</Text>
-          <View style={{ width: 40 }} />
-        </View>
-        <ScrollView
-          contentContainerStyle={expensesStyles.scrollContainer}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[COLORS.accent]}
-              tintColor={COLORS.accent}
-            />
-          }
-        >
-          {/* Month Tabs */}
-          <View style={expensesStyles.monthTabs}>
-            {months.map((month, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  expensesStyles.monthTab,
-                  selectedMonth === month.value && expensesStyles.activeMonthTab,
-                ]}
-                onPress={() => setSelectedMonth(month.value)}
-              >
-                <Text
-                  style={[
-                    expensesStyles.monthText,
-                    selectedMonth === month.value && expensesStyles.activeMonthText,
-                  ]}
-                >
-                  {month.label}
-                </Text>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={{ flex: 1 }}>
+          <View style={expensesStyles.safeAreaContent}>
+            <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+            <View style={[expensesStyles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>
+              <TouchableOpacity onPress={onBack} style={expensesStyles.headerButton}>
+                <Icon name="arrow-left" size={24} color={COLORS.accent} />
               </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* --- DASHBOARD AREA --- */}
-          {activeTab === 'latest' ? (
-            /* CENTERED DONUT FOR LATEST */
-            <View style={expensesStyles.dashboardCard}>
-              <DonutChart
-                data={chartData}
-                total={totalForChart}
-                radius={85}
-                strokeWidth={22}
-                showCenterText={true}
-                centerLabel="THIS MONTH SPENDING"
-              />
-              {/* AI Button */}
-              <TouchableOpacity onPress={handleAskAI} style={expensesStyles.aiButtonSubtle}>
-                <MaterialCommunityIcon name="auto-fix" size={12} color="#666" style={{ marginRight: 4 }} />
-                <Text style={expensesStyles.aiButtonSubtleText}>Get Analysis</Text>
-              </TouchableOpacity>
+              <Text style={expensesStyles.headerTitle}>Expenses</Text>
+              <View style={{ width: 40 }} />
             </View>
-          ) : (
-            /* SIDE-BY-SIDE FOR NEEDS/WANTS */
-            <View style={expensesStyles.dashboardCard}>
-              <View style={expensesStyles.splitContent}>
-                <View style={expensesStyles.chartSide}>
+            <ScrollView
+              contentContainerStyle={expensesStyles.scrollContainer}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={[COLORS.accent]}
+                  tintColor={COLORS.accent}
+                />
+              }
+            >
+              {/* Month Tabs */}
+              <View style={expensesStyles.monthTabs}>
+                {months.map((month, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      expensesStyles.monthTab,
+                      selectedMonth === month.value && expensesStyles.activeMonthTab,
+                    ]}
+                    onPress={() => setSelectedMonth(month.value)}
+                  >
+                    <Text
+                      style={[
+                        expensesStyles.monthText,
+                        selectedMonth === month.value && expensesStyles.activeMonthText,
+                      ]}
+                    >
+                      {month.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* --- DASHBOARD AREA --- */}
+              {activeTab === 'latest' ? (
+                /* CENTERED DONUT FOR LATEST */
+                <View style={expensesStyles.dashboardCard}>
                   <DonutChart
-                    data={activeTab === 'needs' ? needsChartData : wantsChartData}
-                    total={activeTab === 'needs' ? needsForMonth : wantsForMonth}
-                    radius={70}
-                    strokeWidth={18}
+                    data={chartData}
+                    total={totalForChart}
+                    radius={85}
+                    strokeWidth={22}
                     showCenterText={true}
-                    centerLabel={activeTab === 'needs' ? 'NEEDS SPENT' : 'WANTS SPENT'}
+                    centerLabel="THIS MONTH SPENDING"
                   />
+                  {/* AI Button */}
+                  <TouchableOpacity onPress={handleAskAI} style={expensesStyles.aiButtonSubtle}>
+                    <MaterialCommunityIcon name="auto-fix" size={12} color="#666" style={{ marginRight: 4 }} />
+                    <Text style={expensesStyles.aiButtonSubtleText}>Get Analysis</Text>
+                  </TouchableOpacity>
                 </View>
-                <View style={expensesStyles.statsSide}>
-                  <Text style={[
-                    expensesStyles.statsLabel,
-                    { color: activeTab === 'needs' ? '#42a5f5' : '#ff7043' }
-                  ]}>
-                    {activeTab === 'needs' ? 'NEEDS' : 'WANTS'} BUDGET
-                  </Text>
-                  <Text style={expensesStyles.statsValue}>
-                    RM {(activeTab === 'needs' ? needsBudget : wantsBudget).toFixed(2)}
-                  </Text>
-                  <Text style={expensesStyles.statsValueSmall}>
-                    {activeTab === 'needs' ? '50%' : '30%'} of income
-                  </Text>
-                  <View style={expensesStyles.statsDivider} />
-                  {/* Dynamic label based on over/under budget */}
-                  {/* Dynamic label based on over/under budget */}
-                  {(activeTab === 'needs' ? !isNeedsOverBudget : !isWantsOverBudget) ? (
-                    <>
-                      <Text style={expensesStyles.statsLabel}>
-                        {(activeTab === 'wants' && wantsReceivedOverflow) || (activeTab === 'needs' && needsReceivedOverflow) ? "REMAINING (REDUCED)" : "REMAINING"}
+              ) : (
+                /* SIDE-BY-SIDE FOR NEEDS/WANTS */
+                <View style={expensesStyles.dashboardCard}>
+                  <View style={expensesStyles.splitContent}>
+                    <View style={expensesStyles.chartSide}>
+                      <DonutChart
+                        data={activeTab === 'needs' ? needsChartData : wantsChartData}
+                        total={activeTab === 'needs' ? needsForMonth : wantsForMonth}
+                        radius={70}
+                        strokeWidth={18}
+                        showCenterText={true}
+                        centerLabel={activeTab === 'needs' ? 'NEEDS SPENT' : 'WANTS SPENT'}
+                      />
+                    </View>
+                    <View style={expensesStyles.statsSide}>
+                      <Text style={[
+                        expensesStyles.statsLabel,
+                        { color: activeTab === 'needs' ? '#42a5f5' : '#ff7043' }
+                      ]}>
+                        {activeTab === 'needs' ? 'NEEDS' : 'WANTS'} BUDGET
                       </Text>
-                      <Text style={[expensesStyles.statsRemaining, { color: COLORS.success }]}>
-                        RM {(activeTab === 'needs'
-                          ? budget.needs.remaining
-                          : budget.wants.remaining).toFixed(2)}
+                      <Text style={expensesStyles.statsValue}>
+                        RM {(activeTab === 'needs' ? needsBudget : wantsBudget).toFixed(2)}
                       </Text>
-                      {activeTab === 'wants' && wantsReceivedOverflow && (
-                        <Text style={{ fontSize: 9, color: '#666', marginTop: 2 }}>
-                          ⚠️ Capacity reduced by Needs overflow
-                        </Text>
+                      <Text style={expensesStyles.statsValueSmall}>
+                        {activeTab === 'needs' ? '50%' : '30%'} of income
+                      </Text>
+                      <View style={expensesStyles.statsDivider} />
+                      {/* Dynamic label based on over/under budget */}
+                      {/* Dynamic label based on over/under budget */}
+                      {(activeTab === 'needs' ? !isNeedsOverBudget : !isWantsOverBudget) ? (
+                        <>
+                          <Text style={expensesStyles.statsLabel}>
+                            {(activeTab === 'wants' && wantsReceivedOverflow) || (activeTab === 'needs' && needsReceivedOverflow) ? "REMAINING (REDUCED)" : "REMAINING"}
+                          </Text>
+                          <Text style={[expensesStyles.statsRemaining, { color: COLORS.success }]}>
+                            RM {(activeTab === 'needs'
+                              ? budget.needs.remaining
+                              : budget.wants.remaining).toFixed(2)}
+                          </Text>
+                          {activeTab === 'wants' && wantsReceivedOverflow && (
+                            <Text style={{ fontSize: 9, color: '#666', marginTop: 2 }}>
+                              ⚠️ Capacity reduced by Needs overflow
+                            </Text>
+                          )}
+                          {activeTab === 'needs' && needsReceivedOverflow && (
+                            <Text style={{ fontSize: 9, color: '#666', marginTop: 2 }}>
+                              ⚠️ Capacity reduced by Wants overflow
+                            </Text>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={[expensesStyles.statsLabel, { color: COLORS.danger }]}>
+                              OVERFLOW ⚠️
+                            </Text>
+                          </View>
+                          <Text style={[expensesStyles.statsRemaining, { color: COLORS.danger }]}>
+                            RM {Math.abs(activeTab === 'needs'
+                              ? budget.needs.overflow
+                              : budget.wants.overflow).toFixed(2)}
+                          </Text>
+                          <Text style={{ fontSize: 10, color: '#666', marginTop: 2 }}>
+                            → Using {
+                              activeTab === 'needs'
+                                ? [budget.needs.overflowToWants > 0 ? 'Wants' : null, budget.needs.overflowToSavings > 0 ? 'Savings' : null].filter(Boolean).join(' & ')
+                                : [budget.wants.overflowToNeeds > 0 ? 'Needs' : null, budget.wants.overflowToSavings > 0 ? 'Savings' : null].filter(Boolean).join(' & ')
+                            } allocation
+                          </Text>
+                        </>
                       )}
-                      {activeTab === 'needs' && needsReceivedOverflow && (
-                        <Text style={{ fontSize: 9, color: '#666', marginTop: 2 }}>
-                          ⚠️ Capacity reduced by Wants overflow
-                        </Text>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={[expensesStyles.statsLabel, { color: COLORS.danger }]}>
-                          OVERFLOW ⚠️
+                    </View>
+                  </View>
+                  {/* Progress Bar */}
+                  <View style={expensesStyles.progressSection}>
+                    <View style={expensesStyles.progressLabels}>
+                      <Text style={expensesStyles.progressLabelSpent}>
+                        {Math.min(100, Math.round(((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) * 100))}% Spent
+                      </Text>
+                      <Text style={expensesStyles.progressLabelRemaining}>
+                        {Math.max(0, 100 - Math.round(((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) * 100))}% Left
+                      </Text>
+                    </View>
+                    <View style={expensesStyles.progressBarBg}>
+                      <View
+                        style={[
+                          expensesStyles.progressBarFill,
+                          {
+                            width: `${Math.min(100, ((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) * 100)}%`,
+                            backgroundColor: ((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) > 0.9 ? COLORS.danger : COLORS.primary
+                          }
+                        ]}
+                      />
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {/* Horizontal Scroll (Legend) - Clean Style */}
+              {totalForChart > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={expensesStyles.categoriesScroll}
+                  contentContainerStyle={{ paddingRight: 20 }}
+                >
+                  {Object.entries(subCategoryGroups).map(([sub, group]) => {
+                    const { icon } = categoryIcons[sub] || { icon: 'dots-horizontal' };
+                    const color = colorMap[sub] || categoryIcons[sub]?.color || COLORS.darkGray;
+                    const { amount } = group as { amount: number };
+
+                    return (
+                      <View key={sub} style={expensesStyles.legendChip}>
+                        <View style={[
+                          expensesStyles.legendIconCircle,
+                          { backgroundColor: color }
+                        ]}>
+                          <MaterialCommunityIcon name={icon} size={18} color={COLORS.white} />
+                        </View>
+                        <Text style={expensesStyles.legendName} numberOfLines={1}>{sub}</Text>
+                        <Text style={expensesStyles.legendAmount}>
+                          -RM {amount.toFixed(2)}
                         </Text>
                       </View>
-                      <Text style={[expensesStyles.statsRemaining, { color: COLORS.danger }]}>
-                        RM {Math.abs(activeTab === 'needs'
-                          ? budget.needs.overflow
-                          : budget.wants.overflow).toFixed(2)}
-                      </Text>
-                      <Text style={{ fontSize: 10, color: '#666', marginTop: 2 }}>
-                        → Using {
-                          activeTab === 'needs'
-                            ? [budget.needs.overflowToWants > 0 ? 'Wants' : null, budget.needs.overflowToSavings > 0 ? 'Savings' : null].filter(Boolean).join(' & ')
-                            : [budget.wants.overflowToNeeds > 0 ? 'Needs' : null, budget.wants.overflowToSavings > 0 ? 'Savings' : null].filter(Boolean).join(' & ')
-                        } allocation
-                      </Text>
-                    </>
-                  )}
-                </View>
-              </View>
-              {/* Progress Bar */}
-              <View style={expensesStyles.progressSection}>
-                <View style={expensesStyles.progressLabels}>
-                  <Text style={expensesStyles.progressLabelSpent}>
-                    {Math.min(100, Math.round(((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) * 100))}% Spent
-                  </Text>
-                  <Text style={expensesStyles.progressLabelRemaining}>
-                    {Math.max(0, 100 - Math.round(((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) * 100))}% Left
-                  </Text>
-                </View>
-                <View style={expensesStyles.progressBarBg}>
-                  <View
+                    );
+                  })}
+                </ScrollView>
+              )}
+
+              {/* Tabs: Latest, Needs, Wants */}
+              <View style={expensesStyles.tabContainer}>
+                <TouchableOpacity
+                  style={[
+                    expensesStyles.tab,
+                    activeTab === 'latest' && expensesStyles.activeTab,
+                  ]}
+                  onPress={() => switchTab('latest')}
+                >
+                  <Text
                     style={[
-                      expensesStyles.progressBarFill,
-                      {
-                        width: `${Math.min(100, ((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) * 100)}%`,
-                        backgroundColor: ((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) > 0.9 ? COLORS.danger : COLORS.primary
-                      }
+                      expensesStyles.tabText,
+                      activeTab === 'latest' && expensesStyles.activeTabText,
                     ]}
-                  />
-                </View>
+                  >
+                    Latest
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    expensesStyles.tab,
+                    activeTab === 'needs' && expensesStyles.activeTab,
+                  ]}
+                  onPress={() => switchTab('needs')}
+                >
+                  <Text
+                    style={[
+                      expensesStyles.tabText,
+                      activeTab === 'needs' && expensesStyles.activeTabText,
+                    ]}
+                  >
+                    Needs
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    expensesStyles.tab,
+                    activeTab === 'wants' && expensesStyles.activeTab,
+                  ]}
+                  onPress={() => switchTab('wants')}
+                >
+                  <Text
+                    style={[
+                      expensesStyles.tabText,
+                      activeTab === 'wants' && expensesStyles.activeTabText,
+                    ]}
+                  >
+                    Wants
+                  </Text>
+                </TouchableOpacity>
               </View>
-            </View>
-          )}
 
-          {/* Horizontal Scroll (Legend) - Clean Style */}
-          {totalForChart > 0 && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={expensesStyles.categoriesScroll}
-              contentContainerStyle={{ paddingRight: 20 }}
-            >
-              {Object.entries(subCategoryGroups).map(([sub, group]) => {
-                const { icon } = categoryIcons[sub] || { icon: 'dots-horizontal' };
-                const color = colorMap[sub] || categoryIcons[sub]?.color || COLORS.darkGray;
-                const { amount } = group as { amount: number };
-
-                return (
-                  <View key={sub} style={expensesStyles.legendChip}>
-                    <View style={[
-                      expensesStyles.legendIconCircle,
-                      { backgroundColor: color }
-                    ]}>
-                      <MaterialCommunityIcon name={icon} size={18} color={COLORS.white} />
-                    </View>
-                    <Text style={expensesStyles.legendName} numberOfLines={1}>{sub}</Text>
-                    <Text style={expensesStyles.legendAmount}>
-                      -RM {amount.toFixed(2)}
-                    </Text>
-                  </View>
-                );
-              })}
+              {/* Tab Content */}
+              {activeTab === 'latest' ? (
+                <View>
+                  {renderSearchSection()}
+                  {renderTransactionHeader()}
+                  {renderTransactionsList(latestTransactions)}
+                </View>
+              ) : activeTab === 'needs' ? (
+                <View>
+                  {renderSearchSection()}
+                  {renderTransactionHeader()}
+                  {renderTransactionsList(needsExpenses)}
+                </View>
+              ) : ( // activeTab === 'wants'
+                <View>
+                  {renderSearchSection()}
+                  {renderTransactionHeader()}
+                  {renderTransactionsList(wantsExpenses)}
+                </View>
+              )}
             </ScrollView>
-          )}
-
-          {/* Tabs: Latest, Needs, Wants */}
-          <View style={expensesStyles.tabContainer}>
-            <TouchableOpacity
-              style={[
-                expensesStyles.tab,
-                activeTab === 'latest' && expensesStyles.activeTab,
-              ]}
-              onPress={() => switchTab('latest')}
-            >
-              <Text
-                style={[
-                  expensesStyles.tabText,
-                  activeTab === 'latest' && expensesStyles.activeTabText,
-                ]}
-              >
-                Latest
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                expensesStyles.tab,
-                activeTab === 'needs' && expensesStyles.activeTab,
-              ]}
-              onPress={() => switchTab('needs')}
-            >
-              <Text
-                style={[
-                  expensesStyles.tabText,
-                  activeTab === 'needs' && expensesStyles.activeTabText,
-                ]}
-              >
-                Needs
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                expensesStyles.tab,
-                activeTab === 'wants' && expensesStyles.activeTab,
-              ]}
-              onPress={() => switchTab('wants')}
-            >
-              <Text
-                style={[
-                  expensesStyles.tabText,
-                  activeTab === 'wants' && expensesStyles.activeTabText,
-                ]}
-              >
-                Wants
-              </Text>
-            </TouchableOpacity>
           </View>
 
-          {/* Tab Content */}
-          {activeTab === 'latest' ? (
-            <View>
-              {renderSearchSection()}
-              {renderTransactionHeader()}
-              {renderTransactionsList(latestTransactions)}
-            </View>
-          ) : activeTab === 'needs' ? (
-            <View>
-              {renderSearchSection()}
-              {renderTransactionHeader()}
-              {renderTransactionsList(needsExpenses)}
-            </View>
-          ) : ( // activeTab === 'wants'
-            <View>
-              {renderSearchSection()}
-              {renderTransactionHeader()}
-              {renderTransactionsList(wantsExpenses)}
-            </View>
-          )}
-        </ScrollView>
-      </View>
+          {/* Bottom Nav */}
+          <View style={expensesStyles.bottomNavSafeArea}>
+            <View style={expensesStyles.bottomNav}>
+              <TouchableOpacity
+                style={expensesStyles.navItem}
+                onPress={() => onNavigate('Home')}
+              >
+                <Icon name="home" size={26} color={COLORS.darkGray} />
+                <Text style={expensesStyles.navText}>Home</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={expensesStyles.navItem}
+                onPress={() => onNavigate('Expenses')}
+              >
+                <Icon name="pie-chart" size={26} color={COLORS.accent} />
+                <Text style={expensesStyles.navTextActive}>Expenses</Text>
+              </TouchableOpacity>
 
-      {/* Bottom Nav */}
-      <View style={expensesStyles.bottomNavSafeArea}>
-        <View style={expensesStyles.bottomNav}>
-          <TouchableOpacity
-            style={expensesStyles.navItem}
-            onPress={() => onNavigate('Home')}
-          >
-            <Icon name="home" size={26} color={COLORS.darkGray} />
-            <Text style={expensesStyles.navText}>Home</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={expensesStyles.navItem}
-            onPress={() => onNavigate('Expenses')}
-          >
-            <Icon name="pie-chart" size={26} color={COLORS.accent} />
-            <Text style={expensesStyles.navTextActive}>Expenses</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={expensesStyles.navItem}
-            onPress={() => onNavigate('Chatbot')}
-          >
-            <Icon name="message-square" size={26} color={COLORS.darkGray} />
-            <Text style={expensesStyles.navText}>Chatbot</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={expensesStyles.navItem} onPress={() => onNavigate('Profile')}>
-            <Icon name="user" size={26} color={COLORS.darkGray} />
-            <Text style={expensesStyles.navText}>Profile</Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={expensesStyles.navItem}
+                onPress={() => onNavigate('Chatbot')}
+              >
+                <Icon name="message-square" size={26} color={COLORS.darkGray} />
+                <Text style={expensesStyles.navText}>Chatbot</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={expensesStyles.navItem} onPress={() => onNavigate('Profile')}>
+                <Icon name="user" size={26} color={COLORS.darkGray} />
+                <Text style={expensesStyles.navText}>Profile</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
 
       {/* --- EDIT MODAL --- */}
       <Modal
@@ -1164,111 +1180,113 @@ export const ExpensesScreen = ({
             <Animated.View style={[expensesStyles.backdrop, { opacity: fadeAnim }]} />
           </TouchableWithoutFeedback>
           <Animated.View style={[expensesStyles.modalContent, { transform: [{ translateY: slideAnim }] }]}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? -50 : 0}>
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <View style={expensesStyles.modalHeader}>
-                  <View style={expensesStyles.modalHandle} />
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
-                    <View>
-                      <Text style={expensesStyles.modalTitle}>Edit Transaction</Text>
-                      {editingTransaction && totals.txStatuses?.[editingTransaction.id]?.overflowSource && (
-                        <Text style={{ fontSize: 11, color: '#E53935', marginTop: 2 }}>
-                          ⚠️ Using {
-                            [
-                              totals.txStatuses[editingTransaction.id].usedNeeds > 0 ? `Needs (RM ${totals.txStatuses[editingTransaction.id].usedNeeds.toFixed(2)})` : null,
-                              totals.txStatuses[editingTransaction.id].usedWants > 0 ? `Wants (RM ${totals.txStatuses[editingTransaction.id].usedWants.toFixed(2)})` : null,
-                              totals.txStatuses[editingTransaction.id].usedSavings > 0 ? `Savings (RM ${totals.txStatuses[editingTransaction.id].usedSavings.toFixed(2)})` : null
-                            ].filter(Boolean).join(' & ')
-                          } allocation
-                        </Text>
-                      )}
-                    </View>
-                    <TouchableOpacity onPress={() => closeEditModal()} style={expensesStyles.closeButton} disabled={isSaving}>
-                      <Icon name="x" size={22} color={COLORS.darkGray} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-                <View style={expensesStyles.modalHero}>
-                  <Text style={expensesStyles.modalHeroLabel}>TOTAL AMOUNT</Text>
-                  <View style={expensesStyles.modalHeroAmountRow}>
-                    <Text style={expensesStyles.modalHeroCurrency}>RM</Text>
-                    <TextInput
-                      style={expensesStyles.modalHeroInput}
-                      value={editAmount}
-                      onChangeText={setEditAmount}
-                      keyboardType="numeric"
-                      placeholder="0.00"
-                      placeholderTextColor="rgba(255,255,255,0.4)"
-                      editable={!isSaving}
-                    />
-                  </View>
-                </View>
-
-                <View style={expensesStyles.formContainer}>
-                  <View style={expensesStyles.inputGroup}>
-                    <Text style={expensesStyles.inputLabel}>WHAT WAS THIS FOR?</Text>
-                    <TextInput
-                      style={expensesStyles.textInput}
-                      value={editDescription}
-                      onChangeText={setEditDescription}
-                      placeholder="e.g. Lunch"
-                      placeholderTextColor={COLORS.darkGray}
-                      editable={!isSaving}
-                    />
-                  </View>
-
-                  {editingTransaction?.type === 'expense' && (
-                    <View style={expensesStyles.inputGroup}>
-                      <Text style={expensesStyles.inputLabel}>SPENDING CATEGORY</Text>
-                      <View style={expensesStyles.segmentedControlPremium}>
-                        <TouchableOpacity
-                          style={[expensesStyles.segmentBtnP, editCategory === 'needs' && expensesStyles.segmentBtnActiveP]}
-                          onPress={() => setEditCategory('needs')}
-                          disabled={isSaving}
-                        >
-                          <Icon name="shield" size={16} color={editCategory === 'needs' ? COLORS.white : COLORS.darkGray} style={{ marginRight: 6 }} />
-                          <Text style={[expensesStyles.segmentTextP, editCategory === 'needs' && expensesStyles.segmentTextActiveP]}>Needs</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[expensesStyles.segmentBtnP, editCategory === 'wants' && expensesStyles.segmentBtnActiveP]}
-                          onPress={() => setEditCategory('wants')}
-                          disabled={isSaving}
-                        >
-                          <Icon name="heart" size={16} color={editCategory === 'wants' ? COLORS.white : COLORS.darkGray} style={{ marginRight: 6 }} />
-                          <Text style={[expensesStyles.segmentTextP, editCategory === 'wants' && expensesStyles.segmentTextActiveP]}>Wants</Text>
-                        </TouchableOpacity>
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? -50 : 0}>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <View style={expensesStyles.modalHeader}>
+                    <View style={expensesStyles.modalHandle} />
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+                      <View>
+                        <Text style={expensesStyles.modalTitle}>Edit Transaction</Text>
+                        {editingTransaction && totals.txStatuses?.[editingTransaction.id]?.overflowSource && (
+                          <Text style={{ fontSize: 11, color: '#E53935', marginTop: 2 }}>
+                            ⚠️ Using {
+                              [
+                                totals.txStatuses[editingTransaction.id].usedNeeds > 0 ? `Needs (RM ${totals.txStatuses[editingTransaction.id].usedNeeds.toFixed(2)})` : null,
+                                totals.txStatuses[editingTransaction.id].usedWants > 0 ? `Wants (RM ${totals.txStatuses[editingTransaction.id].usedWants.toFixed(2)})` : null,
+                                totals.txStatuses[editingTransaction.id].usedSavings > 0 ? `Savings (RM ${totals.txStatuses[editingTransaction.id].usedSavings.toFixed(2)})` : null
+                              ].filter(Boolean).join(' & ')
+                            } allocation
+                          </Text>
+                        )}
                       </View>
+                      <TouchableOpacity onPress={() => closeEditModal()} style={expensesStyles.closeButton} disabled={isSaving}>
+                        <Icon name="x" size={22} color={COLORS.darkGray} />
+                      </TouchableOpacity>
                     </View>
-                  )}
-                  {editingTransaction?.type === 'expense' && (
+                  </View>
+                  <View style={expensesStyles.modalHero}>
+                    <Text style={expensesStyles.modalHeroLabel}>TOTAL AMOUNT</Text>
+                    <View style={expensesStyles.modalHeroAmountRow}>
+                      <Text style={expensesStyles.modalHeroCurrency}>RM</Text>
+                      <TextInput
+                        style={expensesStyles.modalHeroInput}
+                        value={formatCentsToCurrency(editAmountCents)}
+                        onChangeText={handleEditAmountChange}
+                        keyboardType="number-pad"
+                        placeholder="0.00"
+                        placeholderTextColor="rgba(255,255,255,0.4)"
+                        editable={!isSaving}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={expensesStyles.formContainer}>
                     <View style={expensesStyles.inputGroup}>
-                      <Text style={expensesStyles.inputLabel}>SUBCATEGORY</Text>
-                      {renderSubCategorySelector()}
+                      <Text style={expensesStyles.inputLabel}>WHAT WAS THIS FOR?</Text>
+                      <TextInput
+                        style={expensesStyles.textInput}
+                        value={editDescription}
+                        onChangeText={setEditDescription}
+                        placeholder="e.g. Lunch"
+                        placeholderTextColor={COLORS.darkGray}
+                        editable={!isSaving}
+                      />
                     </View>
-                  )}
-                </View>
-              </ScrollView>
-              <View style={expensesStyles.actionButtons}>
-                <TouchableOpacity style={expensesStyles.deleteButton} onPress={handleDelete} disabled={isSaving} activeOpacity={isSaving ? 1 : 0.7}>
-                  {isSaving ? <ActivityIndicator color={COLORS.danger} /> : <Icon name="trash-2" size={20} color={COLORS.danger} />}
-                </TouchableOpacity>
 
-                {editingTransaction?.isAllocated && (
-                  <TouchableOpacity
-                    style={expensesStyles.reallocateInlineButton}
-                    onPress={handleOpenReallocate}
-                    disabled={isSaving}
-                  >
-                    <MaterialCommunityIcon name="refresh" size={18} color={COLORS.primary} />
-                    <Text style={expensesStyles.reallocateInlineButtonText}>Reallocate</Text>
+                    {editingTransaction?.type === 'expense' && (
+                      <View style={expensesStyles.inputGroup}>
+                        <Text style={expensesStyles.inputLabel}>SPENDING CATEGORY</Text>
+                        <View style={expensesStyles.segmentedControlPremium}>
+                          <TouchableOpacity
+                            style={[expensesStyles.segmentBtnP, editCategory === 'needs' && expensesStyles.segmentBtnActiveP]}
+                            onPress={() => setEditCategory('needs')}
+                            disabled={isSaving}
+                          >
+                            <Icon name="shield" size={16} color={editCategory === 'needs' ? COLORS.white : COLORS.darkGray} style={{ marginRight: 6 }} />
+                            <Text style={[expensesStyles.segmentTextP, editCategory === 'needs' && expensesStyles.segmentTextActiveP]}>Needs</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[expensesStyles.segmentBtnP, editCategory === 'wants' && expensesStyles.segmentBtnActiveP]}
+                            onPress={() => setEditCategory('wants')}
+                            disabled={isSaving}
+                          >
+                            <Icon name="heart" size={16} color={editCategory === 'wants' ? COLORS.white : COLORS.darkGray} style={{ marginRight: 6 }} />
+                            <Text style={[expensesStyles.segmentTextP, editCategory === 'wants' && expensesStyles.segmentTextActiveP]}>Wants</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+                    {editingTransaction?.type === 'expense' && (
+                      <View style={expensesStyles.inputGroup}>
+                        <Text style={expensesStyles.inputLabel}>SUBCATEGORY</Text>
+                        {renderSubCategorySelector()}
+                      </View>
+                    )}
+                  </View>
+                </ScrollView>
+                <View style={expensesStyles.actionButtons}>
+                  <TouchableOpacity style={expensesStyles.deleteButton} onPress={handleDelete} disabled={isSaving} activeOpacity={isSaving ? 1 : 0.7}>
+                    {isSaving ? <ActivityIndicator color={COLORS.danger} /> : <Icon name="trash-2" size={20} color={COLORS.danger} />}
                   </TouchableOpacity>
-                )}
 
-                <TouchableOpacity style={[expensesStyles.saveButton, isSaving && { opacity: 0.7 }]} onPress={handleSaveEdit} disabled={isSaving}>
-                  <Text style={expensesStyles.saveButtonText}>{isSaving ? 'Saving...' : 'Save Changes'}</Text>
-                </TouchableOpacity>
-              </View>
-            </KeyboardAvoidingView>
+                  {editingTransaction?.isAllocated && (
+                    <TouchableOpacity
+                      style={expensesStyles.reallocateInlineButton}
+                      onPress={handleOpenReallocate}
+                      disabled={isSaving}
+                    >
+                      <MaterialCommunityIcon name="refresh" size={18} color={COLORS.primary} />
+                      <Text style={expensesStyles.reallocateInlineButtonText}>Reallocate</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity style={[expensesStyles.saveButton, isSaving && { opacity: 0.7 }]} onPress={handleSaveEdit} disabled={isSaving}>
+                    <Text style={expensesStyles.saveButtonText}>{isSaving ? 'Saving...' : 'Save Changes'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </KeyboardAvoidingView>
+            </TouchableWithoutFeedback>
           </Animated.View>
         </View>
       </Modal>

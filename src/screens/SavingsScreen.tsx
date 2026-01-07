@@ -12,6 +12,8 @@ import {
   Modal,
   TextInput,
   RefreshControl,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
@@ -49,11 +51,17 @@ const SaveModal: React.FC<SaveModalProps> = ({
   remainingToSave20Percent,
   remainingToSaveLeftover,
 }) => {
-  const [amount, setAmount] = useState('');
+  const [amountCents, setAmountCents] = useState(0);
   const [saveType, setSaveType] = useState<'20_percent' | 'leftover'>('20_percent');
   const [error, setError] = useState('');
   const [currentMaxAmount, setCurrentMaxAmount] = useState(0);
   const [balanceLabel, setBalanceLabel] = useState('');
+
+  // Format cents to currency display
+  const formatCentsToCurrency = (cents: number): string => {
+    if (cents === 0) return '';
+    return (cents / 100).toFixed(2);
+  };
 
   useEffect(() => {
     if (visible) {
@@ -82,38 +90,35 @@ const SaveModal: React.FC<SaveModalProps> = ({
       const finalAmount = Math.max(0, maxAmount);
       setCurrentMaxAmount(finalAmount);
       setBalanceLabel(label);
-      setAmount(finalAmount > 0 ? finalAmount.toFixed(2) : '');
+
+      // Initialize with finalAmount converted to cents
+      setAmountCents(Math.round(finalAmount * 100));
       setError('');
     }
   }, [visible, monthlyBalance, remainingToSave20Percent, remainingToSaveLeftover, hasLeftoverGoal]);
 
   const handleSetAmount = (text: string) => {
-    const num = parseFloat(text);
-    if (text === '') {
-      setAmount('');
-      setError('');
-      return;
-    }
-    if (isNaN(num)) {
-      setAmount(text);
-      return;
-    }
-    if (num > currentMaxAmount) {
-      setError(`Amount cannot exceed available balance of RM ${currentMaxAmount.toFixed(2)}`);
+    const numericOnly = text.replace(/[^0-9]/g, '');
+    const cents = parseInt(numericOnly, 10) || 0;
+    const maxCents = Math.round(currentMaxAmount * 100);
+
+    if (cents > maxCents) {
+      setError(`Amount cannot exceed RM ${currentMaxAmount.toFixed(2)}`);
+      setAmountCents(Math.min(cents, 99999999));
     } else {
       setError('');
+      setAmountCents(cents);
     }
-    setAmount(text);
   };
 
   const handleSubmit = () => {
-    const numAmount = parseFloat(amount);
-    if (isNaN(numAmount) || numAmount <= 0) {
+    const numAmount = amountCents / 100;
+    if (numAmount <= 0) {
       setError('Please enter a valid positive amount.');
       return;
     }
-    if (numAmount > currentMaxAmount) {
-      setError(`Amount cannot exceed available balance of RM ${currentMaxAmount.toFixed(2)}`);
+    if (numAmount > currentMaxAmount + 0.001) { // Adding small epsilon for float comparison
+      setError(`Amount cannot exceed RM ${currentMaxAmount.toFixed(2)}`);
       return;
     }
     onSubmit(numAmount, saveType);
@@ -121,7 +126,7 @@ const SaveModal: React.FC<SaveModalProps> = ({
   };
 
   const handleClose = () => {
-    setAmount('');
+    setAmountCents(0);
     setError('');
     setSaveType('20_percent');
     setCurrentMaxAmount(0);
@@ -138,67 +143,69 @@ const SaveModal: React.FC<SaveModalProps> = ({
   return (
     <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={handleClose}>
       <View style={modalStyles.overlay}>
-        <View style={modalStyles.container}>
-          <Text style={modalStyles.title}>Add to Savings</Text>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={modalStyles.container}>
+            <Text style={modalStyles.title}>Add to Savings</Text>
 
-          <Text style={modalStyles.label}>Amount to Save</Text>
-          <TextInput
-            style={modalStyles.input}
-            placeholder="RM 0.00"
-            placeholderTextColor={COLORS.darkGray + '80'}
-            keyboardType="numeric"
-            value={amount}
-            onChangeText={handleSetAmount}
-          />
-          <Text style={modalStyles.balanceInfo}>
-            {balanceLabel} <Text style={{ color: COLORS.accent }}>RM {currentMaxAmount.toFixed(2)}</Text>
-          </Text>
+            <Text style={modalStyles.label}>Amount to Save</Text>
+            <TextInput
+              style={modalStyles.input}
+              placeholder="RM 0.00"
+              placeholderTextColor={COLORS.darkGray + '80'}
+              keyboardType="number-pad"
+              value={formatCentsToCurrency(amountCents)}
+              onChangeText={handleSetAmount}
+            />
+            <Text style={modalStyles.balanceInfo}>
+              {balanceLabel} <Text style={{ color: COLORS.accent }}>RM {currentMaxAmount.toFixed(2)}</Text>
+            </Text>
 
-          <Text style={modalStyles.label}>Save Towards</Text>
-          <View style={modalStyles.toggleContainer}>
-            <TouchableOpacity
-              style={[
-                modalStyles.toggleButton,
-                saveType === '20_percent' && modalStyles.toggleActive,
-              ]}
-              onPress={() => setSaveType('20_percent')}
-            >
-              <Text style={[
-                modalStyles.toggleText,
-                saveType === '20_percent' && modalStyles.toggleTextActive
-              ]}>
-                20% Goal
-              </Text>
-            </TouchableOpacity>
-            {hasLeftoverGoal && (
+            <Text style={modalStyles.label}>Save Towards</Text>
+            <View style={modalStyles.toggleContainer}>
               <TouchableOpacity
                 style={[
                   modalStyles.toggleButton,
-                  saveType === 'leftover' && modalStyles.toggleActive,
+                  saveType === '20_percent' && modalStyles.toggleActive,
                 ]}
-                onPress={() => setSaveType('leftover')}
+                onPress={() => setSaveType('20_percent')}
               >
                 <Text style={[
                   modalStyles.toggleText,
-                  saveType === 'leftover' && modalStyles.toggleTextActive
+                  saveType === '20_percent' && modalStyles.toggleTextActive
                 ]}>
-                  Leftover
+                  20% Goal
                 </Text>
               </TouchableOpacity>
-            )}
-          </View>
+              {hasLeftoverGoal && (
+                <TouchableOpacity
+                  style={[
+                    modalStyles.toggleButton,
+                    saveType === 'leftover' && modalStyles.toggleActive,
+                  ]}
+                  onPress={() => setSaveType('leftover')}
+                >
+                  <Text style={[
+                    modalStyles.toggleText,
+                    saveType === 'leftover' && modalStyles.toggleTextActive
+                  ]}>
+                    Leftover
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
-          {error ? <Text style={modalStyles.errorText}>{error}</Text> : null}
+            {error ? <Text style={modalStyles.errorText}>{error}</Text> : null}
 
-          <View style={modalStyles.buttonRow}>
-            <TouchableOpacity style={[modalStyles.button, modalStyles.cancelButton]} onPress={handleClose}>
-              <Text style={modalStyles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[modalStyles.button, modalStyles.confirmButton]} onPress={handleSubmit}>
-              <Text style={modalStyles.buttonText}>Confirm</Text>
-            </TouchableOpacity>
+            <View style={modalStyles.buttonRow}>
+              <TouchableOpacity style={[modalStyles.button, modalStyles.cancelButton]} onPress={handleClose}>
+                <Text style={modalStyles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[modalStyles.button, modalStyles.confirmButton]} onPress={handleSubmit}>
+                <Text style={modalStyles.buttonText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </View>
     </Modal>
   );
@@ -265,68 +272,70 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({
   return (
     <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={handleClose}>
       <View style={modalStyles.overlay}>
-        <View style={modalStyles.container}>
-          <Text style={modalStyles.title}>Withdraw</Text>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={modalStyles.container}>
+            <Text style={modalStyles.title}>Withdraw</Text>
 
-          <Text style={modalStyles.label}>Amount</Text>
-          <TextInput
-            style={modalStyles.input}
-            placeholder="0.00"
-            placeholderTextColor={COLORS.darkGray + '80'}
-            keyboardType="number-pad"
-            value={formatCentsToCurrency(amountCents)}
-            onChangeText={handleAmountChange}
-          />
-          <Text style={modalStyles.balanceInfo}>
-            Available: <Text style={{ color: COLORS.accent }}>RM {totalSaved.toFixed(2)}</Text>
-          </Text>
+            <Text style={modalStyles.label}>Amount</Text>
+            <TextInput
+              style={modalStyles.input}
+              placeholder="0.00"
+              placeholderTextColor={COLORS.darkGray + '80'}
+              keyboardType="number-pad"
+              value={formatCentsToCurrency(amountCents)}
+              onChangeText={handleAmountChange}
+            />
+            <Text style={modalStyles.balanceInfo}>
+              Available: <Text style={{ color: COLORS.accent }}>RM {totalSaved.toFixed(2)}</Text>
+            </Text>
 
-          {error ? <Text style={modalStyles.errorText}>{error}</Text> : null}
+            {error ? <Text style={modalStyles.errorText}>{error}</Text> : null}
 
-          <Text style={modalStyles.label}>Method</Text>
+            <Text style={modalStyles.label}>Method</Text>
 
-          <TouchableOpacity
-            style={[modalStyles.optionButton, { backgroundColor: COLORS.info }]}
-            onPress={() => handleSubmit('budget')}
-            activeOpacity={0.8}
-          >
-            <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 12, marginRight: 14 }}>
-              <Icon name="arrow-right-circle" size={20} color={COLORS.white} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={modalStyles.optionTitle}>Move to Budget</Text>
-              <Text style={modalStyles.optionSubtitle}>Add to this month's spending pool</Text>
-            </View>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[modalStyles.optionButton, { backgroundColor: COLORS.info }]}
+              onPress={() => handleSubmit('budget')}
+              activeOpacity={0.8}
+            >
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 12, marginRight: 14 }}>
+                <Icon name="arrow-right-circle" size={20} color={COLORS.white} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={modalStyles.optionTitle}>Move to Budget</Text>
+                <Text style={modalStyles.optionSubtitle}>Add to this month's spending pool</Text>
+              </View>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[modalStyles.optionButton, { backgroundColor: COLORS.accent }]}
-            onPress={() => handleSubmit('emergency')}
-            activeOpacity={0.8}
-          >
-            <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 12, marginRight: 14 }}>
-              <Icon name="alert-triangle" size={20} color={COLORS.white} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={modalStyles.optionTitle}>Direct Withdraw</Text>
-              <Text style={modalStyles.optionSubtitle}>Withdraw as cash (bypasses budget)</Text>
-            </View>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[modalStyles.optionButton, { backgroundColor: COLORS.accent }]}
+              onPress={() => handleSubmit('emergency')}
+              activeOpacity={0.8}
+            >
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 12, marginRight: 14 }}>
+                <Icon name="alert-triangle" size={20} color={COLORS.white} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={modalStyles.optionTitle}>Direct Withdraw</Text>
+                <Text style={modalStyles.optionSubtitle}>Withdraw as cash (bypasses budget)</Text>
+              </View>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={{
-              marginTop: 16,
-              paddingVertical: 16,
-              borderRadius: 20,
-              backgroundColor: '#F8F9FA',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            onPress={handleClose}
-          >
-            <Text style={{ color: '#665A48', fontWeight: '800', fontSize: 15 }}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              style={{
+                marginTop: 16,
+                paddingVertical: 16,
+                borderRadius: 20,
+                backgroundColor: '#F8F9FA',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              onPress={handleClose}
+            >
+              <Text style={{ color: '#665A48', fontWeight: '800', fontSize: 15 }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableWithoutFeedback>
       </View>
     </Modal>
   );
@@ -563,7 +572,7 @@ export const SavingsScreen = ({
               </Text>
               {remainingToSaveTotal > 0 && monthlyBalance > 0 && (
                 <View style={styles.saveBadge}>
-                  <Text style={styles.saveBadgeText}>+ RM {monthlyBalance.toFixed(0)}</Text>
+                  <Text style={styles.saveBadgeText}>+ RM {Math.min(monthlyBalance, remainingToSaveTotal).toFixed(2)}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -588,7 +597,7 @@ export const SavingsScreen = ({
                     <Icon name="trending-up" size={18} color={COLORS.accent} />
                   </View>
                   <Text style={styles.statLabel}>Income</Text>
-                  <Text style={styles.statValue}>RM {monthlyIncome.toFixed(0)}</Text>
+                  <Text style={styles.statValue}>RM {monthlyIncome.toFixed(2)}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
@@ -596,7 +605,7 @@ export const SavingsScreen = ({
                     <Icon name="target" size={18} color={COLORS.info} />
                   </View>
                   <Text style={styles.statLabel}>Target</Text>
-                  <Text style={styles.statValue}>RM {(targetSavings20Percent + (hasLeftoverGoal ? derivedTarget : 0)).toFixed(0)}</Text>
+                  <Text style={styles.statValue}>RM {(targetSavings20Percent + (hasLeftoverGoal ? derivedTarget : 0)).toFixed(2)}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
@@ -604,7 +613,7 @@ export const SavingsScreen = ({
                     <Icon name="check-circle" size={18} color={COLORS.success} />
                   </View>
                   <Text style={styles.statLabel}>Saved</Text>
-                  <Text style={[styles.statValue, { color: COLORS.success }]}>RM {totalMonthlySaved.toFixed(0)}</Text>
+                  <Text style={[styles.statValue, { color: COLORS.success }]}>RM {totalMonthlySaved.toFixed(2)}</Text>
                 </View>
               </View>
 
@@ -638,11 +647,11 @@ export const SavingsScreen = ({
                   <Text style={styles.progressStatus}>Overall Mission Progress</Text>
                   <View style={styles.missionGoalRow}>
                     <Text style={styles.missionGoalLabel}>Saved so far:</Text>
-                    <Text style={styles.missionGoalValue}>RM {totalMonthlySaved.toFixed(0)}</Text>
+                    <Text style={styles.missionGoalValue}>RM {totalMonthlySaved.toFixed(2)}</Text>
                   </View>
                   <View style={styles.missionGoalRow}>
                     <Text style={styles.missionGoalLabel}>Total Mission:</Text>
-                    <Text style={styles.missionGoalValue}>RM {totalMissionTarget.toFixed(0)}</Text>
+                    <Text style={styles.missionGoalValue}>RM {totalMissionTarget.toFixed(2)}</Text>
                   </View>
 
                   <View style={styles.progressBarWrapper}>

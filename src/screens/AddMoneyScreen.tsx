@@ -9,6 +9,8 @@ import {
   ScrollView,
   StatusBar,
   ActivityIndicator,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
@@ -158,128 +160,130 @@ export const AddMoneyScreen = ({
   return (
     <View style={addMoneyStyles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-      <View style={addMoneyStyles.safeArea}>
-        {/* --- Standardized Header --- */}
-        <View style={[addMoneyStyles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>
-          <TouchableOpacity onPress={onBack} style={addMoneyStyles.headerButton}>
-            <Icon name="arrow-left" size={24} color={COLORS.accent} />
-          </TouchableOpacity>
-          <Text style={addMoneyStyles.headerTitle}>Add Money</Text>
-          <View style={{ width: 40 }} />
-        </View>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={addMoneyStyles.safeArea}>
+          {/* --- Standardized Header --- */}
+          <View style={[addMoneyStyles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>
+            <TouchableOpacity onPress={onBack} style={addMoneyStyles.headerButton}>
+              <Icon name="arrow-left" size={24} color={COLORS.accent} />
+            </TouchableOpacity>
+            <Text style={addMoneyStyles.headerTitle}>Add Money</Text>
+            <View style={{ width: 40 }} />
+          </View>
 
-        <ScrollView
-          contentContainerStyle={addMoneyStyles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* --- Input Card --- */}
-          <View style={addMoneyStyles.card}>
-            <View style={addMoneyStyles.cardHeader}>
-              <Icon name="trending-up" size={20} color={COLORS.secondary} />
-              <Text style={addMoneyStyles.cardTitle}>New Income</Text>
-            </View>
+          <ScrollView
+            contentContainerStyle={addMoneyStyles.scrollContainer}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* --- Input Card --- */}
+            <View style={addMoneyStyles.card}>
+              <View style={addMoneyStyles.cardHeader}>
+                <Icon name="trending-up" size={20} color={COLORS.secondary} />
+                <Text style={addMoneyStyles.cardTitle}>New Income</Text>
+              </View>
 
-            <View style={addMoneyStyles.inputGroup}>
-              <Text style={addMoneyStyles.label}>AMOUNT RECEIVED (RM)</Text>
-              <View style={addMoneyStyles.amountRow}>
+              <View style={addMoneyStyles.inputGroup}>
+                <Text style={addMoneyStyles.label}>AMOUNT RECEIVED (RM)</Text>
+                <View style={addMoneyStyles.amountRow}>
+                  <TextInput
+                    placeholder="0.00"
+                    placeholderTextColor={COLORS.darkGray + '80'}
+                    style={addMoneyStyles.amountInput}
+                    keyboardType="number-pad"
+                    value={formatCentsToCurrency(amountCents)}
+                    onChangeText={handleAmountChange}
+                    editable={!isLoading}
+                    autoFocus
+                  />
+                </View>
+              </View>
+
+              <View style={addMoneyStyles.inputGroup}>
+                <View style={addMoneyStyles.labelWithIcon}>
+                  <Icon name="tag" size={14} color={COLORS.primary} />
+                  <Text style={addMoneyStyles.label}>DESCRIPTION</Text>
+                </View>
                 <TextInput
-                  placeholder="0.00"
+                  placeholder="e.g., Salary, Freelance Job"
                   placeholderTextColor={COLORS.darkGray + '80'}
-                  style={addMoneyStyles.amountInput}
-                  keyboardType="number-pad"
-                  value={formatCentsToCurrency(amountCents)}
-                  onChangeText={handleAmountChange}
+                  style={addMoneyStyles.textInput}
+                  value={description}
+                  onChangeText={setDescription}
                   editable={!isLoading}
-                  autoFocus
                 />
               </View>
-            </View>
 
-            <View style={addMoneyStyles.inputGroup}>
-              <View style={addMoneyStyles.labelWithIcon}>
-                <Icon name="tag" size={14} color={COLORS.primary} />
-                <Text style={addMoneyStyles.label}>DESCRIPTION</Text>
-              </View>
-              <TextInput
-                placeholder="e.g., Salary, Freelance Job"
-                placeholderTextColor={COLORS.darkGray + '80'}
-                style={addMoneyStyles.textInput}
-                value={description}
-                onChangeText={setDescription}
-                editable={!isLoading}
-              />
-            </View>
-
-            <View style={addMoneyStyles.inputGroup}>
-              <View style={addMoneyStyles.labelWithIcon}>
-                <Icon name="clock" size={14} color={COLORS.secondary} />
-                <Text style={addMoneyStyles.label}>PLAN FOR FUTURE MONTHS?</Text>
-              </View>
-
-              {/* --- iOS Style Month Picker --- */}
-              <View style={addMoneyStyles.monthPickerContainer}>
-                <TouchableOpacity
-                  onPress={decrementMonth}
-                  style={addMoneyStyles.pickerButton}
-                  activeOpacity={0.7}
-                >
-                  <Icon name="minus" size={20} color={COLORS.accent} />
-                </TouchableOpacity>
-
-                <View style={addMoneyStyles.pickerDisplay}>
-                  <TextInput
-                    style={addMoneyStyles.pickerValue}
-                    keyboardType="numeric"
-                    value={allocationMonths.toString()}
-                    onChangeText={handleManualMonthChange}
-                    editable={!isLoading}
-                  />
-                  <Text style={addMoneyStyles.pickerLabel}>MONTHS</Text>
+              <View style={addMoneyStyles.inputGroup}>
+                <View style={addMoneyStyles.labelWithIcon}>
+                  <Icon name="clock" size={14} color={COLORS.secondary} />
+                  <Text style={addMoneyStyles.label}>PLAN FOR FUTURE MONTHS?</Text>
                 </View>
 
+                {/* --- iOS Style Month Picker --- */}
+                <View style={addMoneyStyles.monthPickerContainer}>
+                  <TouchableOpacity
+                    onPress={decrementMonth}
+                    style={addMoneyStyles.pickerButton}
+                    activeOpacity={0.7}
+                  >
+                    <Icon name="minus" size={20} color={COLORS.accent} />
+                  </TouchableOpacity>
+
+                  <View style={addMoneyStyles.pickerDisplay}>
+                    <TextInput
+                      style={addMoneyStyles.pickerValue}
+                      keyboardType="numeric"
+                      value={allocationMonths.toString()}
+                      onChangeText={handleManualMonthChange}
+                      editable={!isLoading}
+                    />
+                    <Text style={addMoneyStyles.pickerLabel}>MONTHS</Text>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={incrementMonth}
+                    style={addMoneyStyles.pickerButton}
+                    activeOpacity={0.7}
+                  >
+                    <Icon name="plus" size={20} color={COLORS.accent} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={addMoneyStyles.actionRow}>
                 <TouchableOpacity
-                  onPress={incrementMonth}
-                  style={addMoneyStyles.pickerButton}
-                  activeOpacity={0.7}
+                  style={[
+                    addMoneyStyles.confirmButton,
+                    isLoading && { opacity: 0.6 },
+                  ]}
+                  onPress={handleSaveIncome}
+                  disabled={isLoading}
                 >
-                  <Icon name="plus" size={20} color={COLORS.accent} />
+                  {isLoading ? (
+                    <ActivityIndicator color={COLORS.white} size="small" />
+                  ) : (
+                    <>
+                      <Text style={addMoneyStyles.confirmButtonText}>Confirm Income</Text>
+                      <Icon name="check" size={14} color={COLORS.white} style={{ marginLeft: 8 }} />
+                    </>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
 
-            <View style={addMoneyStyles.actionRow}>
-              <TouchableOpacity
-                style={[
-                  addMoneyStyles.confirmButton,
-                  isLoading && { opacity: 0.6 },
-                ]}
-                onPress={handleSaveIncome}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color={COLORS.white} size="small" />
-                ) : (
-                  <>
-                    <Text style={addMoneyStyles.confirmButtonText}>Confirm Income</Text>
-                    <Icon name="check" size={14} color={COLORS.white} style={{ marginLeft: 8 }} />
-                  </>
-                )}
-              </TouchableOpacity>
+            {/* --- Pro Tip --- */}
+            <View style={addMoneyStyles.proTipCard}>
+              <View style={addMoneyStyles.proTipHeader}>
+                <Icon name="zap" size={14} color={COLORS.yellow} />
+                <Text style={addMoneyStyles.proTipTitle}>Beruang Advice</Text>
+              </View>
+              <Text style={addMoneyStyles.proTipText}>
+                Splitting income keeps your daily budget balanced and accurate across months.
+              </Text>
             </View>
-          </View>
-
-          {/* --- Pro Tip --- */}
-          <View style={addMoneyStyles.proTipCard}>
-            <View style={addMoneyStyles.proTipHeader}>
-              <Icon name="zap" size={14} color={COLORS.yellow} />
-              <Text style={addMoneyStyles.proTipTitle}>Beruang Advice</Text>
-            </View>
-            <Text style={addMoneyStyles.proTipText}>
-              Splitting income keeps your daily budget balanced and accurate across months.
-            </Text>
-          </View>
-        </ScrollView>
-      </View>
+          </ScrollView>
+        </View>
+      </TouchableWithoutFeedback>
     </View>
   );
 };

@@ -114,77 +114,79 @@ export const ReallocateModal: React.FC<ReallocateModalProps> = ({
                     { transform: [{ translateY: slideAnim }] },
                 ]}
             >
-                <View style={styles.modalContent}>
-                    {/* Header */}
-                    <View style={styles.header}>
-                        <View>
-                            <Text style={styles.title}>Reallocate Series</Text>
-                            <Text style={styles.subtitle}>Redistribute remaining amount</Text>
-                        </View>
-                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                            <Icon name="x" size={20} color={COLORS.darkGray} />
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Info Card */}
-                    <View style={styles.infoCard}>
-                        <Text style={styles.infoLabel}>TOTAL REMAINING POOL</Text>
-                        <Text style={styles.infoValue}>RM {(totalRemaining || 0).toFixed(2)}</Text>
-                    </View>
-
-                    {/* Month Input */}
-                    <View style={styles.inputSection}>
-                        <Text style={styles.sectionLabel}>SPREAD OVER HOW MANY MONTHS?</Text>
-
-                        <View style={styles.monthPickerContainer}>
-                            <TouchableOpacity onPress={handleDecrement} style={styles.pickerButton}>
-                                <Icon name="minus" size={24} color={COLORS.accent} />
-                            </TouchableOpacity>
-
-                            <View style={styles.pickerDisplay}>
-                                <TextInput
-                                    style={styles.pickerInput}
-                                    value={months}
-                                    onChangeText={(t) => setMonths(t.replace(/[^0-9]/g, ''))}
-                                    keyboardType="numeric"
-                                    maxLength={2}
-                                />
-                                <Text style={styles.pickerUnit}>{numMonths === 1 ? 'Month' : 'Months'}</Text>
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+                    <View style={styles.modalContent}>
+                        {/* Header */}
+                        <View style={styles.header}>
+                            <View>
+                                <Text style={styles.title}>Reallocate Series</Text>
+                                <Text style={styles.subtitle}>Redistribute remaining amount</Text>
                             </View>
+                            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                                <Icon name="x" size={20} color={COLORS.darkGray} />
+                            </TouchableOpacity>
+                        </View>
 
-                            <TouchableOpacity onPress={handleIncrement} style={styles.pickerButton}>
-                                <Icon name="plus" size={24} color={COLORS.accent} />
+                        {/* Info Card */}
+                        <View style={styles.infoCard}>
+                            <Text style={styles.infoLabel}>TOTAL REMAINING POOL</Text>
+                            <Text style={styles.infoValue}>RM {(totalRemaining || 0).toFixed(2)}</Text>
+                        </View>
+
+                        {/* Month Input */}
+                        <View style={styles.inputSection}>
+                            <Text style={styles.sectionLabel}>SPREAD OVER HOW MANY MONTHS?</Text>
+
+                            <View style={styles.monthPickerContainer}>
+                                <TouchableOpacity onPress={handleDecrement} style={styles.pickerButton}>
+                                    <Icon name="minus" size={24} color={COLORS.accent} />
+                                </TouchableOpacity>
+
+                                <View style={styles.pickerDisplay}>
+                                    <TextInput
+                                        style={styles.pickerInput}
+                                        value={months}
+                                        onChangeText={(t) => setMonths(t.replace(/[^0-9]/g, ''))}
+                                        keyboardType="numeric"
+                                        maxLength={2}
+                                    />
+                                    <Text style={styles.pickerUnit}>{numMonths === 1 ? 'Month' : 'Months'}</Text>
+                                </View>
+
+                                <TouchableOpacity onPress={handleIncrement} style={styles.pickerButton}>
+                                    <Icon name="plus" size={24} color={COLORS.accent} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {/* Preview */}
+                        <View style={styles.previewContainer}>
+                            <Text style={styles.previewLabel}>NEW ALLOCATION PER MONTH</Text>
+                            <Text style={styles.previewAmount}>~ RM {amountPerMonth.toFixed(2)}</Text>
+                            <Text style={styles.previewNote}>
+                                Starting from the first affected month
+                            </Text>
+                        </View>
+
+                        {/* Action Button */}
+                        <View style={styles.footer}>
+                            <TouchableOpacity
+                                style={[styles.saveButton, isLoading && styles.disabledButton]}
+                                onPress={handleSave}
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                    <ActivityIndicator color="#FFF" />
+                                ) : (
+                                    <>
+                                        <Icon name="refresh-cw" size={18} color="#FFF" style={{ marginRight: 8 }} />
+                                        <Text style={styles.saveButtonText}>Confirm Reallocation</Text>
+                                    </>
+                                )}
                             </TouchableOpacity>
                         </View>
                     </View>
-
-                    {/* Preview */}
-                    <View style={styles.previewContainer}>
-                        <Text style={styles.previewLabel}>NEW ALLOCATION PER MONTH</Text>
-                        <Text style={styles.previewAmount}>~ RM {amountPerMonth.toFixed(2)}</Text>
-                        <Text style={styles.previewNote}>
-                            Starting from the first affected month
-                        </Text>
-                    </View>
-
-                    {/* Action Button */}
-                    <View style={styles.footer}>
-                        <TouchableOpacity
-                            style={[styles.saveButton, isLoading && styles.disabledButton]}
-                            onPress={handleSave}
-                            disabled={isLoading}
-                        >
-                            {isLoading ? (
-                                <ActivityIndicator color="#FFF" />
-                            ) : (
-                                <>
-                                    <Icon name="refresh-cw" size={18} color="#FFF" style={{ marginRight: 8 }} />
-                                    <Text style={styles.saveButtonText}>Confirm Reallocation</Text>
-                                </>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-                </View>
+                </TouchableWithoutFeedback>
             </Animated.View>
         </Modal>
     );
