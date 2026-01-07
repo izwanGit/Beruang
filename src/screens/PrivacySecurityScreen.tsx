@@ -205,7 +205,7 @@ export const PrivacySecurityScreen = ({ onBack }: PrivacySecurityScreenProps) =>
                         <Icon name="arrow-left" size={24} color={COLORS.accent} />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Privacy & Security</Text>
-                    <View style={styles.headerButton} />
+                    <View style={{ width: 40 }} />
                 </View>
             </View>
 
