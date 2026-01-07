@@ -65,6 +65,7 @@ import { ExpensesScreen } from './src/screens/ExpensesScreen';
 import { SavingsScreen } from './src/screens/SavingsScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
+import { PrivacySecurityScreen } from './src/screens/PrivacySecurityScreen';
 import { BudgetExceededModal } from './src/components/BudgetExceededModal';
 
 // Import finance utilities
@@ -95,6 +96,7 @@ export type RootStackParamList = {
   Savings: undefined;
   Profile: undefined;
   Notifications: undefined;
+  PrivacySecurity: undefined;
 };
 
 type AppNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -1519,6 +1521,13 @@ export default function App() {
                 <Stack.Screen name="Notifications">
                   {({ navigation }) => (
                     <NotificationsScreen
+                      onBack={() => navigation.goBack()}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="PrivacySecurity">
+                  {({ navigation }) => (
+                    <PrivacySecurityScreen
                       onBack={() => navigation.goBack()}
                     />
                   )}

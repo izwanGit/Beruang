@@ -296,7 +296,7 @@ export const ProfileScreen = ({
                 icon="lock"
                 text="Privacy Settings"
                 description="Manage your data and security"
-                onPress={() => Alert.alert('Coming Soon', 'Security settings are under development.')}
+                onPress={() => onNavigate('PrivacySecurity')}
               />
               <SettingRow
                 icon="bell"

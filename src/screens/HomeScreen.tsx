@@ -42,7 +42,8 @@ export type Screen =
   | 'AddMoney'
   | 'SavedAdvice'
   | 'Profile'
-  | 'Notifications';
+  | 'Notifications'
+  | 'PrivacySecurity';
 
 type HomeScreenProps = {
   onNavigate: (screen: Screen) => void;
