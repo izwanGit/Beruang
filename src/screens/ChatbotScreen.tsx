@@ -169,37 +169,41 @@ const ChatHistoryDropdown = ({
           </View>
 
           <ScrollView style={dropdownStyles.scroll} showsVerticalScrollIndicator={true}>
-            {(sessions || []).length === 0 ? (
+            {(sessions || [])
+              .filter(s => s.title !== 'New Chat')
+              .length === 0 ? (
               <View style={dropdownStyles.emptyHistory}>
                 <Text style={dropdownStyles.emptyHistoryText}>No past conversations</Text>
               </View>
             ) : (
-              (sessions || []).map((item, index) => (
-                <Swipeable
-                  key={item.id}
-                  ref={(ref) => { swipeableRefs.current[item.id] = ref; }}
-                  renderRightActions={(progress, dragX) =>
-                    renderRightActions(progress, dragX, item.id, item.title)
-                  }
-                  overshootRight={false}
-                >
-                  <TouchableOpacity
-                    style={[
-                      dropdownStyles.chatItem,
-                      index === (sessions || []).length - 1 && { borderBottomWidth: 0 }
-                    ]}
-                    onPress={() => onSetChat(item.id)}
+              (sessions || [])
+                .filter(s => s.title !== 'New Chat')
+                .map((item, index) => (
+                  <Swipeable
+                    key={item.id}
+                    ref={(ref) => { swipeableRefs.current[item.id] = ref; }}
+                    renderRightActions={(progress, dragX) =>
+                      renderRightActions(progress, dragX, item.id, item.title)
+                    }
+                    overshootRight={false}
                   >
-                    <View style={dropdownStyles.chatIconCircle}>
-                      <Icon name="message-circle" size={14} color={COLORS.accent} />
-                    </View>
-                    <Text style={dropdownStyles.chatTitle} numberOfLines={1}>
-                      {item.title}
-                    </Text>
-                    <Icon name="chevron-right" size={16} color="#DDD" />
-                  </TouchableOpacity>
-                </Swipeable>
-              ))
+                    <TouchableOpacity
+                      style={[
+                        dropdownStyles.chatItem,
+                        index === (sessions || []).length - 1 && { borderBottomWidth: 0 }
+                      ]}
+                      onPress={() => onSetChat(item.id)}
+                    >
+                      <View style={dropdownStyles.chatIconCircle}>
+                        <Icon name="message-circle" size={14} color={COLORS.accent} />
+                      </View>
+                      <Text style={dropdownStyles.chatTitle} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <Icon name="chevron-right" size={16} color="#DDD" />
+                    </TouchableOpacity>
+                  </Swipeable>
+                ))
             )}
           </ScrollView>
 
@@ -554,8 +558,12 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
           <TouchableOpacity onPress={onBack} style={styles.headerButton}>
             <Icon name="arrow-left" size={24} color={COLORS.accent} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleTitleTripleTap} activeOpacity={0.7}>
-            <Text style={styles.headerTitle} numberOfLines={1}>
+          <TouchableOpacity
+            onPress={handleTitleTripleTap}
+            activeOpacity={0.7}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', marginHorizontal: 8 }}
+          >
+            <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
               {chatTitle}
             </Text>
           </TouchableOpacity>
@@ -809,10 +817,12 @@ const markdownStyles = StyleSheet.create({
     color: COLORS.accent,
     fontSize: 15,
     lineHeight: 24,
+    marginVertical: 0,
+    paddingVertical: 0,
   },
   paragraph: {
     marginTop: 0,
-    marginBottom: 10,
+    marginBottom: 0, // Removing bottom margin to fix "too big" bubbles
     flexWrap: 'wrap',
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -864,8 +874,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? 40 : 16, // Fix "too upward"
+    paddingBottom: 12,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
@@ -885,14 +896,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    flex: 1,
-    textAlign: 'center',
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '700',
     color: COLORS.accent,
-    marginHorizontal: 10,
+    textAlign: 'center',
     letterSpacing: 0.5,
   },
+
   chatBackground: {
     flex: 1,
     backgroundColor: COLORS.white,
@@ -919,6 +929,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 2,
+    flexShrink: 1, // Ensure bubble shrinks to fit content
   },
   userBubble: {
     backgroundColor: COLORS.accent,
@@ -1158,9 +1169,10 @@ const dropdownStyles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
