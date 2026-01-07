@@ -7,10 +7,10 @@
 
 *A hybrid-intelligence financial ecosystem built with Deep Learning, SSE Streaming, and Behavioral Gamification.*
 
-[![Version](https://img.shields.io/badge/version-12.0-blue.svg?style=for-the-badge)](https://github.com/izwanGit/Beruang)
-[![Transaction AI](https://img.shields.io/badge/Transaction%20AI-99.6%25-brightgreen.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-ai-backend)
-[![Intent AI](https://img.shields.io/badge/Intent%20AI-99.57%25-green.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-server)
-[![Dataset](https://img.shields.io/badge/Dataset-307k-orange.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-ai-backend)
+[![Version](https://img.shields.io/badge/version-1.0-blue.svg?style=for-the-badge)](https://github.com/izwanGit/Beruang)
+[![Transaction AI](https://img.shields.io/badge/Transaction%20AI-99.61%25-brightgreen.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-ai-backend)
+[![Intent AI](https://img.shields.io/badge/Intent%20AI-99.62%25-green.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-server)
+[![Dataset](https://img.shields.io/badge/Dataset-334k-orange.svg?style=for-the-badge)](https://github.com/izwanGit/beruang-ai-backend)
 
 **Final Year Project • UiTM Shah Alam • Intelligent Systems Engineering**
 
@@ -137,16 +137,14 @@ The core categorization engine uses a **Bi-directional Long Short-Term Memory** 
 
 | Metric | Category Model | Subcategory Model |
 |:-------|:---------------|:------------------|
-| Accuracy | 99.88% | 99.04% |
-| Precision | 99.87% | 98.96% |
-| Recall | 99.88% | 99.02% |
-| F1-Score | 99.87% | 98.99% |
-| Inference Time | 8.4ms | 8.4ms |
+| Accuracy | 99.61% | 99.61% |
+| F1-Score | 99.61% | 99.61% |
+| Inference Time | 8.2ms | 8.2ms |
 | Model Size | 2.1MB | 2.1MB |
 
-### The 307,122-Row Logic-Proof Dataset
+### The 334,422-Row Logic-Proof Dataset
 
-The dataset was engineered using a **Set-Theoretical Constraint System** to ensure zero logic collisions between categories. This combined dataset includes 220,152 transaction samples and 86,970 intent samples.
+The dataset was engineered using a **Set-Theoretical Constraint System** to ensure zero logic collisions between categories. This combined dataset includes 220,152 transaction samples and 114,270 intent samples.
 
 #### Dataset Class Distribution
 
@@ -154,7 +152,7 @@ The dataset was engineered using a **Set-Theoretical Constraint System** to ensu
 |:---------|:-------------|:-----------|:------------|
 | **Needs** | 120,220 | 54.6% | Essential survival expenses |
 | **Wants** | 99,932 | 45.4% | Discretionary lifestyle spending |
-| **Total** | **220,152** | **100%** | Massive V2 Upgrade |
+| **Total** | **220,152** | **100%** | **Beruang v1.0 Standard** |
 
 #### Token Logic Pillars (Exclusive Sets)
 
@@ -198,8 +196,8 @@ The chatbot uses a dedicated **56-class intent detection model** to route querie
 
 | Intent Model Performance | Score |
 |:-------|:------|
-| Accuracy | 99.57% |
-| Macro F1 | 99.51% |
+| Accuracy | 99.62% |
+| Macro F1 | 99.46% |
 | OOD Detection | 98.7% |
 
 ### Vision OCR (Gemini 1.5 Flash)
@@ -645,11 +643,12 @@ The AI is trained to understand Malaysian financial terminology:
 
 | Version | Feature | Status |
 |:--------|:--------|:-------|
-| v13.0 | Bank SMS auto-detection | Planned |
-| v13.1 | Shared household budgets | Planned |
-| v14.0 | Predictive overspending alerts | Research |
-| v14.1 | Zakat calculator integration | Research |
-| v15.0 | Voice transaction logging | Concept |
+| v1.0 | Initial Release: AI Budgeting & Hybrid Chat | **Current** |
+| v1.1 | Bank SMS auto-detection | Planned |
+| v1.2 | Shared household budgets | Planned |
+| v2.0 | Predictive overspending alerts | Research |
+| v2.1 | Zakat calculator integration | Research |
+| v3.0 | Voice transaction logging | Concept |
 
 ---
 
