@@ -211,6 +211,7 @@ export const AddTransactionScreen = ({
         }
       }
 
+
       const newTransaction = {
         icon: 'shopping-cart',
         name: description,

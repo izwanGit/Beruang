@@ -42,9 +42,27 @@ export const BudgetExceededModal: React.FC<BudgetExceededModalProps> = ({
                         <View style={styles.iconCircle}>
                             <Icon name="alert-triangle" size={32} color={COLORS.white} />
                         </View>
-                        <Text style={styles.title}>Budget Exhausted!</Text>
+                        <Text style={styles.title}>
+                            {savingsUnsaved < 0 ? 'CRITICAL: Savings Dipped!' : 'Budget Overflow!'}
+                        </Text>
+
+                        {/* PAIN UI: Penalty Logic Display */}
+                        {savingsUnsaved < 0 ? (
+                            <View style={styles.penaltyContainer}>
+                                <Text style={styles.penaltyText}>-500 XP</Text>
+                                <Text style={styles.penaltySubtext}>LEVEL LOST!</Text>
+                            </View>
+                        ) : (
+                            <View style={styles.penaltyContainer}>
+                                <Text style={styles.penaltyText}>-250 XP</Text>
+                                <Text style={styles.penaltySubtext}>Budget Discipline Penalty</Text>
+                            </View>
+                        )}
+
                         <Text style={styles.subtitle}>
-                            You've used up all your available budget for this month.
+                            {savingsUnsaved < 0
+                                ? "You have engaged in deficit spending. Your savings are being drained to cover this transaction."
+                                : "You are overspending in this category. Funds are being diverted from other budgets."}
                         </Text>
                     </View>
 
@@ -137,8 +155,28 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 14,
         color: COLORS.darkGray,
-        textAlign: 'center',
         lineHeight: 20,
+    },
+    penaltyContainer: {
+        backgroundColor: '#FFE5E5',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        marginVertical: 10,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#FF0000',
+    },
+    penaltyText: {
+        fontSize: 28, // HUGE
+        fontWeight: '900',
+        color: '#D32F2F', // Deep Red
+    },
+    penaltySubtext: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#D32F2F',
+        textTransform: 'uppercase',
     },
     statusCard: {
         backgroundColor: COLORS.lightGray,

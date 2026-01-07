@@ -716,42 +716,82 @@ export default function App() {
 
       await batch.commit();
 
-      // --- XP LOGIC ---
-      let xpToAdd = 0;
-      if (Array.isArray(transaction)) {
-        transaction.forEach(t => {
-          xpToAdd += XP_REWARDS.TRANSACTION_LOGGED;
-          if (t.category === 'savings') {
-            xpToAdd += Math.floor(Math.abs(t.amount) * XP_REWARDS.SAVING_RM1);
+      // --- AGGRESSIVE GAMIFICATION LOGIC (INCREMENTAL DETECTION) ---
+      // Calculate state BEFORE this transaction
+      const beforeStats = calculateMonthlyStats(transactions, userProfile);
+      const beforeSavingsUsed = beforeStats.budget.savings20.usedByOverflow;
+      const beforeNeedsOverflow = beforeStats.budget.needs.overflow;
+      const beforeWantsOverflow = beforeStats.budget.wants.overflow;
+
+      // Calculate state AFTER this transaction
+      const tempTransactions = [...transactions, ...(Array.isArray(transaction) ? transaction : [transaction])];
+      const afterStats = calculateMonthlyStats(tempTransactions, userProfile);
+      const afterSavingsUsed = afterStats.budget.savings20.usedByOverflow;
+      const afterNeedsOverflow = afterStats.budget.needs.overflow;
+      const afterWantsOverflow = afterStats.budget.wants.overflow;
+
+      // Calculate the DELTA (change caused by THIS transaction)
+      const deltaSavingsUsed = afterSavingsUsed - beforeSavingsUsed;
+      const deltaNeedsOverflow = afterNeedsOverflow - beforeNeedsOverflow;
+      const deltaWantsOverflow = afterWantsOverflow - beforeWantsOverflow;
+
+      let xpChange = 0;
+      let penaltyType: 'savings' | 'overflow' | null = null;
+
+      // 1. CRITICAL: Did THIS transaction cause a NEW savings dip?
+      if (deltaSavingsUsed > 0) {
+        xpChange = XP_REWARDS.SAVINGS_DIP_PENALTY; // -500 XP
+        penaltyType = 'savings';
+      }
+      // 2. WARNING: Did THIS transaction cause a NEW category overflow?
+      else if (deltaNeedsOverflow > 0 || deltaWantsOverflow > 0) {
+        xpChange = XP_REWARDS.CATEGORY_OVERFLOW_PENALTY; // -250 XP
+        penaltyType = 'overflow';
+      }
+      // 3. REWARD: Good behavior - no new overflows
+      else {
+        // Standard reward calculation
+        if (Array.isArray(transaction)) {
+          transaction.forEach(t => {
+            xpChange += XP_REWARDS.TRANSACTION_LOGGED;
+            if (t.category === 'savings') {
+              xpChange += Math.floor(Math.abs(t.amount) * XP_REWARDS.SAVING_RM1);
+            }
+          });
+        } else {
+          xpChange += XP_REWARDS.TRANSACTION_LOGGED;
+          if (transaction.category === 'savings') {
+            xpChange += Math.floor(Math.abs(transaction.amount) * XP_REWARDS.SAVING_RM1);
           }
-        });
-      } else {
-        xpToAdd += XP_REWARDS.TRANSACTION_LOGGED;
-        if (transaction.category === 'savings') {
-          xpToAdd += Math.floor(Math.abs(transaction.amount) * XP_REWARDS.SAVING_RM1);
         }
       }
-      if (xpToAdd > 0) {
-        handleAwardXP(xpToAdd);
-      }
 
-      // --- POST-TRANSACTION OVERFLOW CHECK ---
-      // Check if this transaction caused budget overflow and notify user
-      const updatedStats = calculateMonthlyStats(transactions, userProfile);
-      const { budget, totals } = updatedStats;
-      const savingsUsedByOverflow = budget.savings20.usedByOverflow || 0;
-      const wantsReceivedOverflow = totals.wantsReceivedOverflow;
-      const needsReceivedOverflow = totals.needsReceivedOverflow;
+      // Apply XP Change (Positive or Negative)
+      handleAwardXP(xpChange);
 
+      // --- FEEDBACK & NOTIFICATIONS ---
       if (showMsg) {
-        if (savingsUsedByOverflow > 0) {
-          showMessage(`⚠️ Budget Overflow: RM ${savingsUsedByOverflow.toFixed(2)} used from Savings buffer`);
-        } else if (needsReceivedOverflow) {
-          showMessage(`⚠️ Wants overflow absorbed by Needs budget`);
-        } else if (wantsReceivedOverflow) {
-          showMessage(`⚠️ Needs overflow absorbed by Wants budget`);
+        if (penaltyType === 'savings') {
+          // Trigger CRITICAL Modal
+          setBudgetExceededInfo({
+            needsRemaining: afterStats.budget.needs.remaining,
+            wantsRemaining: afterStats.budget.wants.remaining,
+            savingsUnsaved: afterStats.budget.savings20.pending,
+            transactionAmount: Array.isArray(transaction) ? transaction.reduce((sum, t) => sum + t.amount, 0) : transaction.amount,
+          });
+          setShowBudgetExceededModal(true);
+        } else if (penaltyType === 'overflow') {
+          // Trigger WARNING Modal
+          setBudgetExceededInfo({
+            needsRemaining: afterStats.budget.needs.remaining,
+            wantsRemaining: afterStats.budget.wants.remaining,
+            savingsUnsaved: afterStats.budget.savings20.pending,
+            transactionAmount: Array.isArray(transaction) ? transaction.reduce((sum, t) => sum + t.amount, 0) : transaction.amount,
+          });
+          setShowBudgetExceededModal(true);
         } else {
-          showMessage('Transaction added.');
+          // Success
+          showMessage('Transaction added. +XP Gained!');
         }
       }
 

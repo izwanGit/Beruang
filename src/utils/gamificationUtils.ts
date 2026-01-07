@@ -55,5 +55,7 @@ export const XP_REWARDS = {
     SAVING_RM1: 2, // 2 XP per RM 1 saved
     CHAT_SESSION: 100,
     DAILY_CHECKIN: 20,
-    OVERSPENDING_PENALTY: -200, // Drastically decrease
+    OVERSPENDING_PENALTY: -200, // Legacy, kept for reference
+    CATEGORY_OVERFLOW_PENALTY: -250, // Half level loss (Needs <-> Wants)
+    SAVINGS_DIP_PENALTY: -500, // Full level loss (Touched Savings)
 };
