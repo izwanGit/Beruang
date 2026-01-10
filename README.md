@@ -218,7 +218,39 @@ Receipt scanning uses **multi-modal reasoning** to extract structured data from 
 
 ## 🏗️ System Architecture
 
-Beruang is built as a **decoupled microservices ecosystem** across three repositories.
+Beruang is built as a **decoupled microservices ecosystem** following the **Model-View-Controller (MVC)** architectural pattern across three repositories.
+
+### MVC Architecture Diagram
+
+<div align="center">
+<img src="assets/images/system_architecture_mvc.png" alt="Beruang MVC Architecture" width="700"/>
+</div>
+
+#### Layer Breakdown
+
+| Layer | Responsibility | Implementation |
+|:------|:---------------|:---------------|
+| **Presentation (View)** | User interface and interaction | React Native app with TypeScript |
+| **Business (Controller)** | Request handling, orchestration, business logic | Node.js server with Express |
+| **Data (Model)** | Data storage, retrieval, and AI inference | Firebase Firestore + TensorFlow.js |
+
+#### Component Mapping
+
+| Diagram Component | Code Location | Purpose |
+|:------------------|:--------------|:--------|
+| Authentication UI | `src/screens/LoginScreen.tsx` | User login/signup interface |
+| Dashboard & Visualization | `src/screens/HomeScreen.tsx` | 50/30/20 budget charts |
+| Data Entry Form | `src/screens/AddTransactionScreen.tsx` | Transaction logging |
+| Chatbot Interface | `src/screens/ChatbotScreen.tsx` | AI conversation UI |
+| API Gateway | `beruang-server/src/routes/api.js` | Request routing |
+| Chatbot Orchestrator | `beruang-server/src/controllers/chatController.js` | Multi-model AI coordination |
+| Business Logic Service | `beruang-server/src/services/finance/budgetService.js` | 50/30/20 calculations |
+| Grok (LLM) | `beruang-server/src/services/ai/llmService.js` | Contextual financial advice |
+| Gemini (Vision) | `beruang-server/src/services/ai/visionService.js` | Receipt OCR extraction |
+| Tavily API | `beruang-server/src/services/rag/tavilyService.js` | Web search for factual data |
+| TensorFlow Models | `beruang-server/src/services/ai/intentService.js` | Local intent classification |
+| Knowledge Base | `beruang-server/src/models/knowledgeBase.js` | Expert tips & DOSM statistics |
+| Firebase Firestore | Direct client SDK | User profiles, transactions, chat history |
 
 ### Repository Family
 
