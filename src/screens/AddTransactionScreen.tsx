@@ -219,15 +219,20 @@ export const AddTransactionScreen = ({
           return;
         }
 
-        if (skippedCount > 0) {
-          showMessage(`Imported ${importedCount} items! (${skippedCount} skipped - budget full)`);
-        } else {
-          showMessage(`Successfully imported ${importedCount} items!`);
-        }
-
         setIsImportModalVisible(false);
+        setIsImporting(false);
         setBulkTextInput('');
-        onBack();
+
+        // SUCCESS PATH REFACTOR: Wait for modal to finish closing before navigating
+        // This ensures the touch system is fully released.
+        setTimeout(() => {
+          onBack();
+          if (skippedCount > 0) {
+            showMessage(`Imported ${importedCount} items! (${skippedCount} skipped - budget full)`);
+          } else {
+            showMessage(`Successfully imported ${importedCount} items!`);
+          }
+        }, 500);
       } else {
         throw new Error('No transactions found');
       }
