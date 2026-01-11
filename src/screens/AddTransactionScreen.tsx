@@ -158,53 +158,62 @@ export const AddTransactionScreen = ({
 
       const data = await response.json();
 
+
       if (data.transactions && Array.isArray(data.transactions)) {
         showMessage('Categorizing with local AI...');
 
         let importedCount = 0;
-        let skippedCount = 0;
+        const totalAmount = data.transactions.reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+
+        console.log(`[BulkImport] Processing ${data.transactions.length} items, total: RM${totalAmount.toFixed(2)}`);
+        console.log(`[BulkImport] Current balance: RM${monthlyBalance.toFixed(2)}`);
+
+        // Warn if total exceeds balance but don't block (same as manual entry behavior)
+        if (totalAmount > monthlyBalance) {
+          console.log(`[BulkImport] ⚠️ Total (RM${totalAmount.toFixed(2)}) exceeds balance (RM${monthlyBalance.toFixed(2)})`);
+        }
 
         // Process each transaction through local TensorFlow (same as manual entry)
         for (const t of data.transactions) {
-          const result = await categorizeTransaction(t.name || 'Unknown');
+          try {
+            console.log(`[BulkImport] Categorizing: "${t.name}" - RM${t.amount}`);
+            const result = await categorizeTransaction(t.name || 'Unknown');
+            console.log(`[BulkImport] ✅ Categorized as: ${result.category} → ${result.subCategory}`);
 
-          // Check budget accommodation (same as manual entry)
-          if (canAccommodateBudget) {
-            const canProceed = canAccommodateBudget(t.amount, result.category as 'needs' | 'wants');
-            if (!canProceed) {
-              skippedCount++;
-              continue; // Skip this transaction if budget is full
-            }
+            // Add transaction - let onAddTransaction handle overflow/penalties
+            // This matches manual entry behavior where transactions CAN go through even if budget is tight
+            onAddTransaction({
+              icon: 'shopping-cart',
+              name: t.name,
+              date: t.date || new Date().toISOString().split('T')[0],
+              amount: t.amount,
+              type: 'expense',
+              category: result.category,
+              subCategory: result.subCategory,
+            });
+            importedCount++;
+          } catch (err) {
+            console.error(`[BulkImport] ❌ Failed to process "${t.name}":`, err);
           }
-
-          // Add transaction with category from local AI
-          onAddTransaction({
-            icon: 'shopping-cart',
-            name: t.name,
-            date: t.date || new Date().toISOString().split('T')[0],
-            amount: t.amount,
-            type: 'expense',
-            category: result.category,
-            subCategory: result.subCategory,
-          });
-          importedCount++;
         }
 
-        if (skippedCount > 0) {
-          showMessage(`Imported ${importedCount} items! (${skippedCount} skipped - budget full)`);
+        console.log(`[BulkImport] Import complete: ${importedCount}/${data.transactions.length} items`);
+
+        if (importedCount === 0) {
+          showMessage('No transactions could be imported. Check your balance.');
+          // Don't navigate away - let user see the error
         } else {
           showMessage(`Successfully imported ${importedCount} items!`);
+          setIsImportModalVisible(false);
+          setBulkTextInput('');
+          onBack();
         }
-
-        setIsImportModalVisible(false);
-        setBulkTextInput('');
-        onBack();
       } else {
         throw new Error('No transactions found');
       }
 
     } catch (error) {
-      console.error(error);
+      console.error('[BulkImport] ❌ Error:', error);
       showMessage('Failed to import data. Try being more specific.');
     } finally {
       setIsImporting(false);
