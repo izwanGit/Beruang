@@ -159,16 +159,43 @@ export const AddTransactionScreen = ({
       const data = await response.json();
 
       if (data.transactions && Array.isArray(data.transactions)) {
-        data.transactions.forEach((t: any) => {
-          onAddTransaction({
-            ...t,
-            date: t.date || new Date().toISOString().split('T')[0],
-            icon: 'shopping-cart',
-            type: 'expense'
-          });
-        });
+        showMessage('Categorizing with local AI...');
 
-        showMessage(`Successfully imported ${data.transactions.length} items!`);
+        let importedCount = 0;
+        let skippedCount = 0;
+
+        // Process each transaction through local TensorFlow (same as manual entry)
+        for (const t of data.transactions) {
+          const result = await categorizeTransaction(t.name || 'Unknown');
+
+          // Check budget accommodation (same as manual entry)
+          if (canAccommodateBudget) {
+            const canProceed = canAccommodateBudget(t.amount, result.category as 'needs' | 'wants');
+            if (!canProceed) {
+              skippedCount++;
+              continue; // Skip this transaction if budget is full
+            }
+          }
+
+          // Add transaction with category from local AI
+          onAddTransaction({
+            icon: 'shopping-cart',
+            name: t.name,
+            date: t.date || new Date().toISOString().split('T')[0],
+            amount: t.amount,
+            type: 'expense',
+            category: result.category,
+            subCategory: result.subCategory,
+          });
+          importedCount++;
+        }
+
+        if (skippedCount > 0) {
+          showMessage(`Imported ${importedCount} items! (${skippedCount} skipped - budget full)`);
+        } else {
+          showMessage(`Successfully imported ${importedCount} items!`);
+        }
+
         setIsImportModalVisible(false);
         setBulkTextInput('');
         onBack();
