@@ -168,13 +168,17 @@ export const AddTransactionScreen = ({
         const total = data.transactions.reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
 
         if (total > monthlyBalance) {
-          // Show exceed balance modal instead of importing
-          setExceedBalanceModal({
-            visible: true,
-            total: total,
-            itemCount: data.transactions.length,
-          });
+          // Close import modal first, then show exceed balance modal
+          setIsImportModalVisible(false);
           setIsImporting(false);
+          // Small delay to let import modal close before showing exceed modal
+          setTimeout(() => {
+            setExceedBalanceModal({
+              visible: true,
+              total: total,
+              itemCount: data.transactions.length,
+            });
+          }, 300);
           return;
         }
 
