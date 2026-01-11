@@ -576,63 +576,65 @@ export const AddTransactionScreen = ({
         </View>
       </Modal>
 
-      {/* --- Exceed Balance Modal --- MOVED OUTSIDE TouchableWithoutFeedback */}
-      <Modal
-        visible={exceedBalanceModal.visible}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 })}
-      >
-        <View style={addTransactionStyles.modalOverlay}>
-          <View style={addTransactionStyles.exceedModalContent}>
-            <View style={addTransactionStyles.exceedIconCircle}>
-              <Icon name="alert-triangle" size={32} color="#E74C3C" />
+      {/* --- Exceed Balance Modal --- Conditionally rendered to ensure full unmount */}
+      {exceedBalanceModal.visible && (
+        <Modal
+          visible={true}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 })}
+        >
+          <View style={addTransactionStyles.modalOverlay}>
+            <View style={addTransactionStyles.exceedModalContent}>
+              <View style={addTransactionStyles.exceedIconCircle}>
+                <Icon name="alert-triangle" size={32} color="#E74C3C" />
+              </View>
+              <Text style={addTransactionStyles.exceedTitle}>Insufficient Balance</Text>
+              <Text style={addTransactionStyles.exceedDesc}>
+                Your bulk import total exceeds your available balance.
+              </Text>
+
+              <View style={addTransactionStyles.exceedDetails}>
+                <View style={addTransactionStyles.exceedRow}>
+                  <Text style={addTransactionStyles.exceedLabel}>Items Found</Text>
+                  <Text style={addTransactionStyles.exceedValue}>{exceedBalanceModal.itemCount}</Text>
+                </View>
+                <View style={addTransactionStyles.exceedRow}>
+                  <Text style={addTransactionStyles.exceedLabel}>Total Amount</Text>
+                  <Text style={[addTransactionStyles.exceedValue, { color: '#E74C3C' }]}>
+                    RM {exceedBalanceModal.total.toFixed(2)}
+                  </Text>
+                </View>
+                <View style={[addTransactionStyles.exceedRow, { borderTopWidth: 1, borderTopColor: '#EEE', paddingTop: 12 }]}>
+                  <Text style={addTransactionStyles.exceedLabel}>Your Balance</Text>
+                  <Text style={addTransactionStyles.exceedValue}>RM {monthlyBalance.toFixed(2)}</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={addTransactionStyles.exceedBtn}
+                onPress={() => {
+                  setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 });
+                  setBulkTextInput('');
+                  if (onNavigateToAddMoney) onNavigateToAddMoney();
+                }}
+              >
+                <Icon name="plus-circle" size={18} color={COLORS.white} />
+                <Text style={addTransactionStyles.exceedBtnText}>Add Money First</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={addTransactionStyles.exceedCancelBtn}
+                onPress={() => {
+                  setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 });
+                }}
+              >
+                <Text style={addTransactionStyles.exceedCancelText}>Cancel Import</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={addTransactionStyles.exceedTitle}>Insufficient Balance</Text>
-            <Text style={addTransactionStyles.exceedDesc}>
-              Your bulk import total exceeds your available balance.
-            </Text>
-
-            <View style={addTransactionStyles.exceedDetails}>
-              <View style={addTransactionStyles.exceedRow}>
-                <Text style={addTransactionStyles.exceedLabel}>Items Found</Text>
-                <Text style={addTransactionStyles.exceedValue}>{exceedBalanceModal.itemCount}</Text>
-              </View>
-              <View style={addTransactionStyles.exceedRow}>
-                <Text style={addTransactionStyles.exceedLabel}>Total Amount</Text>
-                <Text style={[addTransactionStyles.exceedValue, { color: '#E74C3C' }]}>
-                  RM {exceedBalanceModal.total.toFixed(2)}
-                </Text>
-              </View>
-              <View style={[addTransactionStyles.exceedRow, { borderTopWidth: 1, borderTopColor: '#EEE', paddingTop: 12 }]}>
-                <Text style={addTransactionStyles.exceedLabel}>Your Balance</Text>
-                <Text style={addTransactionStyles.exceedValue}>RM {monthlyBalance.toFixed(2)}</Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={addTransactionStyles.exceedBtn}
-              onPress={() => {
-                setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 });
-                setBulkTextInput('');
-                if (onNavigateToAddMoney) onNavigateToAddMoney();
-              }}
-            >
-              <Icon name="plus-circle" size={18} color={COLORS.white} />
-              <Text style={addTransactionStyles.exceedBtnText}>Add Money First</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={addTransactionStyles.exceedCancelBtn}
-              onPress={() => {
-                setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 });
-              }}
-            >
-              <Text style={addTransactionStyles.exceedCancelText}>Cancel Import</Text>
-            </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      )}
     </View>
   );
 };
