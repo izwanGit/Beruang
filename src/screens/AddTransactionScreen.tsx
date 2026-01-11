@@ -158,7 +158,10 @@ export const AddTransactionScreen = ({
         body: JSON.stringify({ text: bulkTextInput })
       });
 
-      if (!response.ok) throw new Error('Backend error');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Backend error');
+      }
 
       const data = await response.json();
 
@@ -237,9 +240,15 @@ export const AddTransactionScreen = ({
         throw new Error('No transactions found');
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      showMessage('Failed to import data. Try being more specific.');
+      setIsImportModalVisible(false);
+      setIsImporting(false);
+
+      // Delay error message until modal finishes closing
+      setTimeout(() => {
+        showMessage(error.message || 'Failed to import data. Try being more specific.');
+      }, 500);
     } finally {
       setIsImporting(false);
     }
