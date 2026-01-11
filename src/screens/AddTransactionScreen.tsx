@@ -98,7 +98,6 @@ export const AddTransactionScreen = ({
 
   const processReceiptImage = async (base64Data: string) => {
     setIsProcessingImage(true);
-    showMessage('AI is reading your receipt...');
 
     try {
       const response = await fetch(SCAN_RECEIPT_URL, {
@@ -144,7 +143,6 @@ export const AddTransactionScreen = ({
 
     Keyboard.dismiss(); // Ensure keyboard is down before switching focus to progress/alerts
     setIsImporting(true);
-    showMessage('AI is parsing your data...');
 
     try {
       const response = await fetch(IMPORT_DATA_URL, {
@@ -191,7 +189,7 @@ export const AddTransactionScreen = ({
           return;
         }
 
-        showMessage('Categorizing with local AI...');
+
 
         let importedCount = 0;
         let skippedCount = 0;
