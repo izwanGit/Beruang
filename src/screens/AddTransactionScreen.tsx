@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
@@ -56,11 +57,6 @@ export const AddTransactionScreen = ({
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [bulkTextInput, setBulkTextInput] = useState('');
   const [isImporting, setIsImporting] = useState(false);
-  const [exceedBalanceModal, setExceedBalanceModal] = useState<{
-    visible: boolean;
-    total: number;
-    itemCount: number;
-  }>({ visible: false, total: 0, itemCount: 0 });
 
   // Format cents to currency display (e.g., 123 cents -> "1.23")
   // Show empty string when 0 so placeholder shows
@@ -168,16 +164,28 @@ export const AddTransactionScreen = ({
         const total = data.transactions.reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
 
         if (total > monthlyBalance) {
-          // Close import modal first, then show exceed balance modal
+          // Close import modal and use native Alert (no freeze issues)
           setIsImportModalVisible(false);
           setIsImporting(false);
-          // Small delay to let import modal close before showing exceed modal
+
           setTimeout(() => {
-            setExceedBalanceModal({
-              visible: true,
-              total: total,
-              itemCount: data.transactions.length,
-            });
+            Alert.alert(
+              'Insufficient Balance',
+              `Your bulk import (${data.transactions.length} items) totals RM ${total.toFixed(2)}, but your balance is only RM ${monthlyBalance.toFixed(2)}.`,
+              [
+                {
+                  text: 'Add Money',
+                  onPress: () => {
+                    setBulkTextInput('');
+                    if (onNavigateToAddMoney) onNavigateToAddMoney();
+                  },
+                },
+                {
+                  text: 'Cancel',
+                  style: 'cancel',
+                },
+              ]
+            );
           }, 300);
           return;
         }
@@ -576,65 +584,7 @@ export const AddTransactionScreen = ({
         </View>
       </Modal>
 
-      {/* --- Exceed Balance Modal --- Conditionally rendered to ensure full unmount */}
-      {exceedBalanceModal.visible && (
-        <Modal
-          visible={true}
-          animationType="fade"
-          transparent={true}
-          onRequestClose={() => setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 })}
-        >
-          <View style={addTransactionStyles.modalOverlay}>
-            <View style={addTransactionStyles.exceedModalContent}>
-              <View style={addTransactionStyles.exceedIconCircle}>
-                <Icon name="alert-triangle" size={32} color="#E74C3C" />
-              </View>
-              <Text style={addTransactionStyles.exceedTitle}>Insufficient Balance</Text>
-              <Text style={addTransactionStyles.exceedDesc}>
-                Your bulk import total exceeds your available balance.
-              </Text>
 
-              <View style={addTransactionStyles.exceedDetails}>
-                <View style={addTransactionStyles.exceedRow}>
-                  <Text style={addTransactionStyles.exceedLabel}>Items Found</Text>
-                  <Text style={addTransactionStyles.exceedValue}>{exceedBalanceModal.itemCount}</Text>
-                </View>
-                <View style={addTransactionStyles.exceedRow}>
-                  <Text style={addTransactionStyles.exceedLabel}>Total Amount</Text>
-                  <Text style={[addTransactionStyles.exceedValue, { color: '#E74C3C' }]}>
-                    RM {exceedBalanceModal.total.toFixed(2)}
-                  </Text>
-                </View>
-                <View style={[addTransactionStyles.exceedRow, { borderTopWidth: 1, borderTopColor: '#EEE', paddingTop: 12 }]}>
-                  <Text style={addTransactionStyles.exceedLabel}>Your Balance</Text>
-                  <Text style={addTransactionStyles.exceedValue}>RM {monthlyBalance.toFixed(2)}</Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                style={addTransactionStyles.exceedBtn}
-                onPress={() => {
-                  setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 });
-                  setBulkTextInput('');
-                  if (onNavigateToAddMoney) onNavigateToAddMoney();
-                }}
-              >
-                <Icon name="plus-circle" size={18} color={COLORS.white} />
-                <Text style={addTransactionStyles.exceedBtnText}>Add Money First</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={addTransactionStyles.exceedCancelBtn}
-                onPress={() => {
-                  setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 });
-                }}
-              >
-                <Text style={addTransactionStyles.exceedCancelText}>Cancel Import</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-      )}
     </View>
   );
 };
@@ -1060,84 +1010,5 @@ const addTransactionStyles = StyleSheet.create({
     color: COLORS.darkGray,
     fontSize: 14,
     fontWeight: '800',
-  },
-  // Exceed Balance Modal Styles
-  exceedModalContent: {
-    backgroundColor: COLORS.white,
-    borderRadius: 30,
-    padding: 30,
-    marginHorizontal: 20,
-    alignItems: 'center',
-  },
-  exceedIconCircle: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#FDECEA',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  exceedTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: COLORS.accent,
-    marginBottom: 8,
-  },
-  exceedDesc: {
-    fontSize: 14,
-    color: COLORS.darkGray,
-    textAlign: 'center',
-    fontWeight: '600',
-    marginBottom: 20,
-  },
-  exceedDetails: {
-    width: '100%',
-    backgroundColor: COLORS.lightGray,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-  },
-  exceedRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  exceedLabel: {
-    fontSize: 14,
-    color: COLORS.darkGray,
-    fontWeight: '600',
-  },
-  exceedValue: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.accent,
-  },
-  exceedBtn: {
-    backgroundColor: COLORS.accent,
-    width: '100%',
-    height: 50,
-    borderRadius: 25,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  exceedBtnText: {
-    color: COLORS.white,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  exceedCancelBtn: {
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  exceedCancelText: {
-    color: COLORS.darkGray,
-    fontSize: 14,
-    fontWeight: '700',
   },
 });
