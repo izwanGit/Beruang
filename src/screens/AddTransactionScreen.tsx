@@ -625,7 +625,8 @@ export const AddTransactionScreen = ({
                   onPress={() => {
                     setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 });
                     setBulkTextInput('');
-                    onBack();
+                    // Delay navigation to let modal fully close
+                    setTimeout(() => onBack(), 300);
                   }}
                 >
                   <Text style={addTransactionStyles.exceedCancelText}>Cancel Import</Text>
