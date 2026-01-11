@@ -612,6 +612,7 @@ export const AddTransactionScreen = ({
                   style={addTransactionStyles.exceedBtn}
                   onPress={() => {
                     setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 });
+                    setBulkTextInput('');
                     if (onNavigateToAddMoney) onNavigateToAddMoney();
                   }}
                 >
@@ -621,7 +622,11 @@ export const AddTransactionScreen = ({
 
                 <TouchableOpacity
                   style={addTransactionStyles.exceedCancelBtn}
-                  onPress={() => setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 })}
+                  onPress={() => {
+                    setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 });
+                    setBulkTextInput('');
+                    onBack();
+                  }}
                 >
                   <Text style={addTransactionStyles.exceedCancelText}>Cancel Import</Text>
                 </TouchableOpacity>
