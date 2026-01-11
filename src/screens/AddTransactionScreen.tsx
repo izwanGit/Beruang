@@ -56,6 +56,11 @@ export const AddTransactionScreen = ({
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [bulkTextInput, setBulkTextInput] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+  const [exceedBalanceModal, setExceedBalanceModal] = useState<{
+    visible: boolean;
+    total: number;
+    itemCount: number;
+  }>({ visible: false, total: 0, itemCount: 0 });
 
   // Format cents to currency display (e.g., 123 cents -> "1.23")
   // Show empty string when 0 so placeholder shows
@@ -158,62 +163,73 @@ export const AddTransactionScreen = ({
 
       const data = await response.json();
 
+      if (data.transactions && Array.isArray(data.transactions) && data.transactions.length > 0) {
+        // PRE-CHECK: Calculate total and compare with balance
+        const total = data.transactions.reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
 
-      if (data.transactions && Array.isArray(data.transactions)) {
+        if (total > monthlyBalance) {
+          // Show exceed balance modal instead of importing
+          setExceedBalanceModal({
+            visible: true,
+            total: total,
+            itemCount: data.transactions.length,
+          });
+          setIsImporting(false);
+          return;
+        }
+
         showMessage('Categorizing with local AI...');
 
         let importedCount = 0;
-        const totalAmount = data.transactions.reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
-
-        console.log(`[BulkImport] Processing ${data.transactions.length} items, total: RM${totalAmount.toFixed(2)}`);
-        console.log(`[BulkImport] Current balance: RM${monthlyBalance.toFixed(2)}`);
-
-        // Warn if total exceeds balance but don't block (same as manual entry behavior)
-        if (totalAmount > monthlyBalance) {
-          console.log(`[BulkImport] ⚠️ Total (RM${totalAmount.toFixed(2)}) exceeds balance (RM${monthlyBalance.toFixed(2)})`);
-        }
+        let skippedCount = 0;
 
         // Process each transaction through local TensorFlow (same as manual entry)
         for (const t of data.transactions) {
-          try {
-            console.log(`[BulkImport] Categorizing: "${t.name}" - RM${t.amount}`);
-            const result = await categorizeTransaction(t.name || 'Unknown');
-            console.log(`[BulkImport] ✅ Categorized as: ${result.category} → ${result.subCategory}`);
+          const result = await categorizeTransaction(t.name || 'Unknown');
 
-            // Add transaction - let onAddTransaction handle overflow/penalties
-            // This matches manual entry behavior where transactions CAN go through even if budget is tight
-            onAddTransaction({
-              icon: 'shopping-cart',
-              name: t.name,
-              date: t.date || new Date().toISOString().split('T')[0],
-              amount: t.amount,
-              type: 'expense',
-              category: result.category,
-              subCategory: result.subCategory,
-            });
-            importedCount++;
-          } catch (err) {
-            console.error(`[BulkImport] ❌ Failed to process "${t.name}":`, err);
+          // Check budget accommodation (same as manual entry)
+          if (canAccommodateBudget) {
+            const canProceed = canAccommodateBudget(t.amount, result.category as 'needs' | 'wants');
+            if (!canProceed) {
+              skippedCount++;
+              continue; // Skip this transaction if budget is full
+            }
           }
-        }
 
-        console.log(`[BulkImport] Import complete: ${importedCount}/${data.transactions.length} items`);
+          // Add transaction with category from local AI
+          onAddTransaction({
+            icon: 'shopping-cart',
+            name: t.name,
+            date: t.date || new Date().toISOString().split('T')[0],
+            amount: t.amount,
+            type: 'expense',
+            category: result.category,
+            subCategory: result.subCategory,
+          });
+          importedCount++;
+        }
 
         if (importedCount === 0) {
-          showMessage('No transactions could be imported. Check your balance.');
-          // Don't navigate away - let user see the error
+          // All skipped - show feedback, don't navigate away
+          showMessage('No items imported - budget categories are full');
+          return;
+        }
+
+        if (skippedCount > 0) {
+          showMessage(`Imported ${importedCount} items! (${skippedCount} skipped - budget full)`);
         } else {
           showMessage(`Successfully imported ${importedCount} items!`);
-          setIsImportModalVisible(false);
-          setBulkTextInput('');
-          onBack();
         }
+
+        setIsImportModalVisible(false);
+        setBulkTextInput('');
+        onBack();
       } else {
         throw new Error('No transactions found');
       }
 
     } catch (error) {
-      console.error('[BulkImport] ❌ Error:', error);
+      console.error(error);
       showMessage('Failed to import data. Try being more specific.');
     } finally {
       setIsImporting(false);
@@ -551,6 +567,61 @@ export const AddTransactionScreen = ({
                   </View>
                 </KeyboardAvoidingView>
               </TouchableWithoutFeedback>
+            </View>
+          </Modal>
+
+          {/* --- Exceed Balance Modal --- */}
+          <Modal
+            visible={exceedBalanceModal.visible}
+            animationType="fade"
+            transparent={true}
+            onRequestClose={() => setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 })}
+          >
+            <View style={addTransactionStyles.modalOverlay}>
+              <View style={addTransactionStyles.exceedModalContent}>
+                <View style={addTransactionStyles.exceedIconCircle}>
+                  <Icon name="alert-triangle" size={32} color="#E74C3C" />
+                </View>
+                <Text style={addTransactionStyles.exceedTitle}>Insufficient Balance</Text>
+                <Text style={addTransactionStyles.exceedDesc}>
+                  Your bulk import total exceeds your available balance.
+                </Text>
+
+                <View style={addTransactionStyles.exceedDetails}>
+                  <View style={addTransactionStyles.exceedRow}>
+                    <Text style={addTransactionStyles.exceedLabel}>Items Found</Text>
+                    <Text style={addTransactionStyles.exceedValue}>{exceedBalanceModal.itemCount}</Text>
+                  </View>
+                  <View style={addTransactionStyles.exceedRow}>
+                    <Text style={addTransactionStyles.exceedLabel}>Total Amount</Text>
+                    <Text style={[addTransactionStyles.exceedValue, { color: '#E74C3C' }]}>
+                      RM {exceedBalanceModal.total.toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={[addTransactionStyles.exceedRow, { borderTopWidth: 1, borderTopColor: '#EEE', paddingTop: 12 }]}>
+                    <Text style={addTransactionStyles.exceedLabel}>Your Balance</Text>
+                    <Text style={addTransactionStyles.exceedValue}>RM {monthlyBalance.toFixed(2)}</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={addTransactionStyles.exceedBtn}
+                  onPress={() => {
+                    setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 });
+                    if (onNavigateToAddMoney) onNavigateToAddMoney();
+                  }}
+                >
+                  <Icon name="plus-circle" size={18} color={COLORS.white} />
+                  <Text style={addTransactionStyles.exceedBtnText}>Add Money First</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={addTransactionStyles.exceedCancelBtn}
+                  onPress={() => setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 })}
+                >
+                  <Text style={addTransactionStyles.exceedCancelText}>Cancel Import</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </Modal>
         </View>
@@ -980,5 +1051,84 @@ const addTransactionStyles = StyleSheet.create({
     color: COLORS.darkGray,
     fontSize: 14,
     fontWeight: '800',
+  },
+  // Exceed Balance Modal Styles
+  exceedModalContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: 30,
+    padding: 30,
+    marginHorizontal: 20,
+    alignItems: 'center',
+  },
+  exceedIconCircle: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#FDECEA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  exceedTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: COLORS.accent,
+    marginBottom: 8,
+  },
+  exceedDesc: {
+    fontSize: 14,
+    color: COLORS.darkGray,
+    textAlign: 'center',
+    fontWeight: '600',
+    marginBottom: 20,
+  },
+  exceedDetails: {
+    width: '100%',
+    backgroundColor: COLORS.lightGray,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+  },
+  exceedRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  exceedLabel: {
+    fontSize: 14,
+    color: COLORS.darkGray,
+    fontWeight: '600',
+  },
+  exceedValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.accent,
+  },
+  exceedBtn: {
+    backgroundColor: COLORS.accent,
+    width: '100%',
+    height: 50,
+    borderRadius: 25,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  exceedBtnText: {
+    color: COLORS.white,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  exceedCancelBtn: {
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exceedCancelText: {
+    color: COLORS.darkGray,
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
