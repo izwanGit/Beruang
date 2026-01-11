@@ -866,307 +866,304 @@ export const ExpensesScreen = ({
 
   return (
     <View style={expensesStyles.container}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <View style={{ flex: 1 }}>
-          <View style={expensesStyles.safeAreaContent}>
-            <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-            <View style={[expensesStyles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>
-              <TouchableOpacity onPress={onBack} style={expensesStyles.headerButton}>
-                <Icon name="arrow-left" size={24} color={COLORS.accent} />
-              </TouchableOpacity>
-              <Text style={expensesStyles.headerTitle}>Expenses</Text>
-              <View style={{ width: 40 }} />
-            </View>
-            <ScrollView
-              contentContainerStyle={expensesStyles.scrollContainer}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-                  colors={[COLORS.accent]}
-                  tintColor={COLORS.accent}
-                />
-              }
-            >
-              {/* Month Tabs */}
-              <View style={expensesStyles.monthTabs}>
-                {months.map((month, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      expensesStyles.monthTab,
-                      selectedMonth === month.value && expensesStyles.activeMonthTab,
-                    ]}
-                    onPress={() => setSelectedMonth(month.value)}
-                  >
-                    <Text
-                      style={[
-                        expensesStyles.monthText,
-                        selectedMonth === month.value && expensesStyles.activeMonthText,
-                      ]}
-                    >
-                      {month.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* --- DASHBOARD AREA --- */}
-              {activeTab === 'latest' ? (
-                /* CENTERED DONUT FOR LATEST */
-                <View style={expensesStyles.dashboardCard}>
-                  <DonutChart
-                    data={chartData}
-                    total={totalForChart}
-                    radius={85}
-                    strokeWidth={22}
-                    showCenterText={true}
-                    centerLabel="THIS MONTH SPENDING"
-                  />
-                  {/* AI Button */}
-                  <TouchableOpacity onPress={handleAskAI} style={expensesStyles.aiButtonSubtle}>
-                    <MaterialCommunityIcon name="auto-fix" size={12} color="#666" style={{ marginRight: 4 }} />
-                    <Text style={expensesStyles.aiButtonSubtleText}>Get Analysis</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                /* SIDE-BY-SIDE FOR NEEDS/WANTS */
-                <View style={expensesStyles.dashboardCard}>
-                  <View style={expensesStyles.splitContent}>
-                    <View style={expensesStyles.chartSide}>
-                      <DonutChart
-                        data={activeTab === 'needs' ? needsChartData : wantsChartData}
-                        total={activeTab === 'needs' ? needsForMonth : wantsForMonth}
-                        radius={70}
-                        strokeWidth={18}
-                        showCenterText={true}
-                        centerLabel={activeTab === 'needs' ? 'NEEDS SPENT' : 'WANTS SPENT'}
-                      />
-                    </View>
-                    <View style={expensesStyles.statsSide}>
-                      <Text style={[
-                        expensesStyles.statsLabel,
-                        { color: activeTab === 'needs' ? '#42a5f5' : '#ff7043' }
-                      ]}>
-                        {activeTab === 'needs' ? 'NEEDS' : 'WANTS'} BUDGET
-                      </Text>
-                      <Text style={expensesStyles.statsValue}>
-                        RM {(activeTab === 'needs' ? needsBudget : wantsBudget).toFixed(2)}
-                      </Text>
-                      <Text style={expensesStyles.statsValueSmall}>
-                        {activeTab === 'needs' ? '50%' : '30%'} of income
-                      </Text>
-                      <View style={expensesStyles.statsDivider} />
-                      {/* Dynamic label based on over/under budget */}
-                      {/* Dynamic label based on over/under budget */}
-                      {(activeTab === 'needs' ? !isNeedsOverBudget : !isWantsOverBudget) ? (
-                        <>
-                          <Text style={expensesStyles.statsLabel}>
-                            {(activeTab === 'wants' && wantsReceivedOverflow) || (activeTab === 'needs' && needsReceivedOverflow) ? "REMAINING (REDUCED)" : "REMAINING"}
-                          </Text>
-                          <Text style={[expensesStyles.statsRemaining, { color: COLORS.success }]}>
-                            RM {(activeTab === 'needs'
-                              ? budget.needs.remaining
-                              : budget.wants.remaining).toFixed(2)}
-                          </Text>
-                          {activeTab === 'wants' && wantsReceivedOverflow && (
-                            <Text style={{ fontSize: 9, color: '#666', marginTop: 2 }}>
-                              ⚠️ Capacity reduced by Needs overflow
-                            </Text>
-                          )}
-                          {activeTab === 'needs' && needsReceivedOverflow && (
-                            <Text style={{ fontSize: 9, color: '#666', marginTop: 2 }}>
-                              ⚠️ Capacity reduced by Wants overflow
-                            </Text>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <Text style={[expensesStyles.statsLabel, { color: COLORS.danger }]}>
-                              OVERFLOW ⚠️
-                            </Text>
-                          </View>
-                          <Text style={[expensesStyles.statsRemaining, { color: COLORS.danger }]}>
-                            RM {Math.abs(activeTab === 'needs'
-                              ? budget.needs.overflow
-                              : budget.wants.overflow).toFixed(2)}
-                          </Text>
-                          <Text style={{ fontSize: 10, color: '#666', marginTop: 2 }}>
-                            → Using {
-                              activeTab === 'needs'
-                                ? [budget.needs.overflowToWants > 0 ? 'Wants' : null, budget.needs.overflowToSavings > 0 ? 'Savings' : null].filter(Boolean).join(' & ')
-                                : [budget.wants.overflowToNeeds > 0 ? 'Needs' : null, budget.wants.overflowToSavings > 0 ? 'Savings' : null].filter(Boolean).join(' & ')
-                            } allocation
-                          </Text>
-                        </>
-                      )}
-                    </View>
-                  </View>
-                  {/* Progress Bar */}
-                  <View style={expensesStyles.progressSection}>
-                    <View style={expensesStyles.progressLabels}>
-                      <Text style={expensesStyles.progressLabelSpent}>
-                        {Math.min(100, Math.round(((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) * 100))}% Spent
-                      </Text>
-                      <Text style={expensesStyles.progressLabelRemaining}>
-                        {Math.max(0, 100 - Math.round(((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) * 100))}% Left
-                      </Text>
-                    </View>
-                    <View style={expensesStyles.progressBarBg}>
-                      <View
-                        style={[
-                          expensesStyles.progressBarFill,
-                          {
-                            width: `${Math.min(100, ((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) * 100)}%`,
-                            backgroundColor: ((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) > 0.9 ? COLORS.danger : COLORS.primary
-                          }
-                        ]}
-                      />
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* Horizontal Scroll (Legend) - Clean Style */}
-              {totalForChart > 0 && (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={expensesStyles.categoriesScroll}
-                  contentContainerStyle={{ paddingRight: 20 }}
+      <View style={expensesStyles.safeAreaContent}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+        <View style={[expensesStyles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>
+          <TouchableOpacity onPress={onBack} style={expensesStyles.headerButton}>
+            <Icon name="arrow-left" size={24} color={COLORS.accent} />
+          </TouchableOpacity>
+          <Text style={expensesStyles.headerTitle}>Expenses</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <ScrollView
+          contentContainerStyle={expensesStyles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[COLORS.accent]}
+              tintColor={COLORS.accent}
+            />
+          }
+        >
+          {/* Month Tabs */}
+          <View style={expensesStyles.monthTabs}>
+            {months.map((month, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  expensesStyles.monthTab,
+                  selectedMonth === month.value && expensesStyles.activeMonthTab,
+                ]}
+                onPress={() => setSelectedMonth(month.value)}
+              >
+                <Text
+                  style={[
+                    expensesStyles.monthText,
+                    selectedMonth === month.value && expensesStyles.activeMonthText,
+                  ]}
                 >
-                  {Object.entries(subCategoryGroups).map(([sub, group]) => {
-                    const { icon } = categoryIcons[sub] || { icon: 'dots-horizontal' };
-                    const color = colorMap[sub] || categoryIcons[sub]?.color || COLORS.darkGray;
-                    const { amount } = group as { amount: number };
+                  {month.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-                    return (
-                      <View key={sub} style={expensesStyles.legendChip}>
-                        <View style={[
-                          expensesStyles.legendIconCircle,
-                          { backgroundColor: color }
-                        ]}>
-                          <MaterialCommunityIcon name={icon} size={18} color={COLORS.white} />
-                        </View>
-                        <Text style={expensesStyles.legendName} numberOfLines={1}>{sub}</Text>
-                        <Text style={expensesStyles.legendAmount}>
-                          -RM {amount.toFixed(2)}
+          {/* --- DASHBOARD AREA --- */}
+          {activeTab === 'latest' ? (
+            /* CENTERED DONUT FOR LATEST */
+            <View style={expensesStyles.dashboardCard}>
+              <DonutChart
+                data={chartData}
+                total={totalForChart}
+                radius={85}
+                strokeWidth={22}
+                showCenterText={true}
+                centerLabel="THIS MONTH SPENDING"
+              />
+              {/* AI Button */}
+              <TouchableOpacity onPress={handleAskAI} style={expensesStyles.aiButtonSubtle}>
+                <MaterialCommunityIcon name="auto-fix" size={12} color="#666" style={{ marginRight: 4 }} />
+                <Text style={expensesStyles.aiButtonSubtleText}>Get Analysis</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            /* SIDE-BY-SIDE FOR NEEDS/WANTS */
+            <View style={expensesStyles.dashboardCard}>
+              <View style={expensesStyles.splitContent}>
+                <View style={expensesStyles.chartSide}>
+                  <DonutChart
+                    data={activeTab === 'needs' ? needsChartData : wantsChartData}
+                    total={activeTab === 'needs' ? needsForMonth : wantsForMonth}
+                    radius={70}
+                    strokeWidth={18}
+                    showCenterText={true}
+                    centerLabel={activeTab === 'needs' ? 'NEEDS SPENT' : 'WANTS SPENT'}
+                  />
+                </View>
+                <View style={expensesStyles.statsSide}>
+                  <Text style={[
+                    expensesStyles.statsLabel,
+                    { color: activeTab === 'needs' ? '#42a5f5' : '#ff7043' }
+                  ]}>
+                    {activeTab === 'needs' ? 'NEEDS' : 'WANTS'} BUDGET
+                  </Text>
+                  <Text style={expensesStyles.statsValue}>
+                    RM {(activeTab === 'needs' ? needsBudget : wantsBudget).toFixed(2)}
+                  </Text>
+                  <Text style={expensesStyles.statsValueSmall}>
+                    {activeTab === 'needs' ? '50%' : '30%'} of income
+                  </Text>
+                  <View style={expensesStyles.statsDivider} />
+                  {/* Dynamic label based on over/under budget */}
+                  {/* Dynamic label based on over/under budget */}
+                  {(activeTab === 'needs' ? !isNeedsOverBudget : !isWantsOverBudget) ? (
+                    <>
+                      <Text style={expensesStyles.statsLabel}>
+                        {(activeTab === 'wants' && wantsReceivedOverflow) || (activeTab === 'needs' && needsReceivedOverflow) ? "REMAINING (REDUCED)" : "REMAINING"}
+                      </Text>
+                      <Text style={[expensesStyles.statsRemaining, { color: COLORS.success }]}>
+                        RM {(activeTab === 'needs'
+                          ? budget.needs.remaining
+                          : budget.wants.remaining).toFixed(2)}
+                      </Text>
+                      {activeTab === 'wants' && wantsReceivedOverflow && (
+                        <Text style={{ fontSize: 9, color: '#666', marginTop: 2 }}>
+                          ⚠️ Capacity reduced by Needs overflow
+                        </Text>
+                      )}
+                      {activeTab === 'needs' && needsReceivedOverflow && (
+                        <Text style={{ fontSize: 9, color: '#666', marginTop: 2 }}>
+                          ⚠️ Capacity reduced by Wants overflow
+                        </Text>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={[expensesStyles.statsLabel, { color: COLORS.danger }]}>
+                          OVERFLOW ⚠️
                         </Text>
                       </View>
-                    );
-                  })}
-                </ScrollView>
-              )}
-
-              {/* Tabs: Latest, Needs, Wants */}
-              <View style={expensesStyles.tabContainer}>
-                <TouchableOpacity
-                  style={[
-                    expensesStyles.tab,
-                    activeTab === 'latest' && expensesStyles.activeTab,
-                  ]}
-                  onPress={() => switchTab('latest')}
-                >
-                  <Text
-                    style={[
-                      expensesStyles.tabText,
-                      activeTab === 'latest' && expensesStyles.activeTabText,
-                    ]}
-                  >
-                    Latest
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    expensesStyles.tab,
-                    activeTab === 'needs' && expensesStyles.activeTab,
-                  ]}
-                  onPress={() => switchTab('needs')}
-                >
-                  <Text
-                    style={[
-                      expensesStyles.tabText,
-                      activeTab === 'needs' && expensesStyles.activeTabText,
-                    ]}
-                  >
-                    Needs
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    expensesStyles.tab,
-                    activeTab === 'wants' && expensesStyles.activeTab,
-                  ]}
-                  onPress={() => switchTab('wants')}
-                >
-                  <Text
-                    style={[
-                      expensesStyles.tabText,
-                      activeTab === 'wants' && expensesStyles.activeTabText,
-                    ]}
-                  >
-                    Wants
-                  </Text>
-                </TouchableOpacity>
+                      <Text style={[expensesStyles.statsRemaining, { color: COLORS.danger }]}>
+                        RM {Math.abs(activeTab === 'needs'
+                          ? budget.needs.overflow
+                          : budget.wants.overflow).toFixed(2)}
+                      </Text>
+                      <Text style={{ fontSize: 10, color: '#666', marginTop: 2 }}>
+                        → Using {
+                          activeTab === 'needs'
+                            ? [budget.needs.overflowToWants > 0 ? 'Wants' : null, budget.needs.overflowToSavings > 0 ? 'Savings' : null].filter(Boolean).join(' & ')
+                            : [budget.wants.overflowToNeeds > 0 ? 'Needs' : null, budget.wants.overflowToSavings > 0 ? 'Savings' : null].filter(Boolean).join(' & ')
+                        } allocation
+                      </Text>
+                    </>
+                  )}
+                </View>
               </View>
-
-              {/* Tab Content */}
-              {activeTab === 'latest' ? (
-                <View>
-                  {renderSearchSection()}
-                  {renderTransactionHeader()}
-                  {renderTransactionsList(latestTransactions)}
+              {/* Progress Bar */}
+              <View style={expensesStyles.progressSection}>
+                <View style={expensesStyles.progressLabels}>
+                  <Text style={expensesStyles.progressLabelSpent}>
+                    {Math.min(100, Math.round(((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) * 100))}% Spent
+                  </Text>
+                  <Text style={expensesStyles.progressLabelRemaining}>
+                    {Math.max(0, 100 - Math.round(((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) * 100))}% Left
+                  </Text>
                 </View>
-              ) : activeTab === 'needs' ? (
-                <View>
-                  {renderSearchSection()}
-                  {renderTransactionHeader()}
-                  {renderTransactionsList(needsExpenses)}
+                <View style={expensesStyles.progressBarBg}>
+                  <View
+                    style={[
+                      expensesStyles.progressBarFill,
+                      {
+                        width: `${Math.min(100, ((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) * 100)}%`,
+                        backgroundColor: ((activeTab === 'needs' ? needsForMonth : wantsForMonth) / (activeTab === 'needs' ? needsBudget : wantsBudget)) > 0.9 ? COLORS.danger : COLORS.primary
+                      }
+                    ]}
+                  />
                 </View>
-              ) : ( // activeTab === 'wants'
-                <View>
-                  {renderSearchSection()}
-                  {renderTransactionHeader()}
-                  {renderTransactionsList(wantsExpenses)}
-                </View>
-              )}
-            </ScrollView>
-          </View>
-
-          {/* Bottom Nav */}
-          <View style={expensesStyles.bottomNavSafeArea}>
-            <View style={expensesStyles.bottomNav}>
-              <TouchableOpacity
-                style={expensesStyles.navItem}
-                onPress={() => onNavigate('Home')}
-              >
-                <Icon name="home" size={26} color={COLORS.darkGray} />
-                <Text style={expensesStyles.navText}>Home</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={expensesStyles.navItem}
-                onPress={() => onNavigate('Expenses')}
-              >
-                <Icon name="pie-chart" size={26} color={COLORS.accent} />
-                <Text style={expensesStyles.navTextActive}>Expenses</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={expensesStyles.navItem}
-                onPress={() => onNavigate('Chatbot')}
-              >
-                <Icon name="message-square" size={26} color={COLORS.darkGray} />
-                <Text style={expensesStyles.navText}>Chatbot</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={expensesStyles.navItem} onPress={() => onNavigate('Profile')}>
-                <Icon name="user" size={26} color={COLORS.darkGray} />
-                <Text style={expensesStyles.navText}>Profile</Text>
-              </TouchableOpacity>
+              </View>
             </View>
+          )}
+
+          {/* Horizontal Scroll (Legend) - Clean Style */}
+          {totalForChart > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={expensesStyles.categoriesScroll}
+              contentContainerStyle={{ paddingRight: 20 }}
+            >
+              {Object.entries(subCategoryGroups).map(([sub, group]) => {
+                const { icon } = categoryIcons[sub] || { icon: 'dots-horizontal' };
+                const color = colorMap[sub] || categoryIcons[sub]?.color || COLORS.darkGray;
+                const { amount } = group as { amount: number };
+
+                return (
+                  <View key={sub} style={expensesStyles.legendChip}>
+                    <View style={[
+                      expensesStyles.legendIconCircle,
+                      { backgroundColor: color }
+                    ]}>
+                      <MaterialCommunityIcon name={icon} size={18} color={COLORS.white} />
+                    </View>
+                    <Text style={expensesStyles.legendName} numberOfLines={1}>{sub}</Text>
+                    <Text style={expensesStyles.legendAmount}>
+                      -RM {amount.toFixed(2)}
+                    </Text>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          )}
+
+          {/* Tabs: Latest, Needs, Wants */}
+          <View style={expensesStyles.tabContainer}>
+            <TouchableOpacity
+              style={[
+                expensesStyles.tab,
+                activeTab === 'latest' && expensesStyles.activeTab,
+              ]}
+              onPress={() => switchTab('latest')}
+            >
+              <Text
+                style={[
+                  expensesStyles.tabText,
+                  activeTab === 'latest' && expensesStyles.activeTabText,
+                ]}
+              >
+                Latest
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                expensesStyles.tab,
+                activeTab === 'needs' && expensesStyles.activeTab,
+              ]}
+              onPress={() => switchTab('needs')}
+            >
+              <Text
+                style={[
+                  expensesStyles.tabText,
+                  activeTab === 'needs' && expensesStyles.activeTabText,
+                ]}
+              >
+                Needs
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                expensesStyles.tab,
+                activeTab === 'wants' && expensesStyles.activeTab,
+              ]}
+              onPress={() => switchTab('wants')}
+            >
+              <Text
+                style={[
+                  expensesStyles.tabText,
+                  activeTab === 'wants' && expensesStyles.activeTabText,
+                ]}
+              >
+                Wants
+              </Text>
+            </TouchableOpacity>
           </View>
+
+          {/* Tab Content */}
+          {activeTab === 'latest' ? (
+            <View>
+              {renderSearchSection()}
+              {renderTransactionHeader()}
+              {renderTransactionsList(latestTransactions)}
+            </View>
+          ) : activeTab === 'needs' ? (
+            <View>
+              {renderSearchSection()}
+              {renderTransactionHeader()}
+              {renderTransactionsList(needsExpenses)}
+            </View>
+          ) : ( // activeTab === 'wants'
+            <View>
+              {renderSearchSection()}
+              {renderTransactionHeader()}
+              {renderTransactionsList(wantsExpenses)}
+            </View>
+          )}
+        </ScrollView>
+      </View>
+
+      {/* Bottom Nav */}
+      <View style={expensesStyles.bottomNavSafeArea}>
+        <View style={expensesStyles.bottomNav}>
+          <TouchableOpacity
+            style={expensesStyles.navItem}
+            onPress={() => onNavigate('Home')}
+          >
+            <Icon name="home" size={26} color={COLORS.darkGray} />
+            <Text style={expensesStyles.navText}>Home</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={expensesStyles.navItem}
+            onPress={() => onNavigate('Expenses')}
+          >
+            <Icon name="pie-chart" size={26} color={COLORS.accent} />
+            <Text style={expensesStyles.navTextActive}>Expenses</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={expensesStyles.navItem}
+            onPress={() => onNavigate('Chatbot')}
+          >
+            <Icon name="message-square" size={26} color={COLORS.darkGray} />
+            <Text style={expensesStyles.navText}>Chatbot</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={expensesStyles.navItem} onPress={() => onNavigate('Profile')}>
+            <Icon name="user" size={26} color={COLORS.darkGray} />
+            <Text style={expensesStyles.navText}>Profile</Text>
+          </TouchableOpacity>
         </View>
-      </TouchableWithoutFeedback>
+      </View>
 
       {/* --- EDIT MODAL --- */}
       <Modal
