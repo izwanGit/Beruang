@@ -517,124 +517,122 @@ export const AddTransactionScreen = ({
               </View>
             )}
           </ScrollView>
-
-          {/* --- Bulk Import Modal --- */}
-          <Modal
-            visible={isImportModalVisible}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={() => setIsImportModalVisible(false)}
-          >
-            <View style={addTransactionStyles.modalOverlay}>
-              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
-                  <View style={addTransactionStyles.modalContent}>
-                    <View style={addTransactionStyles.modalHeader}>
-                      <Text style={addTransactionStyles.modalTitle}>Bulk Import</Text>
-                      <TouchableOpacity onPress={() => setIsImportModalVisible(false)}>
-                        <Icon name="x" size={24} color={COLORS.accent} />
-                      </TouchableOpacity>
-                    </View>
-
-                    <TextInput
-                      style={addTransactionStyles.bulkInput}
-                      multiline
-                      placeholder="Paste your transaction history here (e.g. from Excel, Notes, or WhatsApp)..."
-                      placeholderTextColor={COLORS.darkGray}
-                      value={bulkTextInput}
-                      onChangeText={setBulkTextInput}
-                    />
-
-                    <View style={addTransactionStyles.importActions}>
-                      <TouchableOpacity
-                        style={[addTransactionStyles.importBtn, isImporting && { opacity: 0.7 }]}
-                        onPress={handleBulkImport}
-                        disabled={isImporting}
-                      >
-                        {isImporting ? (
-                          <ActivityIndicator color={COLORS.white} />
-                        ) : (
-                          <>
-                            <Text style={addTransactionStyles.importBtnText}>Process with AI</Text>
-                            <Icon name="zap" size={18} color={COLORS.white} />
-                          </>
-                        )}
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={addTransactionStyles.cancelBtn}
-                        onPress={() => setIsImportModalVisible(false)}
-                      >
-                        <Text style={addTransactionStyles.cancelBtnText}>Cancel</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </KeyboardAvoidingView>
-              </TouchableWithoutFeedback>
-            </View>
-          </Modal>
-
-          {/* --- Exceed Balance Modal --- */}
-          <Modal
-            visible={exceedBalanceModal.visible}
-            animationType="fade"
-            transparent={true}
-            onRequestClose={() => setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 })}
-          >
-            <View style={addTransactionStyles.modalOverlay}>
-              <View style={addTransactionStyles.exceedModalContent}>
-                <View style={addTransactionStyles.exceedIconCircle}>
-                  <Icon name="alert-triangle" size={32} color="#E74C3C" />
-                </View>
-                <Text style={addTransactionStyles.exceedTitle}>Insufficient Balance</Text>
-                <Text style={addTransactionStyles.exceedDesc}>
-                  Your bulk import total exceeds your available balance.
-                </Text>
-
-                <View style={addTransactionStyles.exceedDetails}>
-                  <View style={addTransactionStyles.exceedRow}>
-                    <Text style={addTransactionStyles.exceedLabel}>Items Found</Text>
-                    <Text style={addTransactionStyles.exceedValue}>{exceedBalanceModal.itemCount}</Text>
-                  </View>
-                  <View style={addTransactionStyles.exceedRow}>
-                    <Text style={addTransactionStyles.exceedLabel}>Total Amount</Text>
-                    <Text style={[addTransactionStyles.exceedValue, { color: '#E74C3C' }]}>
-                      RM {exceedBalanceModal.total.toFixed(2)}
-                    </Text>
-                  </View>
-                  <View style={[addTransactionStyles.exceedRow, { borderTopWidth: 1, borderTopColor: '#EEE', paddingTop: 12 }]}>
-                    <Text style={addTransactionStyles.exceedLabel}>Your Balance</Text>
-                    <Text style={addTransactionStyles.exceedValue}>RM {monthlyBalance.toFixed(2)}</Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={addTransactionStyles.exceedBtn}
-                  onPress={() => {
-                    setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 });
-                    setBulkTextInput('');
-                    if (onNavigateToAddMoney) onNavigateToAddMoney();
-                  }}
-                >
-                  <Icon name="plus-circle" size={18} color={COLORS.white} />
-                  <Text style={addTransactionStyles.exceedBtnText}>Add Money First</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={addTransactionStyles.exceedCancelBtn}
-                  onPress={() => {
-                    setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 });
-                    // Do not clear text input in case user wants to edit it to fit budget
-                    // Do not navigate back
-                  }}
-                >
-                  <Text style={addTransactionStyles.exceedCancelText}>Cancel Import</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
         </View>
       </TouchableWithoutFeedback>
+
+      {/* --- Bulk Import Modal --- MOVED OUTSIDE TouchableWithoutFeedback */}
+      <Modal
+        visible={isImportModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsImportModalVisible(false)}
+      >
+        <View style={addTransactionStyles.modalOverlay}>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
+              <View style={addTransactionStyles.modalContent}>
+                <View style={addTransactionStyles.modalHeader}>
+                  <Text style={addTransactionStyles.modalTitle}>Bulk Import</Text>
+                  <TouchableOpacity onPress={() => setIsImportModalVisible(false)}>
+                    <Icon name="x" size={24} color={COLORS.accent} />
+                  </TouchableOpacity>
+                </View>
+
+                <TextInput
+                  style={addTransactionStyles.bulkInput}
+                  multiline
+                  placeholder="Paste your transaction history here (e.g. from Excel, Notes, or WhatsApp)..."
+                  placeholderTextColor={COLORS.darkGray}
+                  value={bulkTextInput}
+                  onChangeText={setBulkTextInput}
+                />
+
+                <View style={addTransactionStyles.importActions}>
+                  <TouchableOpacity
+                    style={[addTransactionStyles.importBtn, isImporting && { opacity: 0.7 }]}
+                    onPress={handleBulkImport}
+                    disabled={isImporting}
+                  >
+                    {isImporting ? (
+                      <ActivityIndicator color={COLORS.white} />
+                    ) : (
+                      <>
+                        <Text style={addTransactionStyles.importBtnText}>Process with AI</Text>
+                        <Icon name="zap" size={18} color={COLORS.white} />
+                      </>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={addTransactionStyles.cancelBtn}
+                    onPress={() => setIsImportModalVisible(false)}
+                  >
+                    <Text style={addTransactionStyles.cancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </KeyboardAvoidingView>
+          </TouchableWithoutFeedback>
+        </View>
+      </Modal>
+
+      {/* --- Exceed Balance Modal --- MOVED OUTSIDE TouchableWithoutFeedback */}
+      <Modal
+        visible={exceedBalanceModal.visible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 })}
+      >
+        <View style={addTransactionStyles.modalOverlay}>
+          <View style={addTransactionStyles.exceedModalContent}>
+            <View style={addTransactionStyles.exceedIconCircle}>
+              <Icon name="alert-triangle" size={32} color="#E74C3C" />
+            </View>
+            <Text style={addTransactionStyles.exceedTitle}>Insufficient Balance</Text>
+            <Text style={addTransactionStyles.exceedDesc}>
+              Your bulk import total exceeds your available balance.
+            </Text>
+
+            <View style={addTransactionStyles.exceedDetails}>
+              <View style={addTransactionStyles.exceedRow}>
+                <Text style={addTransactionStyles.exceedLabel}>Items Found</Text>
+                <Text style={addTransactionStyles.exceedValue}>{exceedBalanceModal.itemCount}</Text>
+              </View>
+              <View style={addTransactionStyles.exceedRow}>
+                <Text style={addTransactionStyles.exceedLabel}>Total Amount</Text>
+                <Text style={[addTransactionStyles.exceedValue, { color: '#E74C3C' }]}>
+                  RM {exceedBalanceModal.total.toFixed(2)}
+                </Text>
+              </View>
+              <View style={[addTransactionStyles.exceedRow, { borderTopWidth: 1, borderTopColor: '#EEE', paddingTop: 12 }]}>
+                <Text style={addTransactionStyles.exceedLabel}>Your Balance</Text>
+                <Text style={addTransactionStyles.exceedValue}>RM {monthlyBalance.toFixed(2)}</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={addTransactionStyles.exceedBtn}
+              onPress={() => {
+                setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 });
+                setBulkTextInput('');
+                if (onNavigateToAddMoney) onNavigateToAddMoney();
+              }}
+            >
+              <Icon name="plus-circle" size={18} color={COLORS.white} />
+              <Text style={addTransactionStyles.exceedBtnText}>Add Money First</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={addTransactionStyles.exceedCancelBtn}
+              onPress={() => {
+                setExceedBalanceModal({ visible: false, total: 0, itemCount: 0 });
+              }}
+            >
+              <Text style={addTransactionStyles.exceedCancelText}>Cancel Import</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
