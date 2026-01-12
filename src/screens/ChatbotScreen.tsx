@@ -517,7 +517,7 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
         >
           <View
             style={{
-              backgroundColor: '#557C56', // Medium Sage/Olive Green
+              backgroundColor: '#769C77', // Lighter Green (Sage/Moss)
               borderRadius: 10,
               width: 20,
               height: 20,
