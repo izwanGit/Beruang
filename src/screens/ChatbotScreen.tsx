@@ -1035,11 +1035,12 @@ const styles = StyleSheet.create({
   },
   typingBubble: {
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingLeft: 20,
+    paddingRight: 16,
     minWidth: 60,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
   streamingBubble: {
     maxWidth: '85%',
