@@ -506,8 +506,9 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
         ? node.children[0].content
         : '';
 
-      // Remove brackets if present (e.g., "[1]" -> "1")
-      content = content.replace(/[\[\]]/g, '');
+      // Remove ALL non-digit characters to handle "web:10", "[1]", etc.
+      // This ensures we only show the number inside the small badge.
+      content = content.replace(/\D/g, '');
 
       return (
         <Text
