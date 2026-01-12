@@ -1,72 +1,90 @@
 // src/styles/loginStyles.ts
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { COLORS } from '../constants/colors';
 
 export const loginStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#DCE6CF', // Subtle green contrast
+    backgroundColor: '#6B9766', // User specified green
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    padding: 24,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 30, // Tightened spacing
+    marginBottom: 40,
   },
   title: {
-    fontSize: 42, // Slightly adjusted
-    fontWeight: 'bold',
-    color: COLORS.accent,
-    marginTop: 5, // Reduced space to logo
-    letterSpacing: 3, // Increased letter spacing
+    fontSize: 40,
+    fontWeight: '900',
+    color: '#FFF',
+    marginTop: 10,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   subtitle: {
-    fontSize: 15,
-    color: COLORS.accent,
-    marginTop: 2,
-    opacity: 0.7, // Lighter opacity
+    fontSize: 16,
+    color: '#E8F5E9', // Off-white for subtitle
+    marginTop: 5,
+    fontWeight: '600',
+    opacity: 0.9,
+  },
+  // Card Container
+  formCard: {
+    width: '100%',
+    backgroundColor: COLORS.white,
+    borderRadius: 30,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    alignItems: 'center',
   },
   inputContainer: {
     width: '100%',
-    marginTop: 30,
   },
   inputView: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderRadius: 12, // Standard radius
-    height: 56,
-    marginBottom: 14, // Tightened spacing (12-16px)
+    backgroundColor: '#F5F5F5',
+    borderRadius: 16,
+    height: 58,
+    marginBottom: 16,
     paddingHorizontal: 20,
     borderWidth: 1.5,
-    borderColor: 'transparent', // Default border
+    borderColor: 'transparent',
   },
   inputViewFocused: {
-    borderColor: '#6F8455', // Brand green on focus
+    backgroundColor: COLORS.white,
+    borderColor: '#6B9766',
   },
   inputIcon: {
-    marginRight: 10,
+    marginRight: 12,
   },
   input: {
     flex: 1,
     height: '100%',
     color: COLORS.accent,
     fontSize: 16,
+    fontWeight: '600',
   },
   loginButton: {
     width: '100%',
-    backgroundColor: '#4E4336', // Darker shade of brown
-    borderRadius: 28, // Rounder than inputs
-    height: 56,
+    backgroundColor: COLORS.accent,
+    borderRadius: 20,
+    height: 62,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 28, // Increased space above button
-    // Shadow for elevation
-    shadowColor: '#000',
+    marginTop: 24,
+    shadowColor: COLORS.accent,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
     elevation: 6,
   },
   loginButtonText: {
@@ -75,15 +93,17 @@ export const loginStyles = StyleSheet.create({
     fontWeight: 'bold',
   },
   footer: {
-    marginTop: 20,
+    marginTop: 24,
     alignItems: 'center',
   },
   footerText: {
     fontSize: 14,
-    color: COLORS.accent,
+    color: COLORS.darkGray,
+    fontWeight: '600',
   },
   signUpText: {
-    color: '#6F8455', // Brand color
-    fontWeight: '600',
+    color: '#6B9766',
+    fontWeight: 'bold',
+    textDecorationLine: 'underline',
   },
 });

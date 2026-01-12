@@ -36,6 +36,7 @@ export const LoginScreen = ({
   // --- NEW: State for login form ---
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Focus States
@@ -100,86 +101,108 @@ export const LoginScreen = ({
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={{ flex: 1, width: '100%', justifyContent: 'center' }}
           >
+            {/* Logo Section */}
             <Animated.View style={[loginStyles.logoContainer, { opacity: fadeAnim }]}>
               <Image
-                source={require('../../assets/images/bear_logo.png')}
-                style={{ width: 300, height: 140, marginBottom: 5 }} // Slightly smaller (≈15%)
+                source={require('../../assets/beruang_homescreen_optimized.png')}
+                style={{ width: 240, height: 143 }}
                 resizeMode="contain"
               />
               <Text style={loginStyles.title}>BERUANG</Text>
               <Text style={loginStyles.subtitle}>Your Personal Finance Companion</Text>
             </Animated.View>
 
-            <Animated.View style={[loginStyles.inputContainer, { opacity: fadeAnim }]}>
-              <View style={[
-                loginStyles.inputView,
-                focusedInput === 'email' && loginStyles.inputViewFocused
-              ]}>
-                <Icon
-                  name="mail"
-                  size={20}
-                  color={focusedInput === 'email' ? '#6F8455' : COLORS.accent}
-                  style={loginStyles.inputIcon}
-                />
-                <TextInput
-                  placeholder="Email"
-                  placeholderTextColor={COLORS.darkGray}
-                  style={loginStyles.input}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  value={email}
-                  onChangeText={setEmail}
-                  onFocus={() => setFocusedInput('email')}
-                  onBlur={() => setFocusedInput(null)}
-                />
-              </View>
-
-              <View style={[
-                loginStyles.inputView,
-                focusedInput === 'password' && loginStyles.inputViewFocused
-              ]}>
-                <Icon
-                  name="lock"
-                  size={20}
-                  color={focusedInput === 'password' ? '#6F8455' : COLORS.accent}
-                  style={loginStyles.inputIcon}
-                />
-                <TextInput
-                  placeholder="Password"
-                  placeholderTextColor={COLORS.darkGray}
-                  style={loginStyles.input}
-                  secureTextEntry
-                  value={password}
-                  onChangeText={setPassword}
-                  onFocus={() => setFocusedInput('password')}
-                  onBlur={() => setFocusedInput(null)}
-                />
-              </View>
-
-              <Pressable
-                onPressIn={handlePressIn}
-                onPressOut={handlePressOut}
-                onPress={handleLogin}
-                disabled={isLoading}
-              >
-                <Animated.View style={[
-                  loginStyles.loginButton,
-                  { transform: [{ scale: buttonScale }] }
+            {/* White Card Section */}
+            <Animated.View style={[
+              loginStyles.formCard,
+              {
+                opacity: fadeAnim,
+                transform: [{
+                  translateY: fadeAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [50, 0] // Slide up effect
+                  })
+                }]
+              }
+            ]}>
+              <View style={loginStyles.inputContainer}>
+                <View style={[
+                  loginStyles.inputView,
+                  focusedInput === 'email' && loginStyles.inputViewFocused
                 ]}>
-                  {isLoading ? (
-                    <ActivityIndicator color={COLORS.white} />
-                  ) : (
-                    <Text style={loginStyles.loginButtonText}>Login</Text>
-                  )}
-                </Animated.View>
-              </Pressable>
+                  <Icon
+                    name="mail"
+                    size={20}
+                    color={focusedInput === 'email' ? '#9CB982' : COLORS.darkGray}
+                    style={loginStyles.inputIcon}
+                  />
+                  <TextInput
+                    placeholder="Email Address"
+                    placeholderTextColor="#B0B0B0"
+                    style={loginStyles.input}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    value={email}
+                    onChangeText={setEmail}
+                    onFocus={() => setFocusedInput('email')}
+                    onBlur={() => setFocusedInput(null)}
+                  />
+                </View>
 
-              <View style={loginStyles.footer}>
-                <TouchableOpacity onPress={onSignUp}>
-                  <Text style={loginStyles.footerText}>
-                    Don't have an account? <Text style={loginStyles.signUpText}>Sign Up</Text>
-                  </Text>
-                </TouchableOpacity>
+                <View style={[
+                  loginStyles.inputView,
+                  focusedInput === 'password' && loginStyles.inputViewFocused
+                ]}>
+                  <Icon
+                    name="lock"
+                    size={20}
+                    color={focusedInput === 'password' ? '#6B9766' : COLORS.darkGray}
+                    style={loginStyles.inputIcon}
+                  />
+                  <TextInput
+                    placeholder="Password"
+                    placeholderTextColor="#B0B0B0"
+                    style={loginStyles.input}
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
+                    onFocus={() => setFocusedInput('password')}
+                    onBlur={() => setFocusedInput(null)}
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                    <Icon
+                      name={showPassword ? 'eye' : 'eye-off'}
+                      size={20}
+                      color={COLORS.darkGray}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <Pressable
+                  onPressIn={handlePressIn}
+                  onPressOut={handlePressOut}
+                  onPress={handleLogin}
+                  disabled={isLoading}
+                >
+                  <Animated.View style={[
+                    loginStyles.loginButton,
+                    { transform: [{ scale: buttonScale }] }
+                  ]}>
+                    {isLoading ? (
+                      <ActivityIndicator color={COLORS.white} />
+                    ) : (
+                      <Text style={loginStyles.loginButtonText}>Sign In</Text>
+                    )}
+                  </Animated.View>
+                </Pressable>
+
+                <View style={loginStyles.footer}>
+                  <TouchableOpacity onPress={onSignUp}>
+                    <Text style={loginStyles.footerText}>
+                      New here? <Text style={loginStyles.signUpText}>Create Account</Text>
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </Animated.View>
           </KeyboardAvoidingView>
