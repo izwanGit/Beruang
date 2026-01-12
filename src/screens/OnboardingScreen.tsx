@@ -59,6 +59,8 @@ export const OnboardingScreen = ({
   const [spendingStyle, setSpendingStyle] = useState(initialData?.riskTolerance || '');
   const [trackingMethod, setTrackingMethod] = useState(initialData?.cashFlow || '');
   const [isLoading, setIsLoading] = useState(false);
+  const [customMainGoal, setCustomMainGoal] = useState('');
+  const [customChallenge, setCustomChallenge] = useState('');
 
   // Group steps for logical flow
   const stepGroups = [
@@ -152,7 +154,10 @@ export const OnboardingScreen = ({
         'Save for Marriage/House',
         'Start Investing',
         'Break Paycheck Cycle',
+        'Others (specify)',
       ],
+      customValue: customMainGoal,
+      setCustomValue: setCustomMainGoal,
     },
     {
       id: 'biggestChallenge',
@@ -170,7 +175,10 @@ export const OnboardingScreen = ({
         'Social Pressure Spending',
         'Lack of Knowledge',
         'Poor Tracking Discipline',
+        'Others (specify)',
       ],
+      customValue: customChallenge,
+      setCustomValue: setCustomChallenge,
     },
     {
       id: 'spendingStyle',
@@ -220,6 +228,15 @@ export const OnboardingScreen = ({
       return;
     }
 
+    // If "Others" is selected, require custom input
+    if (value === 'Others (specify)') {
+      const customVal = currentQuestion.customValue?.trim();
+      if (!customVal) {
+        showMessage('Please specify your answer');
+        return;
+      }
+    }
+
     if (currentQuestion.validation && !currentQuestion.validation(value)) {
       showMessage(currentQuestion.error || 'Invalid format');
       return;
@@ -231,14 +248,18 @@ export const OnboardingScreen = ({
     } else {
       setIsLoading(true);
       try {
+        // Use custom values if "Others" was selected
+        const finalMainGoal = mainGoal === 'Others (specify)' ? customMainGoal : mainGoal;
+        const finalChallenge = biggestChallenge === 'Others (specify)' ? customChallenge : biggestChallenge;
+
         const data: Partial<User> = {
           name,
           age: parseInt(age) || 0,
           state,
           occupation,
           monthlyIncome: parseFloat(monthlyIncome) || 0,
-          financialSituation: biggestChallenge,
-          financialGoals: mainGoal,
+          financialSituation: finalChallenge,
+          financialGoals: finalMainGoal,
           riskTolerance: spendingStyle,
           cashFlow: trackingMethod,
         };
@@ -309,24 +330,43 @@ export const OnboardingScreen = ({
 
               <View style={styles.inputArea}>
                 {currentQuestion.type === 'radio' ? (
-                  <View style={styles.radioList}>
+                  <ScrollView
+                    style={styles.radioList}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                  >
                     {currentQuestion.options.map((option) => {
                       const isSelected = currentQuestion.value === option;
+                      const isOthers = option === 'Others (specify)';
                       return (
-                        <TouchableOpacity
-                          key={option}
-                          activeOpacity={0.7}
-                          onPress={() => currentQuestion.setValue(option)}
-                          style={[styles.optionItem, isSelected && styles.optionItemSelected]}
-                        >
-                          <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{option}</Text>
-                          <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
-                            {isSelected && <Icon name="check" size={12} color="#FFF" />}
-                          </View>
-                        </TouchableOpacity>
+                        <View key={option}>
+                          <TouchableOpacity
+                            activeOpacity={0.7}
+                            onPress={() => currentQuestion.setValue(option)}
+                            style={[styles.optionItem, isSelected && styles.optionItemSelected]}
+                          >
+                            <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{option}</Text>
+                            <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
+                              {isSelected && <Icon name="check" size={12} color="#FFF" />}
+                            </View>
+                          </TouchableOpacity>
+                          {isOthers && isSelected && currentQuestion.setCustomValue && (
+                            <View style={styles.customInputContainer}>
+                              <TextInput
+                                style={styles.customInput}
+                                placeholder="Type your own..."
+                                placeholderTextColor="#AAA"
+                                value={currentQuestion.customValue}
+                                onChangeText={currentQuestion.setCustomValue}
+                                autoFocus
+                                selectionColor={COLORS.accent}
+                              />
+                            </View>
+                          )}
+                        </View>
                       );
                     })}
-                  </View>
+                  </ScrollView>
                 ) : currentQuestion.type === 'grid' ? (
                   <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.gridContainer}>
                     {currentQuestion.options.map((option) => {
@@ -524,6 +564,22 @@ const styles = StyleSheet.create({
   },
   radioCircleActive: {
     backgroundColor: COLORS.accent,
+    borderColor: COLORS.accent,
+  },
+  customInputContainer: {
+    marginTop: 8,
+    marginLeft: 12,
+    marginBottom: 4,
+  },
+  customInput: {
+    backgroundColor: '#F7F7F7',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#333',
+    borderWidth: 1.5,
     borderColor: COLORS.accent,
   },
   gridContainer: {
