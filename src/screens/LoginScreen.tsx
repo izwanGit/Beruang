@@ -105,11 +105,11 @@ export const LoginScreen = ({
             <Animated.View style={[loginStyles.logoContainer, { opacity: fadeAnim }]}>
               <Image
                 source={require('../../assets/beruang_homescreen_optimized.png')}
-                style={{ width: 240, height: 143 }}
+                style={{ width: 230, height: 137 }}
                 resizeMode="contain"
               />
-              <Text style={loginStyles.title}>BERUANG</Text>
-              <Text style={loginStyles.subtitle}>Your Personal Finance Companion</Text>
+              <Text style={[loginStyles.title, { fontSize: 36 }]}>BERUANG</Text>
+              <Text style={[loginStyles.subtitle, { fontSize: 14 }]}>Your Personal Finance Companion</Text>
             </Animated.View>
 
             {/* White Card Section */}
