@@ -281,7 +281,7 @@ export const HomeScreen = ({
               onPress={() => onNavigate('AddMoney')}
             >
               <View style={homeStyles.iconCircle}>
-                <Icon name="plus" size={26} color={COLORS.white} />
+                <Icon name="plus" size={18} color={COLORS.white} />
               </View>
               <Text style={homeStyles.actionText}>Add money</Text>
             </TouchableOpacity>
@@ -291,7 +291,7 @@ export const HomeScreen = ({
               onPress={() => onNavigate('AddTransaction')}
             >
               <View style={homeStyles.iconCircle}>
-                <Icon name="plus-circle" size={26} color={COLORS.white} />
+                <Icon name="plus-circle" size={18} color={COLORS.white} />
               </View>
               <Text style={homeStyles.actionText}>Add Transaction</Text>
             </TouchableOpacity>
@@ -301,7 +301,7 @@ export const HomeScreen = ({
               onPress={() => onNavigate('SavedAdvice')}
             >
               <View style={homeStyles.iconCircle}>
-                <Icon name="bookmark" size={26} color={COLORS.white} />
+                <Icon name="bookmark" size={18} color={COLORS.white} />
               </View>
               <Text style={homeStyles.actionText}>Saved Advice</Text>
             </TouchableOpacity>
@@ -617,10 +617,9 @@ const homeStyles = StyleSheet.create({
     flex: 1,
   },
   iconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28, // Perfect Circle
-    aspectRatio: 1,
+    width: 44,
+    height: 44,
+    borderRadius: 22, // Perfect circle
     backgroundColor: COLORS.accent,
     justifyContent: 'center',
     alignItems: 'center',
