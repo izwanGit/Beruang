@@ -241,6 +241,7 @@ export default function App() {
   const [currentChatMessages, setCurrentChatMessages] = useState<Message[]>([]);
   const [streamingResponse, setStreamingResponse] = useState<string>('');
   const [isBotThinking, setIsBotThinking] = useState(false);
+  const [thinkingMessage, setThinkingMessage] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
   // --- NEW: Monthly Budgets State ---
@@ -913,6 +914,7 @@ export default function App() {
     // 4. START STREAMING VIA XHR
     setStreamingResponse('');
     setIsBotThinking(true);
+    setThinkingMessage('Processing your request...');
     let fullResponse = '';
     let buffer = '';
     let previousLength = 0;
@@ -964,6 +966,7 @@ export default function App() {
                 fullResponse += data.content;
               } else if (currentEvent === 'thinking') {
                 console.log('DEBUG: Thinking:', data.message);
+                if (data.message) setThinkingMessage(data.message);
               } else if (currentEvent === 'done') {
                 resolve();
               } else if (currentEvent === 'error') {
@@ -1074,6 +1077,7 @@ export default function App() {
     }).finally(() => {
       setStreamingResponse('');
       setIsBotThinking(false);
+      setThinkingMessage('');
       handleAwardXP(XP_REWARDS.CHAT_SESSION);
     });
   };
@@ -1524,6 +1528,7 @@ export default function App() {
                       userProfile={userProfile!}
                       transactions={transactions}
                       isBotThinking={isBotThinking}
+                      thinkingMessage={thinkingMessage}
                       onSetCurrentChatId={setCurrentChatId}
                       onCreateNewChat={handleCreateNewChat}
                       onSendMessage={handleSendMessage}

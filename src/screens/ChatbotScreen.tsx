@@ -58,6 +58,7 @@ type ChatbotScreenProps = {
   route: ChatbotScreenRouteProp;
   streamingMessage: string;
   isBotThinking?: boolean; // New prop for loading state
+  thinkingMessage?: string; // Specific message for thinking state
 };
 
 const ChatHistoryDropdown = ({
@@ -239,6 +240,7 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
     onEditMessage,
     streamingMessage,
     isBotThinking,
+    thinkingMessage,
   } = props;
 
   const [input, setInput] = useState('');
@@ -731,7 +733,8 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
                         </View>
                       ) : (
                         <View style={[styles.messageBubble, styles.botBubble, styles.typingBubble]}>
-                          <ActivityIndicator size="small" color={COLORS.accent} />
+                          <ActivityIndicator size="small" color={COLORS.accent} style={{ marginRight: 8 }} />
+                          <Text style={styles.thinkingText}>{thinkingMessage || 'Thinking...'}</Text>
                         </View>
                       )}
                     </View>
@@ -883,14 +886,12 @@ const markdownStyles = StyleSheet.create({
     backgroundColor: COLORS.accent,
     borderRadius: 10,
     paddingHorizontal: 5,
-    paddingVertical: 1,
+    paddingVertical: 0,
     fontSize: 10,
-    fontWeight: 'bold',
-    marginLeft: 2,
-    marginRight: 2,
-    overflow: 'hidden',
+    fontWeight: '900',
+    marginHorizontal: 2,
     textAlign: 'center',
-    minWidth: 18,
+    overflow: 'hidden',
   },
 });
 
@@ -1178,6 +1179,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     fontStyle: 'italic',
+  },
+  thinkingText: {
+    color: COLORS.accent,
+    fontSize: 13,
+    fontWeight: '500',
+    opacity: 0.8,
   },
 });
 
