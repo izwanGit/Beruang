@@ -21,6 +21,7 @@ import {
   Image,
   ImageBackground,
   TouchableWithoutFeedback,
+  Linking,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -488,7 +489,7 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
   const chatTitle =
     (chatSessions || []).find((s) => s.id === currentChatId)?.title || 'New Chat';
 
-  // Fix for React 19 "key" spread error in react-native-markdown-display
+  // Fix for React 19 "key" spread error AND iOS citation badge styling
   const markdownRules = {
     image: (node: any, children: any, parent: any, styles: any) => {
       return (
@@ -497,6 +498,38 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
           source={{ uri: node.attributes.src }}
           style={styles.image}
         />
+      );
+    },
+    link: (node: any, children: any, parent: any, styles: any) => {
+      return (
+        <Text
+          key={node.key}
+          onPress={() => Linking.openURL(node.attributes.href)}
+          style={{ fontSize: 13 }} // ensure parent text has size
+        >
+          <View
+            style={{
+              backgroundColor: COLORS.accent,
+              borderRadius: 8,
+              paddingHorizontal: 6,
+              paddingVertical: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              transform: [{ translateY: 2 }], // minor visual adjustment
+            }}
+          >
+            <Text
+              style={{
+                color: COLORS.white,
+                fontSize: 10,
+                fontWeight: 'bold',
+                textAlign: 'center',
+              }}
+            >
+              {children}
+            </Text>
+          </View>
+        </Text>
       );
     },
   };
