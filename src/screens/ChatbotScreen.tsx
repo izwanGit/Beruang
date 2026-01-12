@@ -501,32 +501,38 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
       );
     },
     link: (node: any, children: any, parent: any, styles: any) => {
+      // Safely extract text content from the AST node
+      const content = node.children && node.children.length > 0
+        ? node.children[0].content
+        : '';
+
       return (
         <Text
           key={node.key}
           onPress={() => Linking.openURL(node.attributes.href)}
-          style={{ fontSize: 13 }} // ensure parent text has size
+          style={{ fontSize: 13 }}
         >
           <View
             style={{
-              backgroundColor: COLORS.accent,
-              borderRadius: 8,
-              paddingHorizontal: 6,
-              paddingVertical: 1,
+              backgroundColor: '#1E4620', // Darker Green as requested
+              borderRadius: 10, // Half of width/height for perfect circle
+              width: 20,
+              height: 20,
               alignItems: 'center',
               justifyContent: 'center',
-              transform: [{ translateY: 2 }], // minor visual adjustment
+              transform: [{ translateY: 4 }], // visual adjustment to align with text
             }}
           >
             <Text
               style={{
-                color: COLORS.white,
+                color: '#FFFFFF',
                 fontSize: 10,
-                fontWeight: 'bold',
+                fontWeight: '900',
                 textAlign: 'center',
+                lineHeight: 14, // Helps vertical centering
               }}
             >
-              {children}
+              {content}
             </Text>
           </View>
         </Text>
