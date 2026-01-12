@@ -1034,9 +1034,10 @@ const styles = StyleSheet.create({
     width: '85%',
   },
   typingBubble: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    width: 60,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    minWidth: 60,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
