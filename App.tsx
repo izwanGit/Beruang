@@ -1498,7 +1498,7 @@ export default function App() {
                       <AddTransactionScreen
                         onBack={() => navigation.goBack()}
                         showMessage={showMessage}
-                        onAddTransaction={(tx) => handleAddTransaction(tx)}
+                        onAddTransaction={(tx, showMsg = true) => handleAddTransaction(tx, showMsg)}
                         canAccommodateBudget={canAccommodateTransaction}
                         monthlyBalance={Math.max(0, monthlyBalance)}
                         onNavigateToAddMoney={() => navigation.navigate('AddMoney')}

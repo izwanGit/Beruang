@@ -29,7 +29,7 @@ const IMPORT_DATA_URL = PREDICT_TRANSACTION_URL.replace('/predict-transaction', 
 type AddTransactionScreenProps = {
   onBack: () => void;
   showMessage: (message: string) => void;
-  onAddTransaction: (transaction: any) => void;
+  onAddTransaction: (transaction: any, showMsg?: boolean) => void;
   canAccommodateBudget?: (amount: number, category: 'needs' | 'wants') => boolean;
   monthlyBalance?: number; // Available spending balance
   onNavigateToAddMoney?: () => void;
@@ -61,6 +61,10 @@ export const AddTransactionScreen = ({
     total: number;
     itemCount: number;
   }>({ visible: false, total: 0, itemCount: 0 });
+  const [bulkImportResult, setBulkImportResult] = useState<{
+    importedCount: number;
+    skippedCount: number;
+  } | null>(null);
 
   // Format cents to currency display (e.g., 123 cents -> "1.23")
   // Show empty string when 0 so placeholder shows
@@ -203,7 +207,7 @@ export const AddTransactionScreen = ({
             }
           }
 
-          // Add transaction with category from local AI
+          // Add transaction with category from local AI (silent - no popups)
           onAddTransaction({
             icon: 'shopping-cart',
             name: t.name,
@@ -212,7 +216,7 @@ export const AddTransactionScreen = ({
             type: 'expense',
             category: result.category,
             subCategory: result.subCategory,
-          });
+          }, false); // false = suppress modal feedback
           importedCount++;
         }
 
@@ -226,16 +230,8 @@ export const AddTransactionScreen = ({
         setIsImporting(false);
         setBulkTextInput('');
 
-        // SUCCESS PATH REFACTOR: Wait for modal to finish closing before navigating
-        // This ensures the touch system is fully released.
-        setTimeout(() => {
-          onBack();
-          if (skippedCount > 0) {
-            showMessage(`Imported ${importedCount} items! (${skippedCount} skipped - budget full)`);
-          } else {
-            showMessage(`Successfully imported ${importedCount} items!`);
-          }
-        }, 500);
+        // SUCCESS: Set result state to show inline success UI
+        setBulkImportResult({ importedCount, skippedCount });
       } else {
         throw new Error('No transactions found');
       }
@@ -332,7 +328,48 @@ export const AddTransactionScreen = ({
         >
           {/* --- Manual Entry Card --- */}
           <View style={addTransactionStyles.card}>
-            {!lastAdded ? (
+            {bulkImportResult ? (
+              // BULK IMPORT SUCCESS STATE
+              <View style={addTransactionStyles.successState}>
+                <View style={addTransactionStyles.successHeader}>
+                  <View style={addTransactionStyles.checkCircle}>
+                    <Icon name="check" size={28} color={COLORS.white} />
+                  </View>
+                  <Text style={addTransactionStyles.successText}>
+                    {bulkImportResult.importedCount} Item{bulkImportResult.importedCount > 1 ? 's' : ''} Imported!
+                  </Text>
+                </View>
+
+                {bulkImportResult.skippedCount > 0 && (
+                  <View style={addTransactionStyles.resultBox}>
+                    <Text style={addTransactionStyles.resultLabel}>NOTE</Text>
+                    <Text style={{ color: COLORS.darkGray, fontSize: 13 }}>
+                      {bulkImportResult.skippedCount} item{bulkImportResult.skippedCount > 1 ? 's' : ''} skipped (budget full)
+                    </Text>
+                  </View>
+                )}
+
+                <View style={addTransactionStyles.buttonRow}>
+                  <TouchableOpacity
+                    style={addTransactionStyles.addMoreButton}
+                    onPress={() => {
+                      setBulkImportResult(null);
+                      setIsImportModalVisible(true);
+                    }}
+                  >
+                    <Icon name="plus-circle" size={18} color={COLORS.white} />
+                    <Text style={addTransactionStyles.addMoreText}>Add More</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={addTransactionStyles.finishButton}
+                    onPress={onBack}
+                  >
+                    <Text style={addTransactionStyles.finishText}>I'm Done</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : !lastAdded ? (
               <>
                 <View style={addTransactionStyles.cardHeader}>
                   <Icon name="edit-3" size={20} color={COLORS.secondary} />
@@ -509,6 +546,7 @@ export const AddTransactionScreen = ({
               <Icon name="chevron-right" size={20} color={COLORS.darkGray} />
             </TouchableOpacity>
           </View>
+
 
           {/* --- Session History --- */}
           {sessionItems.length > 0 && (
