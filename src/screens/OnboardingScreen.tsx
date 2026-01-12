@@ -539,6 +539,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#EEE',
+    marginBottom: 12,
   },
   optionItemSelected: {
     borderColor: COLORS.primary,
