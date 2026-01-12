@@ -362,6 +362,7 @@ export const OnboardingScreen = ({
                 {currentQuestion.type === 'radio' ? (
                   <ScrollView
                     style={styles.radioList}
+                    contentContainerStyle={{ paddingBottom: 100 }}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                   >
