@@ -13,6 +13,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Linking,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
@@ -126,7 +127,7 @@ export const SavedAdviceScreen = ({
   onDeleteAdvice,
 }: SavedAdviceScreenProps) => {
   const insets = useSafeAreaInsets();
-  const headerTopPadding = Math.max(insets.top, 20) + 12;
+  const headerTopPadding = Platform.OS === 'android' ? 50 : Math.max(insets.top, 20) + 12;
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -148,7 +149,7 @@ export const SavedAdviceScreen = ({
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View style={styles.safeArea}>
           {/* Header */}

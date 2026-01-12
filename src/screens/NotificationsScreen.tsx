@@ -9,6 +9,7 @@ import {
     StatusBar,
     RefreshControl,
     Alert,
+    Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
@@ -22,7 +23,7 @@ type NotificationsScreenProps = {
 
 export const NotificationsScreen = ({ onBack }: NotificationsScreenProps) => {
     const insets = useSafeAreaInsets();
-    const headerTopPadding = Math.max(insets.top, 20) + 12;
+    const headerTopPadding = Platform.OS === 'android' ? 50 : Math.max(insets.top, 20) + 12;
 
     const [notifications, setNotifications] = useState<StoredNotification[]>([]);
     const [refreshing, setRefreshing] = useState(false);
@@ -113,7 +114,7 @@ export const NotificationsScreen = ({ onBack }: NotificationsScreenProps) => {
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+            <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
             <View style={[styles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>
                 <View style={styles.headerContent}>
                     <TouchableOpacity onPress={onBack} style={styles.headerButton}>

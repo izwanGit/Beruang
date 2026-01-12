@@ -21,12 +21,12 @@ import {
   UIManager,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../constants/colors';
@@ -862,13 +862,13 @@ export const ExpensesScreen = ({
   );
 
   const insets = useSafeAreaInsets();
-  const headerTopPadding = Math.max(insets.top, 20) + 12;
+  const headerTopPadding = Platform.OS === 'android' ? 50 : Math.max(insets.top, 20) + 12;
 
   return (
     <View style={expensesStyles.container}>
-      <View style={expensesStyles.safeAreaContent}>
-        <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-        <View style={[expensesStyles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <SafeAreaView style={expensesStyles.safeAreaContent} edges={['left', 'right', 'bottom']}>
+        <View style={[expensesStyles.header, { paddingTop: headerTopPadding }]}>
           <TouchableOpacity onPress={onBack} style={expensesStyles.headerButton}>
             <Icon name="arrow-left" size={24} color={COLORS.accent} />
           </TouchableOpacity>
@@ -1131,7 +1131,7 @@ export const ExpensesScreen = ({
             </View>
           )}
         </ScrollView>
-      </View>
+      </SafeAreaView>
 
       {/* Bottom Nav */}
       <View style={expensesStyles.bottomNavSafeArea}>
@@ -1345,7 +1345,7 @@ export const ExpensesScreen = ({
         isVisible={isReallocateModalVisible}
         onClose={() => setIsReallocateModalVisible(false)}
         totalRemaining={reallocateTotalRemaining}
-        initialMonths={editingTransaction?.allocationTotalMonths}
+        initialMonths={editingTransaction?.allocationTotalMonths || 1}
         onConfirm={handleConfirmRelocate}
       />
     </View>

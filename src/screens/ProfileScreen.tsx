@@ -173,7 +173,7 @@ export const ProfileScreen = ({
 
       {/* --- Main Screen --- */}
       <View style={[styles.safeAreaContent, { paddingTop: 0 }]}>
-        <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
         {/* --- Reverted Standard Header --- */}
         <View style={[styles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>
@@ -485,6 +485,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
+    elevation: 2, // Added for Android
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
   headerButton: {
     width: 40,

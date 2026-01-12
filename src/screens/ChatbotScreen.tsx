@@ -630,8 +630,8 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
 
   return (
     <View style={styles.container}>
-      <SafeAreaView style={styles.safeAreaContent} edges={['top', 'left', 'right', 'bottom']}>
-        <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <SafeAreaView style={styles.safeAreaContent} edges={Platform.OS === 'ios' ? ['top', 'left', 'right', 'bottom'] : ['left', 'right', 'bottom']}>
         <View style={{ flex: 1 }}>
 
           <View style={styles.header}>
@@ -658,7 +658,7 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
           <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 45 : 0}
           >
             <ImageBackground
               source={require('../../assets/wallpaper.png')}
@@ -975,7 +975,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'android' ? 40 : 16, // Fix "too upward"
+    paddingTop: Platform.OS === 'android' ? 50 : 16, // Refined for translucent status bar
     paddingBottom: 12,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,

@@ -98,8 +98,13 @@ class NotificationService {
 
     async requestUserPermission() {
         console.log('Requesting notification permission...');
-        await notifee.requestPermission();
-        console.log('Notification permission granted via Notifee');
+        const settings = await notifee.requestPermission();
+
+        if (settings.authorizationStatus >= 1) {
+            console.log('Notification permission granted');
+        } else {
+            console.log('Notification permission denied');
+        }
     }
 
     async getFCMToken() {
@@ -143,13 +148,21 @@ class NotificationService {
             id: 'demo',
             name: 'Demo Channel',
             importance: AndroidImportance.HIGH,
+            sound: 'noti', // Custom sound file android/app/src/main/res/raw/noti.mp3
         });
 
         await notifee.createTriggerNotification(
             {
                 title,
                 body,
-                android: { channelId, pressAction: { id: 'default' } },
+                android: {
+                    channelId,
+                    pressAction: { id: 'default' },
+                    importance: AndroidImportance.HIGH,
+                },
+                ios: {
+                    sound: 'noti.mp3', // Custom sound file ios/noti.mp3
+                }
             },
             trigger,
         );
@@ -206,11 +219,19 @@ class NotificationService {
             id: 'smart-reminder',
             name: 'Smart Reminders',
             importance: AndroidImportance.DEFAULT,
+            sound: 'noti',
         });
 
         try {
             await notifee.createTriggerNotification(
-                { title, body, android: { channelId } },
+                {
+                    title,
+                    body,
+                    android: { channelId },
+                    ios: {
+                        sound: 'noti.mp3',
+                    }
+                },
                 trigger,
             );
         } catch (e) {

@@ -44,7 +44,7 @@ export const AddTransactionScreen = ({
   onNavigateToAddMoney,
 }: AddTransactionScreenProps) => {
   const insets = useSafeAreaInsets();
-  const headerTopPadding = Math.max(insets.top, 20) + 12;
+  const headerTopPadding = Platform.OS === 'android' ? 50 : Math.max(insets.top, 20) + 12;
 
   const [amountCents, setAmountCents] = useState(0); // Store as cents for bank-style input
   const [description, setDescription] = useState('');
@@ -351,7 +351,7 @@ export const AddTransactionScreen = ({
 
   return (
     <View style={addTransactionStyles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <View style={addTransactionStyles.safeArea}>
         {/* --- Standardized Header --- */}
         <View style={[addTransactionStyles.header, { paddingTop: headerTopPadding, height: 60 + headerTopPadding }]}>

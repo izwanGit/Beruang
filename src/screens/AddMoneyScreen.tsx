@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   TouchableWithoutFeedback,
   Keyboard,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
@@ -29,7 +30,7 @@ export const AddMoneyScreen = ({
   onAddTransaction,
 }: AddMoneyScreenProps) => {
   const insets = useSafeAreaInsets();
-  const headerTopPadding = Math.max(insets.top, 20) + 12;
+  const headerTopPadding = Platform.OS === 'android' ? 50 : Math.max(insets.top, 20) + 12;
 
   const [amountCents, setAmountCents] = useState(0); // Bank-style: store as cents
   const [description, setDescription] = useState('');
@@ -159,7 +160,7 @@ export const AddMoneyScreen = ({
 
   return (
     <View style={addMoneyStyles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={addMoneyStyles.safeArea}>
           {/* --- Standardized Header --- */}

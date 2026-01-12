@@ -93,7 +93,7 @@ export const LoginScreen = ({
 
   return (
     <SafeAreaView style={loginStyles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View style={{ flex: 1, width: '100%' }}>
           <KeyboardAvoidingView

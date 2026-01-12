@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Text,
   AppState,
+  StatusBar,
 } from 'react-native';
 import {
   NavigationContainer,
@@ -1379,6 +1380,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
         <NavigationContainer
           ref={navigationRef}
           onStateChange={(state) => {
@@ -1683,11 +1685,11 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: COLORS.white,
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
+    borderTopColor: '#F0F0F0', // Matched with ChatbotScreen
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
     elevation: 20,
     zIndex: 1000,
   },

@@ -10,6 +10,7 @@ import {
   Alert,
   Image,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
@@ -179,7 +180,7 @@ export const HomeScreen = ({
 
   return (
     <View style={homeStyles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.accent} />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
@@ -451,7 +452,7 @@ const homeStyles = StyleSheet.create({
   header: {
     backgroundColor: COLORS.accent,
     paddingHorizontal: 20,
-    paddingTop: 65,
+    paddingTop: Platform.OS === 'android' ? 60 : 65,
     paddingBottom: 60,
     flexDirection: 'row',
     justifyContent: 'space-between',
