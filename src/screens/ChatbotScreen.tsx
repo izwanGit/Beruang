@@ -502,9 +502,12 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
     },
     link: (node: any, children: any, parent: any, styles: any) => {
       // Safely extract text content from the AST node
-      const content = node.children && node.children.length > 0
+      let content = node.children && node.children.length > 0
         ? node.children[0].content
         : '';
+
+      // Remove brackets if present (e.g., "[1]" -> "1")
+      content = content.replace(/[\[\]]/g, '');
 
       return (
         <Text
@@ -514,8 +517,8 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
         >
           <View
             style={{
-              backgroundColor: '#1E4620', // Darker Green as requested
-              borderRadius: 10, // Half of width/height for perfect circle
+              backgroundColor: '#557C56', // Medium Sage/Olive Green
+              borderRadius: 10,
               width: 20,
               height: 20,
               alignItems: 'center',
