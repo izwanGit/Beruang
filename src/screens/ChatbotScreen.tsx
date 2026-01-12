@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   FlatList,
   Alert,
-  Clipboard,
   ScrollView,
   Dimensions,
   Modal,
@@ -20,9 +19,9 @@ import {
   Platform,
   Image,
   ImageBackground,
-  InteractionManager,
   TouchableWithoutFeedback,
 } from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
@@ -395,17 +394,17 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
 
   const handleCreateNew = () => {
     setIsHistoryVisible(false);
-    // Wait for modal close animation and interactions to complete
-    InteractionManager.runAfterInteractions(() => {
+    // Use setTimeout instead of InteractionManager to bypass deprecation warnings
+    setTimeout(() => {
       onCreateNewChat();
-    });
+    }, 0);
   };
 
   const handleSetChat = (id: string) => {
     setIsHistoryVisible(false);
-    InteractionManager.runAfterInteractions(() => {
+    setTimeout(() => {
       onSetCurrentChatId(id);
-    });
+    }, 0);
   };
 
   // --- STATE RESET ON CHAT SWITCH ---
@@ -463,9 +462,9 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
     if (highlightMessageId && currentChatMessages.length > 0) {
       const index = currentChatMessages.findIndex(m => m.id === highlightMessageId);
       if (index > -1) {
-        InteractionManager.runAfterInteractions(() => {
+        setTimeout(() => {
           flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
-        });
+        }, 100);
         const timer = setTimeout(() => {
           setHighlightMessageId(null);
         }, 3000);
@@ -488,6 +487,19 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
 
   const chatTitle =
     (chatSessions || []).find((s) => s.id === currentChatId)?.title || 'New Chat';
+
+  // Fix for React 19 "key" spread error in react-native-markdown-display
+  const markdownRules = {
+    image: (node: any, children: any, parent: any, styles: any) => {
+      return (
+        <Image
+          key={node.key}
+          source={{ uri: node.attributes.src }}
+          style={styles.image}
+        />
+      );
+    },
+  };
 
   const lastUserMessage = [...currentChatMessages].filter(m => m.sender === 'user').pop();
 
@@ -528,7 +540,7 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
     if (parts.length === 0 || !isBot) {
       return (
         <View>
-          {isBot ? <Markdown style={markdownStyles}>{textToProcess}</Markdown> : <Text style={styles.userMessageText}>{textToProcess}</Text>}
+          {isBot ? <Markdown rules={markdownRules} style={markdownStyles}>{textToProcess}</Markdown> : <Text style={styles.userMessageText}>{textToProcess}</Text>}
           {widgetIsStreaming && (
             <View style={styles.streamingWidgetPlaceholder}>
               <ActivityIndicator size="small" color={COLORS.accent} style={{ marginRight: 8 }} />
@@ -546,7 +558,7 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
             <SmartWidget key={`widget - ${index} `} dataString={part.content} />
           ) : (
             part.content.trim() !== '' && (
-              <Markdown key={`text - ${index} `} style={markdownStyles}>
+              <Markdown key={`text - ${index} `} rules={markdownRules} style={markdownStyles}>
                 {part.content}
               </Markdown>
             )
