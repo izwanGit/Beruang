@@ -62,6 +62,36 @@ export const OnboardingScreen = ({
   const [customMainGoal, setCustomMainGoal] = useState('');
   const [customChallenge, setCustomChallenge] = useState('');
 
+  // Predefined options for detecting custom "Others" values
+  const mainGoalOptions = [
+    'Build Emergency Fund',
+    'Settle All Debts',
+    'Save for Marriage/House',
+    'Start Investing',
+    'Break Paycheck Cycle',
+  ];
+  const challengeOptions = [
+    'Impulse Online Shopping',
+    'High Living Cost',
+    'Social Pressure Spending',
+    'Lack of Knowledge',
+    'Poor Tracking Discipline',
+  ];
+
+  // On mount: detect if saved value is a custom "Others" entry
+  useEffect(() => {
+    if (initialData?.financialGoals && !mainGoalOptions.includes(initialData.financialGoals)) {
+      // It's a custom value - set "Others (specify)" and populate custom input
+      setMainGoal('Others (specify)');
+      setCustomMainGoal(initialData.financialGoals);
+    }
+    if (initialData?.financialSituation && !challengeOptions.includes(initialData.financialSituation)) {
+      // It's a custom value - set "Others (specify)" and populate custom input
+      setBiggestChallenge('Others (specify)');
+      setCustomChallenge(initialData.financialSituation);
+    }
+  }, []);
+
   // Group steps for logical flow
   const stepGroups = [
     { title: 'Identity', range: [0, 1] },
