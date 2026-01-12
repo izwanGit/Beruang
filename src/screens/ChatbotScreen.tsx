@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   FlatList,
   Alert,
+  Clipboard,
   ScrollView,
   Dimensions,
   Modal,
@@ -21,7 +22,6 @@ import {
   ImageBackground,
   TouchableWithoutFeedback,
 } from 'react-native';
-import Clipboard from '@react-native-clipboard/clipboard';
 import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
