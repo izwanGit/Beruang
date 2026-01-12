@@ -65,6 +65,16 @@ export const AddTransactionScreen = ({
     importedCount: number;
     skippedCount: number;
   } | null>(null);
+  const [xpSummary, setXpSummary] = useState<{
+    visible: boolean;
+    itemsLogged: number;
+    xpGained: number;
+    overflows: number;
+    overflowPenalty: number;
+    savingsDips: number;
+    savingsPenalty: number;
+    netXp: number;
+  } | null>(null);
 
   // Format cents to currency display (e.g., 123 cents -> "1.23")
   // Show empty string when 0 so placeholder shows
@@ -193,6 +203,14 @@ export const AddTransactionScreen = ({
 
         let importedCount = 0;
         let skippedCount = 0;
+        let xpGained = 0;
+        let overflows = 0;
+        let savingsDips = 0;
+
+        // XP Constants (same as App.tsx)
+        const XP_PER_TRANSACTION = 10;
+        const OVERFLOW_PENALTY = -250;
+        const SAVINGS_DIP_PENALTY = -500;
 
         // Process each transaction through local TensorFlow (same as manual entry)
         for (const t of data.transactions) {
@@ -203,6 +221,8 @@ export const AddTransactionScreen = ({
             const canProceed = canAccommodateBudget(t.amount, result.category as 'needs' | 'wants');
             if (!canProceed) {
               skippedCount++;
+              // Track as overflow (budget full = overflow)
+              overflows++;
               continue; // Skip this transaction if budget is full
             }
           }
@@ -217,6 +237,9 @@ export const AddTransactionScreen = ({
             category: result.category,
             subCategory: result.subCategory,
           }, false); // false = suppress modal feedback
+
+          // Track XP gain
+          xpGained += XP_PER_TRANSACTION;
           importedCount++;
         }
 
@@ -230,7 +253,24 @@ export const AddTransactionScreen = ({
         setIsImporting(false);
         setBulkTextInput('');
 
-        // SUCCESS: Set result state to show inline success UI
+        // Calculate penalties
+        const overflowPenalty = overflows * OVERFLOW_PENALTY;
+        const savingsPenalty = savingsDips * SAVINGS_DIP_PENALTY;
+        const netXp = xpGained + overflowPenalty + savingsPenalty;
+
+        // Show XP Summary Modal FIRST
+        setXpSummary({
+          visible: true,
+          itemsLogged: importedCount,
+          xpGained: xpGained,
+          overflows: overflows,
+          overflowPenalty: overflowPenalty,
+          savingsDips: savingsDips,
+          savingsPenalty: savingsPenalty,
+          netXp: netXp,
+        });
+
+        // Store result for after modal is dismissed
         setBulkImportResult({ importedCount, skippedCount });
       } else {
         throw new Error('No transactions found');
@@ -682,6 +722,87 @@ export const AddTransactionScreen = ({
                 }}
               >
                 <Text style={addTransactionStyles.exceedCancelText}>Cancel Import</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* --- XP Summary Modal for Bulk Import --- */}
+      {xpSummary?.visible && (
+        <Modal
+          visible={true}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setXpSummary(null)}
+        >
+          <View style={addTransactionStyles.modalOverlay}>
+            <View style={addTransactionStyles.xpModalContent}>
+              <View style={[
+                addTransactionStyles.xpHeader,
+                { backgroundColor: xpSummary.netXp >= 0 ? '#4CAF50' : '#E74C3C' }
+              ]}>
+                <Icon
+                  name={xpSummary.netXp >= 0 ? "trending-up" : "trending-down"}
+                  size={32}
+                  color={COLORS.white}
+                />
+                <Text style={addTransactionStyles.xpHeaderText}>
+                  {xpSummary.netXp >= 0 ? 'XP Gained!' : 'XP Lost!'}
+                </Text>
+              </View>
+
+              <View style={addTransactionStyles.xpBody}>
+                <View style={addTransactionStyles.xpRow}>
+                  <Text style={addTransactionStyles.xpLabel}>
+                    {xpSummary.itemsLogged} item{xpSummary.itemsLogged > 1 ? 's' : ''} logged
+                  </Text>
+                  <Text style={[addTransactionStyles.xpValue, { color: '#4CAF50' }]}>
+                    +{xpSummary.xpGained} XP
+                  </Text>
+                </View>
+
+                {xpSummary.overflows > 0 && (
+                  <View style={addTransactionStyles.xpRow}>
+                    <Text style={addTransactionStyles.xpLabel}>
+                      {xpSummary.overflows} overflow{xpSummary.overflows > 1 ? 's' : ''} (budget full)
+                    </Text>
+                    <Text style={[addTransactionStyles.xpValue, { color: '#E74C3C' }]}>
+                      {xpSummary.overflowPenalty} XP
+                    </Text>
+                  </View>
+                )}
+
+                {xpSummary.savingsDips > 0 && (
+                  <View style={addTransactionStyles.xpRow}>
+                    <Text style={addTransactionStyles.xpLabel}>
+                      {xpSummary.savingsDips} savings dip{xpSummary.savingsDips > 1 ? 's' : ''}
+                    </Text>
+                    <Text style={[addTransactionStyles.xpValue, { color: '#E74C3C' }]}>
+                      {xpSummary.savingsPenalty} XP
+                    </Text>
+                  </View>
+                )}
+
+                <View style={[addTransactionStyles.xpRow, addTransactionStyles.xpTotal]}>
+                  <Text style={addTransactionStyles.xpTotalLabel}>NET XP</Text>
+                  <Text style={[
+                    addTransactionStyles.xpTotalValue,
+                    { color: xpSummary.netXp >= 0 ? '#4CAF50' : '#E74C3C' }
+                  ]}>
+                    {xpSummary.netXp >= 0 ? '+' : ''}{xpSummary.netXp} XP
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  addTransactionStyles.xpButton,
+                  { backgroundColor: xpSummary.netXp >= 0 ? '#4CAF50' : COLORS.accent }
+                ]}
+                onPress={() => setXpSummary(null)}
+              >
+                <Text style={addTransactionStyles.xpButtonText}>OK</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1190,6 +1311,68 @@ const addTransactionStyles = StyleSheet.create({
   exceedCancelText: {
     color: COLORS.darkGray,
     fontSize: 14,
+    fontWeight: '700',
+  },
+  // XP Summary Modal Styles
+  xpModalContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    width: '85%',
+    overflow: 'hidden',
+  },
+  xpHeader: {
+    padding: 20,
+    alignItems: 'center',
+    gap: 8,
+  },
+  xpHeaderText: {
+    color: COLORS.white,
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  xpBody: {
+    padding: 20,
+    gap: 12,
+  },
+  xpRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  xpLabel: {
+    color: COLORS.darkGray,
+    fontSize: 14,
+    flex: 1,
+  },
+  xpValue: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  xpTotal: {
+    borderTopWidth: 1,
+    borderTopColor: '#EEE',
+    paddingTop: 12,
+    marginTop: 8,
+  },
+  xpTotalLabel: {
+    color: COLORS.accent,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  xpTotalValue: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  xpButton: {
+    margin: 20,
+    marginTop: 0,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  xpButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
     fontWeight: '700',
   },
 });
