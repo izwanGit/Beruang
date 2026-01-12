@@ -57,10 +57,10 @@ export const SmartWidget: React.FC<SmartWidgetProps> = ({ dataString }) => {
 
     return (
         <Animated.View style={[styles.container, animatedStyle]}>
-            {data.t === 's' && <SpendingSummaryWidget data={data} />}
-            {data.t === 'i' && <ItineraryWidget data={data} />}
-            {data.t === 'g' && <GoalProgressWidget data={data} />}
-            {data.t === 'd' && <DailyTransactionsWidget data={data} />}
+            {data.t === 's' && <SpendingSummaryWidget data={data as any} />}
+            {data.t === 'i' && <ItineraryWidget data={data as any} />}
+            {data.t === 'g' && <GoalProgressWidget data={data as any} />}
+            {data.t === 'd' && <DailyTransactionsWidget data={data as any} />}
             {!['s', 'i', 'g', 'd'].includes(data.t) && (
                 <View style={styles.errorState}>
                     <Text style={styles.errorText}>Invalid Widget Type</Text>
