@@ -361,10 +361,21 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
   useEffect(() => {
     if (editingMessage) {
       setEditText(editingMessage.text);
+      // Scroll to the editing message so keyboard doesn't cover it
+      const index = currentChatMessages.findIndex(m => m.id === editingMessage.id);
+      if (index > -1) {
+        setTimeout(() => {
+          flatListRef.current?.scrollToIndex({
+            index,
+            animated: true,
+            viewPosition: 0.3 // Position it in upper third of screen
+          });
+        }, 150); // Small delay to let keyboard animation start
+      }
     } else {
       setEditText('');
     }
-  }, [editingMessage]);
+  }, [editingMessage, currentChatMessages]);
 
   const handleSend = async () => {
     if (input.trim().length === 0 || !currentChatId) return;
@@ -647,7 +658,7 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
           <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
           >
             <ImageBackground
               source={require('../../assets/wallpaper.png')}
