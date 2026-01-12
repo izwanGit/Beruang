@@ -877,6 +877,21 @@ const markdownStyles = StyleSheet.create({
   bullet_list_content: {
     flex: 1,
   },
+  link: {
+    color: COLORS.white,
+    textDecorationLine: 'none',
+    backgroundColor: COLORS.accent,
+    borderRadius: 10,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginLeft: 2,
+    marginRight: 2,
+    overflow: 'hidden',
+    textAlign: 'center',
+    minWidth: 18,
+  },
 });
 
 const styles = StyleSheet.create({
