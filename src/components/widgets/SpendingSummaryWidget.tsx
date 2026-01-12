@@ -7,6 +7,11 @@ interface SpendingSummaryProps {
     data: {
         d: Array<{ c: string, a: number }>;
         p: number;
+        o?: {
+            from: string;
+            to: string;
+            a: number;
+        };
     };
 }
 
@@ -15,11 +20,10 @@ export const SpendingSummaryWidget: React.FC<SpendingSummaryProps> = ({ data }) 
 
     const getCategoryIcon = (cat: string) => {
         const c = cat.toLowerCase();
+        if (c.includes('need')) return 'shopping-cart';
+        if (c.includes('want')) return 'heart';
+        if (c.includes('save')) return 'briefcase';
         if (c.includes('food')) return 'coffee';
-        if (c.includes('trans')) return 'truck';
-        if (c.includes('shop')) return 'shopping-bag';
-        if (c.includes('ent')) return 'tv';
-        if (c.includes('util')) return 'zap';
         return 'tag';
     };
 
@@ -47,6 +51,18 @@ export const SpendingSummaryWidget: React.FC<SpendingSummaryProps> = ({ data }) 
                     </View>
                 ))}
             </View>
+
+            {data.o && (
+                <View style={styles.overflowContainer}>
+                    <View style={styles.overflowBadge}>
+                        <Icon name="zap" size={10} color={COLORS.white} />
+                        <Text style={styles.overflowBadgeText}>WATERFALL OVERFLOW</Text>
+                    </View>
+                    <Text style={styles.overflowText}>
+                        <Text style={styles.bold}>{data.o.from}</Text> exceeded! RM {data.o.a.toFixed(0)} absorbed from <Text style={styles.bold}>{data.o.to}</Text>.
+                    </Text>
+                </View>
+            )}
         </View>
     );
 };
@@ -132,5 +148,38 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '800',
         color: COLORS.accent,
+    },
+    overflowContainer: {
+        marginTop: 16,
+        backgroundColor: '#FFF8E1',
+        borderRadius: 12,
+        padding: 10,
+        borderWidth: 1,
+        borderColor: '#FFD54F',
+    },
+    overflowBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FF8F00',
+        alignSelf: 'flex-start',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        marginBottom: 4,
+    },
+    overflowBadgeText: {
+        color: COLORS.white,
+        fontSize: 8,
+        fontWeight: '900',
+        marginLeft: 4,
+    },
+    overflowText: {
+        fontSize: 11,
+        color: COLORS.accent,
+        lineHeight: 14,
+        fontWeight: '500',
+    },
+    bold: {
+        fontWeight: '800',
     }
 });
