@@ -12,6 +12,7 @@ import {
   Dimensions,
   TouchableWithoutFeedback,
   Keyboard,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
@@ -98,7 +99,7 @@ const renderMessageContent = (text: string) => {
   }
 
   if (parts.length === 0) {
-    return <Markdown style={markdownStyles}>{text}</Markdown>;
+    return <Markdown style={markdownStyles} rules={markdownRules}>{text}</Markdown>;
   }
 
   return (
@@ -108,7 +109,7 @@ const renderMessageContent = (text: string) => {
           <SmartWidget key={`widget-${index}`} dataString={part.content} />
         ) : (
           part.content.trim() !== '' && (
-            <Markdown key={`text-${index}`} style={markdownStyles}>
+            <Markdown key={`text-${index}`} style={markdownStyles} rules={markdownRules}>
               {part.content}
             </Markdown>
           )
@@ -240,6 +241,46 @@ const markdownStyles: any = {
   paragraph: {
     marginTop: 0,
     marginBottom: 8,
+  },
+};
+
+const markdownRules = {
+  link: (node: any, children: any, parent: any, styles: any) => {
+    let content = node.children && node.children.length > 0
+      ? node.children[0].content
+      : '';
+    content = content.replace(/\D/g, '');
+    return (
+      <Text
+        key={node.key}
+        onPress={() => Linking.openURL(node.attributes.href)}
+        style={{ fontSize: 13 }}
+      >
+        <View
+          style={{
+            backgroundColor: '#8FBC8F',
+            borderRadius: 10,
+            width: 20,
+            height: 20,
+            alignItems: 'center',
+            justifyContent: 'center',
+            transform: [{ translateY: 4 }],
+          }}
+        >
+          <Text
+            style={{
+              color: '#FFFFFF',
+              fontSize: 10,
+              fontWeight: '900',
+              textAlign: 'center',
+              lineHeight: 14,
+            }}
+          >
+            {content}
+          </Text>
+        </View>
+      </Text>
+    );
   },
 };
 
