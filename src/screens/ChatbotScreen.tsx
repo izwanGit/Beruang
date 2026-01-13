@@ -938,8 +938,8 @@ const markdownStyles = StyleSheet.create({
     paddingVertical: 0,
   },
   paragraph: {
-    marginTop: 0,
-    marginBottom: 0, // Removing bottom margin to fix "too big" bubbles
+    marginTop: 4,
+    marginBottom: 8,
     flexWrap: 'wrap',
     flexDirection: 'row',
     alignItems: 'flex-start',
