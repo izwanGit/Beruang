@@ -397,7 +397,7 @@ export const ProfileScreen = ({
             </TouchableOpacity>
 
             <Text style={styles.versionInfo}>
-              Beruang v1.0.4 • Made With Passion
+              Beruang v1.0.0 • Made With Passion
             </Text>
 
             {/* Spacer for Global Bottom Nav */}

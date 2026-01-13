@@ -350,7 +350,7 @@ export const PrivacySecurityScreen = ({ onBack }: PrivacySecurityScreenProps) =>
                 {/* Footer */}
                 <View style={styles.footer}>
                     <Text style={styles.footerText}>
-                        Beruang v1.0.4
+                        Beruang v1.0.0
                     </Text>
                 </View>
             </ScrollView>
