@@ -520,19 +520,38 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
       // Remove ALL non-digit characters to handle "web:10", "[1]", etc.
       content = content.replace(/\D/g, '');
 
-      // Superscript-style inline citation that stays with the text
+      // If no number found, don't render anything
+      if (!content) return null;
+
       return (
         <Text
           key={node.key}
           onPress={() => Linking.openURL(node.attributes.href)}
-          style={{
-            fontSize: 9,
-            fontWeight: '700',
-            color: '#8FBC8F',
-            lineHeight: 12,
-          }}
+          style={{ fontSize: 13 }}
         >
-          [{content}]
+          <View
+            style={{
+              backgroundColor: '#8FBC8F',
+              borderRadius: 10,
+              width: 20,
+              height: 20,
+              alignItems: 'center',
+              justifyContent: 'center',
+              transform: [{ translateY: 4 }],
+            }}
+          >
+            <Text
+              style={{
+                color: '#FFFFFF',
+                fontSize: 10,
+                fontWeight: '900',
+                textAlign: 'center',
+                lineHeight: 14,
+              }}
+            >
+              {content}
+            </Text>
+          </View>
         </Text>
       );
     },
