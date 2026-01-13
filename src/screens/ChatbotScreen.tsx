@@ -525,19 +525,31 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
         <Text
           key={node.key}
           onPress={() => Linking.openURL(node.attributes.href)}
-          style={{
-            backgroundColor: '#8FBC8F',
-            color: '#FFFFFF',
-            fontSize: 10,
-            fontWeight: '900',
-            paddingHorizontal: 6,
-            paddingVertical: 2,
-            borderRadius: 8,
-            overflow: 'hidden',
-            marginHorizontal: 2,
-          }}
+          style={{ fontSize: 13 }}
         >
-          {content}
+          <View
+            style={{
+              backgroundColor: '#8FBC8F',
+              borderRadius: 10,
+              width: 20,
+              height: 20,
+              alignItems: 'center',
+              justifyContent: 'center',
+              transform: [{ translateY: 4 }],
+            }}
+          >
+            <Text
+              style={{
+                color: '#FFFFFF',
+                fontSize: 10,
+                fontWeight: '900',
+                textAlign: 'center',
+                lineHeight: 14,
+              }}
+            >
+              {content}
+            </Text>
+          </View>
         </Text>
       );
     },
@@ -926,8 +938,8 @@ const markdownStyles = StyleSheet.create({
     paddingVertical: 0,
   },
   paragraph: {
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: 0,
+    marginBottom: 0,
   },
   strong: {
     fontWeight: 'bold',
