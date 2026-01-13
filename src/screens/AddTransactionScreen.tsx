@@ -134,6 +134,18 @@ export const AddTransactionScreen = ({
       }
 
       if (data && (data.amount !== undefined)) {
+        // --- NEW VALIDATION: Check for "Invalid" Receipt ---
+        // If amount is 0 AND we have no good description, it's likely a bad scan (e.g. random object)
+        const candidateDesc = data.description || data.merchant || '';
+        const isUnknown = !candidateDesc || candidateDesc === 'Unknown Transaction';
+
+        if (data.amount === 0 && isUnknown) {
+          // It's a bad scan
+          showMessage('Invalid receipt. Please try scanning a valid receipt again.');
+          // Do NOT set state, leave inputs empty
+          return;
+        }
+
         // Convert RM amount to cents for bank-style input
         setAmountCents(Math.round(data.amount * 100));
         // Use the AI description if available, otherwise merchant
