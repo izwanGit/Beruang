@@ -186,8 +186,8 @@ class NotificationService {
         // Define reminder times and messages
         const reminders = [
             // NEAR FUTURE REMINDERS (For FYP Demo)
-            { relativeMinutes: 15, title: '🚀 FYP Demo Mode', body: 'The automated monitoring system is active and tracking your budget!' },
-            { relativeMinutes: 60, title: '🛡️ Financial Guardian', body: 'Friendly reminder: Consistency is key to reaching your savings goals!' },
+            { relativeMinutes: 0.16, title: '🚀 FYP Demo Mode', body: 'The automated monitoring system is active and tracking your budget!' },
+            { relativeMinutes: 1, title: '🛡️ Financial Guardian', body: 'Friendly reminder: Consistency is key to reaching your savings goals!' },
 
             // FIXED DAILY REMINDERS
             { hour: 9, minute: 0, title: '☀️ Good Morning!', body: 'Start your day by logging any expenses. Every ringgit counts!' },
@@ -294,7 +294,7 @@ class NotificationService {
 
         const trigger: any = {
             type: TriggerType.TIMESTAMP,
-            timestamp: Date.now() + 900000, // 15 minutes for demo (was 30s)
+            timestamp: Date.now() + 10000, // 10 seconds for demo (FAST!)
         };
 
         const channelId = await notifee.createChannel({
