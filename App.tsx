@@ -1131,44 +1131,124 @@ export default function App() {
     const budgetData = calculateMonthlyStats(transactions, userProfile);
     const budgetContext = formatBudgetForRAG(budgetData);
 
-    // Use regular endpoint for edits
-    try {
-      const response = await fetch(CHAT_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true'
-        },
-        body: JSON.stringify({
-          message: newText,
-          history: historyForServer,
-          transactions: transactions.slice(0, 20),
-          userProfile: userProfile,
-          budgetContext: budgetContext,
-        }),
-      });
+    // Use streaming endpoint for edits (same as regular messages)
+    setStreamingResponse('');
+    setIsBotThinking(true);
+    setThinkingMessage('Processing your edit...');
+    let fullResponse = '';
+    let buffer = '';
+    let previousLength = 0;
 
-      if (!response.ok) throw new Error('Server error');
+    return new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', CHAT_STREAM_URL);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.setRequestHeader('Accept', 'text/event-stream');
+      xhr.setRequestHeader('ngrok-skip-browser-warning', 'true');
+      xhr.responseType = 'text';
 
-      const { message: botResponseText } = await response.json();
+      xhr.timeout = 45000;
 
-      const botMessage: Omit<Message, 'id'> = {
-        text: botResponseText,
-        sender: 'bot',
-        createdAt: serverTimestamp(),
+      xhr.onprogress = () => {
+        const responseText = xhr.responseText;
+        const newData = responseText.substring(previousLength);
+        previousLength = responseText.length;
+        buffer += newData;
+
+        while (true) {
+          const index = buffer.indexOf('\n\n');
+          if (index === -1) break;
+
+          const eventStr = buffer.slice(0, index);
+          buffer = buffer.slice(index + 2);
+
+          const lines = eventStr.split('\n');
+          let currentEvent = '';
+          let dataStr = '';
+
+          lines.forEach(line => {
+            line = line.trim();
+            if (line.startsWith('event:')) {
+              currentEvent = line.slice(6).trim();
+            } else if (line.startsWith('data:')) {
+              dataStr += line.slice(5).trim() + ' ';
+            }
+          });
+
+          if (currentEvent && dataStr.trim()) {
+            try {
+              const data = JSON.parse(dataStr.trim());
+
+              if (currentEvent === 'token' && data.content) {
+                setStreamingResponse((prev) => prev + data.content);
+                fullResponse += data.content;
+              } else if (currentEvent === 'thinking') {
+                if (data.message) setThinkingMessage(data.message);
+              } else if (currentEvent === 'done') {
+                resolve();
+              } else if (currentEvent === 'error') {
+                reject(new Error(data.error || 'Server error'));
+              }
+            } catch (e) {
+              console.error('Parse error:', e);
+            }
+          }
+        }
       };
-      await addDoc(messagesRef, botMessage);
 
-    } catch (error) {
-      console.error('Failed to get bot response after edit:', error);
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          while (true) {
+            const index = buffer.indexOf('\n\n');
+            if (index === -1) break;
+            const eventStr = buffer.slice(0, index);
+            buffer = buffer.slice(index + 2);
+            const lines = eventStr.split('\n');
+            let currentEvent = '';
+            lines.forEach(line => {
+              line = line.trim();
+              if (line.startsWith('event:')) {
+                currentEvent = line.slice(6).trim();
+              }
+            });
+            if (currentEvent === 'done') {
+              resolve();
+            }
+          }
+        } else {
+          reject(new Error(`HTTP error: ${xhr.status}`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('Network error'));
+      xhr.ontimeout = () => reject(new Error('Timeout'));
+
+      xhr.send(JSON.stringify({
+        message: newText,
+        history: historyForServer,
+        transactions: transactions.slice(0, 20),
+        userProfile: userProfile,
+        budgetContext: budgetContext,
+      }));
+    }).then(async () => {
+      if (fullResponse.trim()) {
+        await addDoc(messagesRef, {
+          text: fullResponse.trim(),
+          sender: 'bot',
+          createdAt: serverTimestamp(),
+        });
+      }
+    }).catch(async (error) => {
+      console.error('Stream error after edit:', error);
       await addDoc(messagesRef, {
         text: 'Sorry, I ran into an error after editing. Please try again.',
         sender: 'bot',
         createdAt: serverTimestamp(),
       });
-    } finally {
+    }).finally(() => {
+      setStreamingResponse('');
       setIsBotThinking(false);
-    }
+    });
   };
 
   const handleDeleteChatSession = async (chatId: string) => {
