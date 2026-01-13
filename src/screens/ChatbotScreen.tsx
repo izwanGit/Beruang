@@ -558,23 +558,42 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
   const lastUserMessage = [...currentChatMessages].filter(m => m.sender === 'user').pop();
 
   const renderMessageContent = (text: string, isBot: boolean) => {
+    // Helper function to extract balanced JSON object
+    const extractBalancedJson = (str: string): string | null => {
+      let depth = 0;
+      let start = -1;
+      for (let i = 0; i < str.length; i++) {
+        if (str[i] === '{') {
+          if (depth === 0) start = i;
+          depth++;
+        } else if (str[i] === '}') {
+          depth--;
+          if (depth === 0 && start !== -1) {
+            return str.substring(start, i + 1);
+          }
+        }
+      }
+      return null; // Unbalanced or no JSON found
+    };
+
     // 1. Handle partial widget blocks during streaming
     const openTag = '[WIDGET_DATA]';
     const closeTag = '[/WIDGET_DATA]';
     let textToProcess = text;
     let widgetIsStreaming = false;
 
-    // Check if widget is still streaming (has open tag but no close tag AND no complete JSON)
+    // Check if widget is still streaming (has open tag but no close tag)
     if (isBot && text.includes(openTag) && !text.includes(closeTag)) {
-      // Try to detect if JSON is complete (ends with } followed by optional whitespace/emoji)
       const afterOpenTag = text.split(openTag)[1] || '';
-      const jsonMatch = afterOpenTag.match(/^\s*(\{[\s\S]*?\})\s*/);
+      const extractedJson = extractBalancedJson(afterOpenTag);
 
-      if (jsonMatch) {
-        // JSON looks complete, treat as if we have a closing tag
-        textToProcess = text.split(openTag)[0] + openTag + jsonMatch[1] + closeTag + afterOpenTag.substring(jsonMatch[0].length);
+      if (extractedJson) {
+        // JSON is complete, treat as if we have a closing tag
+        const jsonEndIndex = afterOpenTag.indexOf(extractedJson) + extractedJson.length;
+        const remainingText = afterOpenTag.substring(jsonEndIndex);
+        textToProcess = text.split(openTag)[0] + openTag + extractedJson + closeTag + remainingText;
       } else {
-        // Still streaming
+        // Still streaming or incomplete JSON
         widgetIsStreaming = true;
         textToProcess = text.split(openTag)[0];
       }
