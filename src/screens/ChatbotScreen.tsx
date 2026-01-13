@@ -564,9 +564,20 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
     let textToProcess = text;
     let widgetIsStreaming = false;
 
+    // Check if widget is still streaming (has open tag but no close tag AND no complete JSON)
     if (isBot && text.includes(openTag) && !text.includes(closeTag)) {
-      widgetIsStreaming = true;
-      textToProcess = text.split(openTag)[0];
+      // Try to detect if JSON is complete (ends with } followed by optional whitespace/emoji)
+      const afterOpenTag = text.split(openTag)[1] || '';
+      const jsonMatch = afterOpenTag.match(/^\s*(\{[\s\S]*?\})\s*/);
+
+      if (jsonMatch) {
+        // JSON looks complete, treat as if we have a closing tag
+        textToProcess = text.split(openTag)[0] + openTag + jsonMatch[1] + closeTag + afterOpenTag.substring(jsonMatch[0].length);
+      } else {
+        // Still streaming
+        widgetIsStreaming = true;
+        textToProcess = text.split(openTag)[0];
+      }
     }
 
     // 2. Regex to find complete [WIDGET_DATA]...[/WIDGET_DATA] blocks
