@@ -525,31 +525,19 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
         <Text
           key={node.key}
           onPress={() => Linking.openURL(node.attributes.href)}
-          style={{ fontSize: 13 }}
+          style={{
+            backgroundColor: '#8FBC8F',
+            color: '#FFFFFF',
+            fontSize: 10,
+            fontWeight: '900',
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            borderRadius: 8,
+            overflow: 'hidden',
+            marginHorizontal: 2,
+          }}
         >
-          <View
-            style={{
-              backgroundColor: '#8FBC8F', // Dark Sea Green (Lighter, soft contrast)
-              borderRadius: 10,
-              width: 20,
-              height: 20,
-              alignItems: 'center',
-              justifyContent: 'center',
-              transform: [{ translateY: 4 }], // visual adjustment to align with text
-            }}
-          >
-            <Text
-              style={{
-                color: '#FFFFFF',
-                fontSize: 10,
-                fontWeight: '900',
-                textAlign: 'center',
-                lineHeight: 14, // Helps vertical centering
-              }}
-            >
-              {content}
-            </Text>
-          </View>
+          {content}
         </Text>
       );
     },
