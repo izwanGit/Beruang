@@ -537,7 +537,7 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
               height: 20,
               alignItems: 'center',
               justifyContent: 'center',
-              transform: [{ translateY: 4 }],
+              alignSelf: 'flex-start',
             }}
           >
             <Text
