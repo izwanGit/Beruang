@@ -199,12 +199,14 @@ export const HomeScreen = ({
             <Text style={homeStyles.greeting}>Hello, {userName}!</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={homeStyles.headerDate}>Welcome back to Beruang</Text>
+              {/* Debug Only: Retest Allocation
               <TouchableOpacity
                 onPress={onResetMonth}
                 style={{ marginLeft: 10, backgroundColor: 'rgba(255,255,255,0.2)', padding: 4, borderRadius: 4 }}
               >
                 <Text style={{ fontSize: 10, color: COLORS.white }}>Retest Allocation</Text>
               </TouchableOpacity>
+              */}
             </View>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>

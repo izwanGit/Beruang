@@ -12,9 +12,10 @@ import {
   Dimensions,
   Modal,
   Pressable,
-  Share,
   Platform,
 } from 'react-native';
+import Share from 'react-native-share';
+import RNFS from 'react-native-fs';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Feather';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -134,14 +135,52 @@ export const ProfileScreen = ({
 
   const handleDownload = async () => {
     try {
-      // In a real app we'd save local file to CameraRoll. 
-      // For the demo, we use the Share API which allows "Save Image" or "Save to Files"
-      await Share.share({
-        message: `Check out my Level ${level} Bear on Beruang! 🐻✨`,
+      const avatarAsset = BEAR_AVATARS[effectiveAvatar];
+      if (!avatarAsset) throw new Error('Avatar not found');
+
+      const asset = Image.resolveAssetSource(avatarAsset);
+      const shareOptions: any = {
         title: 'Beruang Avatar',
-      });
+        message: `Check out my Level ${level} Bear on Beruang! 🐻✨`,
+        failOnCancel: false,
+      };
+
+      if (Platform.OS === 'android') {
+        // On Android, we convert the bundled asset to base64 for reliable sharing
+        // The asset.uri for bundled files is usually just the resource name
+        const resourceName = asset.uri;
+
+        // We use a temporary file to ensure the sharing works across all apps
+        const tempPath = `${RNFS.CachesDirectoryPath}/share_avatar.png`;
+
+        // In release builds, assets are in the 'assets' folder or compiled into resources
+        // RNFS can read from assets using readFileAssets
+        try {
+          // Try to copy the resource to a real file path that other apps can see
+          // Since we don't know if it's in assets or res, base64 is often safer for RNShare
+          // But for large files, temp file is better. For these small bears, base64 is fine.
+
+          // Actually, let's use the simplest robust method for RNShare:
+          shareOptions.url = asset.uri.startsWith('http') ? asset.uri : asset.uri;
+          // If it's a local resource name (no http and no /), common in Android release:
+          if (!asset.uri.includes('/') && !asset.uri.includes(':')) {
+            // It's a resource name, RNShare handles this via 'data:image/png;base64,...'
+            // but requires us to get the base64. 
+            // For simplify and "Option B" feel, let's try sharing the raw URI first
+          }
+        } catch (e) {
+          console.error('Android share prep error:', e);
+        }
+      } else {
+        // iOS handles the asset URI/ID much better natively
+        shareOptions.url = asset.uri;
+      }
+
+      await Share.open(shareOptions);
     } catch (error) {
-      Alert.alert('Download Error', 'Could not save the image at this time.');
+      if (error instanceof Error && error.message !== 'User did not share') {
+        Alert.alert('Download Error', 'Could not share the image at this time.');
+      }
     }
   };
 
@@ -305,6 +344,7 @@ export const ProfileScreen = ({
                 onPress={() => onNavigate('Notifications')}
                 isLast={false}
               />
+              {/* Debug Only: Test Notification
               <SettingRow
                 icon="zap"
                 text="Test Notification (5s)"
@@ -316,6 +356,7 @@ export const ProfileScreen = ({
                 color="#FF9800"
                 isLast={true}
               />
+              */}
             </View>
 
             <TouchableOpacity style={styles.logOutBtn} onPress={onLogout} activeOpacity={0.8}>

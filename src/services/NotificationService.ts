@@ -157,6 +157,7 @@ class NotificationService {
                 body,
                 android: {
                     channelId,
+                    smallIcon: 'ic_launcher', // Use app icon as small icon
                     pressAction: { id: 'default' },
                     importance: AndroidImportance.HIGH,
                 },
@@ -227,7 +228,10 @@ class NotificationService {
                 {
                     title,
                     body,
-                    android: { channelId },
+                    android: {
+                        channelId,
+                        smallIcon: 'ic_launcher',
+                    },
                     ios: {
                         sound: 'noti.mp3',
                     }
