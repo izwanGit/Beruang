@@ -626,7 +626,7 @@ export const ChatbotScreen = (props: ChatbotScreenProps) => {
     if (parts.length === 0 || !isBot) {
       return (
         <View>
-          {isBot ? <Markdown rules={markdownRules} style={markdownStyles}>{textToProcess}</Markdown> : <Text style={styles.userMessageText}>{textToProcess}</Text>}
+          {isBot ? <Markdown rules={markdownRules} style={markdownStyles}>{textToProcess}</Markdown> : <Text selectable style={styles.userMessageText}>{textToProcess}</Text>}
           {widgetIsStreaming && (
             <View style={styles.streamingWidgetPlaceholder}>
               <ActivityIndicator size="small" color={COLORS.accent} style={{ marginRight: 8 }} />
