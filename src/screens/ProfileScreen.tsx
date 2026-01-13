@@ -139,45 +139,77 @@ export const ProfileScreen = ({
       if (!avatarAsset) throw new Error('Avatar not found');
 
       const asset = Image.resolveAssetSource(avatarAsset);
-      const shareOptions: any = {
-        title: 'Beruang Avatar',
-        message: `Check out my Level ${level} Bear on Beruang! 🐻✨`,
-        failOnCancel: false,
-      };
+      const tempPath = `${RNFS.CachesDirectoryPath}/beruang_avatar_level_${level}.png`;
 
       if (Platform.OS === 'android') {
-        // On Android, we convert the bundled asset to base64 for reliable sharing
-        // The asset.uri for bundled files is usually just the resource name
-        const resourceName = asset.uri;
+        // On Android release builds, assets are bundled inside the APK
+        // We need to extract the asset name and copy it from the assets folder
+        let assetName = asset.uri;
 
-        // We use a temporary file to ensure the sharing works across all apps
-        const tempPath = `${RNFS.CachesDirectoryPath}/share_avatar.png`;
+        // In release mode, the URI is usually just the asset name like "assets_avatars_bear_level_8"
+        // We need to convert it to the actual path format: "avatars/bear_level_8.png"
+        if (!assetName.includes('/') && !assetName.includes(':')) {
+          // Convert underscores back to path format (assets_avatars_bear_level_8 -> avatars/bear_level_8.png)
+          assetName = assetName.replace('assets_', '').replace(/_/g, '/') + '.png';
+          // Fix: the last underscore before the number should stay as underscore
+          // avatars/bear/level/8.png -> avatars/bear_level_8.png
+          assetName = assetName.replace('/bear/', '/bear_').replace('/level/', '_level_').replace('/_', '_');
+        }
 
-        // In release builds, assets are in the 'assets' folder or compiled into resources
-        // RNFS can read from assets using readFileAssets
         try {
-          // Try to copy the resource to a real file path that other apps can see
-          // Since we don't know if it's in assets or res, base64 is often safer for RNShare
-          // But for large files, temp file is better. For these small bears, base64 is fine.
-
-          // Actually, let's use the simplest robust method for RNShare:
-          shareOptions.url = asset.uri.startsWith('http') ? asset.uri : asset.uri;
-          // If it's a local resource name (no http and no /), common in Android release:
-          if (!asset.uri.includes('/') && !asset.uri.includes(':')) {
-            // It's a resource name, RNShare handles this via 'data:image/png;base64,...'
-            // but requires us to get the base64. 
-            // For simplify and "Option B" feel, let's try sharing the raw URI first
+          // Read the asset from the bundled assets folder
+          const base64Data = await RNFS.readFileAssets(assetName, 'base64');
+          // Write it to the cache directory as a real file
+          await RNFS.writeFile(tempPath, base64Data, 'base64');
+        } catch (assetError) {
+          console.log('Asset read error, trying alternative path:', assetError);
+          // Alternative: try reading from drawable resources
+          // For React Native bundled images, they might be in drawable
+          const drawablePath = `drawable/${asset.uri}.png`;
+          try {
+            const base64Data = await RNFS.readFileRes(asset.uri, 'base64');
+            await RNFS.writeFile(tempPath, base64Data, 'base64');
+          } catch (resError) {
+            console.log('Resource read also failed:', resError);
+            // Last resort: share text only
+            await Share.open({
+              title: 'Beruang Avatar',
+              message: `Check out my Level ${level} Bear on Beruang! 🐻✨`,
+            });
+            return;
           }
-        } catch (e) {
-          console.error('Android share prep error:', e);
         }
       } else {
-        // iOS handles the asset URI/ID much better natively
-        shareOptions.url = asset.uri;
+        // iOS: download from the asset URI (works in both debug and release)
+        const response = await fetch(asset.uri);
+        const blob = await response.blob();
+        const reader = new FileReader();
+
+        await new Promise<void>((resolve, reject) => {
+          reader.onloadend = async () => {
+            try {
+              const base64data = (reader.result as string).split(',')[1];
+              await RNFS.writeFile(tempPath, base64data, 'base64');
+              resolve();
+            } catch (e) {
+              reject(e);
+            }
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
       }
 
-      await Share.open(shareOptions);
+      // Now share the real file
+      await Share.open({
+        title: 'Beruang Avatar',
+        message: `Check out my Level ${level} Bear on Beruang! 🐻✨`,
+        url: `file://${tempPath}`,
+        type: 'image/png',
+        failOnCancel: false,
+      });
     } catch (error) {
+      console.log('Share error:', error);
       if (error instanceof Error && error.message !== 'User did not share') {
         Alert.alert('Download Error', 'Could not share the image at this time.');
       }
