@@ -294,7 +294,7 @@ class NotificationService {
 
         const trigger: any = {
             type: TriggerType.TIMESTAMP,
-            timestamp: Date.now() + 10000, // 10 seconds for demo (FAST!)
+            timestamp: Date.now() + 900000, // 15 minutes for REALISTISM (ours)
         };
 
         const channelId = await notifee.createChannel({
