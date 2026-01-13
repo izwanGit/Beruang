@@ -183,8 +183,13 @@ class NotificationService {
             sound: 'noti',
         });
 
-        // Define 5 reminder times and messages
+        // Define reminder times and messages
         const reminders = [
+            // NEAR FUTURE REMINDERS (For FYP Demo)
+            { relativeMinutes: 1, title: '🚀 FYP Demo Mode', body: 'The automated monitoring system is active and tracking your budget!' },
+            { relativeMinutes: 5, title: '🛡️ Financial Guardian', body: 'Friendly reminder: Consistency is key to reaching your savings goals!' },
+
+            // FIXED DAILY REMINDERS
             { hour: 9, minute: 0, title: '☀️ Good Morning!', body: 'Start your day by logging any expenses. Every ringgit counts!' },
             { hour: 12, minute: 0, title: '🍽️ Lunch Time Check', body: 'Had lunch? Don\'t forget to track that meal expense!' },
             { hour: 15, minute: 0, title: '📊 Afternoon Update', body: 'Quick check: How\'s your budget looking today?' },
@@ -195,13 +200,17 @@ class NotificationService {
         const now = new Date();
 
         for (let i = 0; i < reminders.length; i++) {
-            const reminder = reminders[i];
+            const reminder = reminders[i] as any;
             const triggerDate = new Date();
-            triggerDate.setHours(reminder.hour, reminder.minute, 0, 0);
 
-            // If the time has passed today, schedule for tomorrow
-            if (triggerDate <= now) {
-                triggerDate.setDate(triggerDate.getDate() + 1);
+            if (reminder.relativeMinutes !== undefined) {
+                triggerDate.setMinutes(triggerDate.getMinutes() + reminder.relativeMinutes);
+            } else {
+                triggerDate.setHours(reminder.hour, reminder.minute, 0, 0);
+                // If the time has passed today, schedule for tomorrow
+                if (triggerDate <= now) {
+                    triggerDate.setDate(triggerDate.getDate() + 1);
+                }
             }
 
             // Customize body with budget data if available
@@ -285,7 +294,7 @@ class NotificationService {
 
         const trigger: any = {
             type: TriggerType.TIMESTAMP,
-            timestamp: Date.now() + 10000, // 10 seconds for testing
+            timestamp: Date.now() + 30000, // 30 seconds for demo (was 10s)
         };
 
         const channelId = await notifee.createChannel({
