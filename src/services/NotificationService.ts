@@ -148,7 +148,7 @@ class NotificationService {
             id: 'demo',
             name: 'Demo Channel',
             importance: AndroidImportance.HIGH,
-            sound: 'noti', // Custom sound file android/app/src/main/res/raw/noti.mp3
+            sound: 'noti',
         });
 
         await notifee.createTriggerNotification(
@@ -157,16 +157,88 @@ class NotificationService {
                 body,
                 android: {
                     channelId,
-                    smallIcon: 'ic_launcher', // Use app icon as small icon
+                    smallIcon: 'ic_launcher',
                     pressAction: { id: 'default' },
                     importance: AndroidImportance.HIGH,
                 },
                 ios: {
-                    sound: 'noti.mp3', // Custom sound file ios/noti.mp3
+                    sound: 'noti.mp3',
                 }
             },
             trigger,
         );
+    }
+
+    // ========================================
+    // SCHEDULED DAILY REMINDERS (5x per day)
+    // ========================================
+    async scheduleDailyReminders(budgetData: any) {
+        // Cancel existing reminders first
+        await notifee.cancelAllNotifications();
+
+        const channelId = await notifee.createChannel({
+            id: 'daily-reminder',
+            name: 'Daily Reminders',
+            importance: AndroidImportance.HIGH,
+            sound: 'noti',
+        });
+
+        // Define 5 reminder times and messages
+        const reminders = [
+            { hour: 9, minute: 0, title: '☀️ Good Morning!', body: 'Start your day by logging any expenses. Every ringgit counts!' },
+            { hour: 12, minute: 0, title: '🍽️ Lunch Time Check', body: 'Had lunch? Don\'t forget to track that meal expense!' },
+            { hour: 15, minute: 0, title: '📊 Afternoon Update', body: 'Quick check: How\'s your budget looking today?' },
+            { hour: 18, minute: 0, title: '🌆 Evening Reminder', body: 'Heading home? Log any transport or shopping expenses!' },
+            { hour: 21, minute: 0, title: '🌙 Daily Wrap-up', body: 'Before bed, make sure all today\'s expenses are logged!' },
+        ];
+
+        const now = new Date();
+
+        for (let i = 0; i < reminders.length; i++) {
+            const reminder = reminders[i];
+            const triggerDate = new Date();
+            triggerDate.setHours(reminder.hour, reminder.minute, 0, 0);
+
+            // If the time has passed today, schedule for tomorrow
+            if (triggerDate <= now) {
+                triggerDate.setDate(triggerDate.getDate() + 1);
+            }
+
+            // Customize body with budget data if available
+            let body = reminder.body;
+            if (budgetData && reminder.hour === 21) {
+                const { budget } = budgetData;
+                const totalSafe = Math.max(0, budget.needs.remaining) + Math.max(0, budget.wants.remaining);
+                body = `Today's budget left: RM${totalSafe.toFixed(0)}. Log any missed expenses!`;
+            }
+
+            try {
+                await notifee.createTriggerNotification(
+                    {
+                        id: `daily-${i}`,
+                        title: reminder.title,
+                        body: body,
+                        android: {
+                            channelId,
+                            smallIcon: 'ic_launcher',
+                            pressAction: { id: 'default' },
+                        },
+                        ios: {
+                            sound: 'noti.mp3',
+                        }
+                    },
+                    {
+                        type: TriggerType.TIMESTAMP,
+                        timestamp: triggerDate.getTime(),
+                    },
+                );
+                console.log(`Scheduled: ${reminder.title} at ${triggerDate.toLocaleTimeString()}`);
+            } catch (e) {
+                console.log('Error scheduling reminder:', e);
+            }
+        }
+
+        console.log('✅ All 5 daily reminders scheduled!');
     }
 
     // ========================================

@@ -274,10 +274,11 @@ export default function App() {
         const budgetData = userProfile && transactions.length > 0
           ? calculateMonthlyStats(transactions, userProfile)
           : null;
-        NotificationService.scheduleSmartReminder(budgetData);
+        // Schedule 5 daily reminders when app goes to background
+        NotificationService.scheduleDailyReminders(budgetData);
       } else if (nextAppState === 'active') {
         hasScheduledNotification.current = false;
-        NotificationService.cancelAll();
+        // Don't cancel notifications - let them fire at scheduled times
         // Refresh unread count when app becomes active
         NotificationService.getUnreadCount().then(setUnreadNotificationCount);
       }
