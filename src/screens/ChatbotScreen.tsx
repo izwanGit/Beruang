@@ -942,6 +942,9 @@ const markdownStyles = StyleSheet.create({
   paragraph: {
     marginTop: 0,
     marginBottom: 10,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
   },
   strong: {
     fontWeight: 'bold',
