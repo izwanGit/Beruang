@@ -276,6 +276,8 @@ export default function App() {
           : null;
         // Schedule 5 daily reminders when app goes to background
         NotificationService.scheduleDailyReminders(budgetData);
+        // Also schedule smart reminder (fires in 10 seconds with budget status)
+        NotificationService.scheduleSmartReminder(budgetData);
       } else if (nextAppState === 'active') {
         hasScheduledNotification.current = false;
         // Don't cancel notifications - let them fire at scheduled times
