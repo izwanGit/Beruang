@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Beruang.ipa</key>
+	<array>
+		<dict>
+			<key>architectures</key>
+			<array>
+				<string>arm64</string>
+			</array>
+			<key>buildNumber</key>
+			<string>1</string>
+			<key>certificate</key>
+			<dict>
+				<key>SHA1</key>
+				<string>293D93E1D0D633C15CB046CFA596A0D2E01FA372</string>
+				<key>dateExpires</key>
+				<string>03/01/2027</string>
+				<key>type</key>
+				<string>Apple Development</string>
+			</dict>
+			<key>embeddedBinaries</key>
+			<array>
+				<dict>
+					<key>architectures</key>
+					<array>
+						<string>arm64</string>
+					</array>
+					<key>buildNumber</key>
+					<string>0.12.0</string>
+					<key>certificate</key>
+					<dict>
+						<key>SHA1</key>
+						<string>293D93E1D0D633C15CB046CFA596A0D2E01FA372</string>
+						<key>dateExpires</key>
+						<string>03/01/2027</string>
+						<key>type</key>
+						<string>Apple Development</string>
+					</dict>
+					<key>name</key>
+					<string>hermesvm.framework</string>
+					<key>team</key>
+					<dict>
+						<key>id</key>
+						<string>A84F2G4BG2</string>
+						<key>name</key>
+						<string></string>
+					</dict>
+					<key>versionNumber</key>
+					<string>0.12.0</string>
+				</dict>
+			</array>
+			<key>entitlements</key>
+			<dict>
+				<key>application-identifier</key>
+				<string>A84F2G4BG2.com.izwan.Beruang</string>
+				<key>com.apple.developer.team-identifier</key>
+				<string>A84F2G4BG2</string>
+				<key>get-task-allow</key>
+				<true/>
+			</dict>
+			<key>name</key>
+			<string>Beruang.app</string>
+			<key>profile</key>
+			<dict>
+				<key>UUID</key>
+				<string>953302cc-5ff6-4372-b69c-2c9594e88f83</string>
+				<key>dateExpires</key>
+				<string>18/01/2026</string>
+				<key>name</key>
+				<string>iOS Team Provisioning Profile: com.izwan.Beruang</string>
+			</dict>
+			<key>team</key>
+			<dict>
+				<key>id</key>
+				<string>A84F2G4BG2</string>
+				<key>name</key>
+				<string></string>
+			</dict>
+			<key>versionNumber</key>
+			<string>1.0</string>
+		</dict>
+	</array>
+</dict>
+</plist>

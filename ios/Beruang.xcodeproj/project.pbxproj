@@ -12,6 +12,7 @@
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		C8FCB31FCBC9B01672675833 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
+		E1EFED8D514543E4A82829D2 /* noti.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 09A6687151E942A3B473108A /* noti.mp3 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +45,7 @@
 		EFFF033D8FB547F8BDF0DD28 /* FontAwesome5_Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome5_Regular.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome5_Regular.ttf"; sourceTree = "<group>"; };
 		F3F956F0911D44D49B312B91 /* Foundation.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = Foundation.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Foundation.ttf"; sourceTree = "<group>"; };
 		F931203ED937450A8291E539 /* FontAwesome6_Solid.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome6_Solid.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome6_Solid.ttf"; sourceTree = "<group>"; };
+		09A6687151E942A3B473108A /* noti.mp3 */ = {isa = PBXFileReference; name = "noti.mp3"; path = "../assets/sound/noti.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -101,6 +103,7 @@
 				95354090EEE947399C205690 /* Octicons.ttf */,
 				5DC7E40B90724E499FAEAE01 /* SimpleLineIcons.ttf */,
 				AB2AC3D9A75F404DAB4A412C /* Zocial.ttf */,
+				09A6687151E942A3B473108A /* noti.mp3 */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -208,6 +211,7 @@
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				C8FCB31FCBC9B01672675833 /* PrivacyInfo.xcprivacy in Resources */,
+				E1EFED8D514543E4A82829D2 /* noti.mp3 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
