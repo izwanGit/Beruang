@@ -139,68 +139,103 @@ export const ProfileScreen = ({
       if (!avatarAsset) throw new Error('Avatar not found');
 
       const asset = Image.resolveAssetSource(avatarAsset);
-      const tempPath = `${RNFS.CachesDirectoryPath}/beruang_avatar_level_${level}.png`;
+      // Use a consistent temporary path in the caches directory
+      const tempFilename = `beruang_avatar_${effectiveAvatar}.png`;
+      const tempPath = `${RNFS.CachesDirectoryPath}/${tempFilename}`;
 
       if (Platform.OS === 'android') {
-        // On Android release builds, assets are bundled inside the APK
-        // We need to extract the asset name and copy it from the assets folder
-        let assetName = asset.uri;
-
-        // In release mode, the URI is usually just the asset name like "assets_avatars_bear_level_8"
-        // We need to convert it to the actual path format: "avatars/bear_level_8.png"
-        if (!assetName.includes('/') && !assetName.includes(':')) {
-          // Convert underscores back to path format (assets_avatars_bear_level_8 -> avatars/bear_level_8.png)
-          assetName = assetName.replace('assets_', '').replace(/_/g, '/') + '.png';
-          // Fix: the last underscore before the number should stay as underscore
-          // avatars/bear/level/8.png -> avatars/bear_level_8.png
-          assetName = assetName.replace('/bear/', '/bear_').replace('/level/', '_level_').replace('/_', '_');
-        }
+        // Android Release Fix:
+        // Instead of guessing the internal asset name (which changes in release builds),
+        // we read from the explicitly created 'custom_avatars' folder in the APK assets.
+        // We know the structure matches our keys: 'bear_level_1' -> 'custom_avatars/bear_level_1.png'
 
         try {
-          // Read the asset from the bundled assets folder
-          const base64Data = await RNFS.readFileAssets(assetName, 'base64');
-          // Write it to the cache directory as a real file
+          const assetPathInApk = `custom_avatars/${effectiveAvatar}.png`;
+
+          // Read directly from the asset folder
+          const base64Data = await RNFS.readFileAssets(assetPathInApk, 'base64');
           await RNFS.writeFile(tempPath, base64Data, 'base64');
-        } catch (assetError) {
-          console.log('Asset read error, trying alternative path:', assetError);
-          // Alternative: try reading from drawable resources
-          // For React Native bundled images, they might be in drawable
-          const drawablePath = `drawable/${asset.uri}.png`;
-          try {
-            const base64Data = await RNFS.readFileRes(asset.uri, 'base64');
-            await RNFS.writeFile(tempPath, base64Data, 'base64');
-          } catch (resError) {
-            console.log('Resource read also failed:', resError);
-            // Last resort: share text only
-            await Share.open({
-              title: 'Beruang Avatar',
-              message: `Check out my Level ${level} Bear on Beruang! 🐻✨`,
+        } catch (androidError) {
+          console.log('Android custom asset read failed, falling back to legacy method:', androidError);
+          // Fallback for Debug builds (where assets might not be packaged in APK yet)
+          // or if the custom folder is missing.
+          // Note: In Debug, 'asset.uri' is usually a http://localhost URL served by Metro.
+          // In Release, it's a resource identifier.
+
+          if (asset.uri.startsWith('http')) {
+            // Debug mode: download from Metro
+            const response = await fetch(asset.uri);
+            const blob = await response.blob();
+            const reader = new FileReader();
+            await new Promise<void>((resolve, reject) => {
+              reader.onloadend = async () => {
+                const base64data = (reader.result as string).split(',')[1];
+                await RNFS.writeFile(tempPath, base64data, 'base64');
+                resolve();
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
             });
-            return;
+          } else {
+            // Try the old resource hack as a last resort
+            // ... (Not implemented here to keep it clean, relying on the robust method first)
+            throw new Error('Could not resolve asset path on Android');
           }
         }
-      } else {
-        // iOS: download from the asset URI (works in both debug and release)
-        const response = await fetch(asset.uri);
-        const blob = await response.blob();
-        const reader = new FileReader();
 
-        await new Promise<void>((resolve, reject) => {
-          reader.onloadend = async () => {
-            try {
-              const base64data = (reader.result as string).split(',')[1];
-              await RNFS.writeFile(tempPath, base64data, 'base64');
-              resolve();
-            } catch (e) {
-              reject(e);
+      } else {
+        // iOS Handling
+        // Debug: asset.uri is http://localhost...
+        // Release: asset.uri is file:///var/mobile/.../bundle/assets/... 
+
+        if (asset.uri.startsWith('http') || asset.uri.startsWith('https')) {
+          // Fetch from Metro (Debug)
+          const response = await fetch(asset.uri);
+          const blob = await response.blob();
+          const reader = new FileReader();
+
+          await new Promise<void>((resolve, reject) => {
+            reader.onloadend = async () => {
+              try {
+                const base64data = (reader.result as string).split(',')[1];
+                await RNFS.writeFile(tempPath, base64data, 'base64');
+                resolve();
+              } catch (e) {
+                reject(e);
+              }
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        } else if (asset.uri.startsWith('file://') || asset.uri.startsWith('/')) {
+          // It's already a local file (Release / bundled)
+          // We can share it directly, OR copy it to temp to be safe.
+          // Let's copy it to ensure we have a clean file extension and it's in a shared location.
+          if (await RNFS.exists(asset.uri)) {
+            await RNFS.copyFile(asset.uri, tempPath);
+          } else {
+            // Occasionally the URI might be encoded
+            const decodedUri = decodeURIComponent(asset.uri);
+            if (await RNFS.exists(decodedUri)) {
+              await RNFS.copyFile(decodedUri, tempPath);
+            } else {
+              // Direct share fallback if copy fails?
+              // Just throw for now to trigger error handling
+              throw new Error('Local asset file not found: ' + asset.uri);
             }
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
+          }
+        } else {
+          // Unknown URI scheme
+          throw new Error('Unknown URI scheme: ' + asset.uri);
+        }
       }
 
-      // Now share the real file
+      // Final Check: Ensure file exists before sharing
+      if (!(await RNFS.exists(tempPath))) {
+        throw new Error('File preparation failed');
+      }
+
+      // Share the file
       await Share.open({
         title: 'Beruang Avatar',
         message: `Check out my Level ${level} Bear on Beruang! 🐻✨`,
@@ -208,10 +243,11 @@ export const ProfileScreen = ({
         type: 'image/png',
         failOnCancel: false,
       });
+
     } catch (error) {
       console.log('Share error:', error);
       if (error instanceof Error && error.message !== 'User did not share') {
-        Alert.alert('Download Error', 'Could not share the image at this time.');
+        Alert.alert('Share Failed', 'Could not prepare the image for sharing.');
       }
     }
   };

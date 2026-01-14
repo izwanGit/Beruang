@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../constants/colors';
@@ -21,68 +23,84 @@ export const InitialBalanceModal: React.FC<InitialBalanceModalProps> = ({
   visible,
   onSubmit,
 }) => {
-  const [amount, setAmount] = useState('');
+  // Store the raw integer value (cents) instead of a direct string
+  const [rawValue, setRawValue] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+
+  const formatAmount = (value: number) => {
+    return (value / 100).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const handleTextChange = (text: string) => {
+    // Remove non-numeric characters
+    const numericValue = text.replace(/[^0-9]/g, '');
+    setRawValue(Number(numericValue));
+  };
 
   const handleSubmit = () => {
     setIsLoading(true);
-    const amountNum = parseFloat(amount) || 0;
-    onSubmit(amountNum);
+    onSubmit(rawValue / 100);
     // The modal will be closed by the App.tsx's logic
   };
+
+  const displayValue = formatAmount(rawValue); // e.g. "0.00", "1.23"
 
   return (
     <Modal
       transparent={true}
       visible={visible}
       animationType="fade"
-      onRequestClose={() => {}} // Disallow closing
+      onRequestClose={() => { }} // Disallow closing
     >
-      <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
-          {/* Icon */}
-          <View style={styles.iconContainer}>
-            <Icon name="wallet-plus" size={40} color={COLORS.accent} />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.overlay}>
+          <View style={styles.modalContainer}>
+            {/* Icon */}
+            <View style={styles.iconContainer}>
+              <Icon name="wallet-plus" size={40} color={COLORS.accent} />
+            </View>
+
+            {/* Title */}
+            <Text style={styles.title}>Welcome to Beruang!</Text>
+
+            {/* Description */}
+            <Text style={styles.description}>
+              Let's get started by setting your current total balance. This will be
+              your starting point.
+            </Text>
+
+            {/* Amount Input */}
+            <View style={styles.inputView}>
+              <Text style={styles.currencySymbol}>RM</Text>
+              <TextInput
+                style={styles.amountInput}
+                keyboardType="numeric"
+                value={displayValue}
+                onChangeText={handleTextChange}
+                editable={!isLoading}
+                autoFocus={true}
+                caretHidden={true} // Hide caret since we format on the fly
+              />
+            </View>
+
+            {/* Continue Button */}
+            <TouchableOpacity
+              style={[styles.saveButton, isLoading && { opacity: 0.6 }]}
+              onPress={handleSubmit}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color={COLORS.white} size="small" />
+              ) : (
+                <Text style={styles.saveButtonText}>Set Starting Balance</Text>
+              )}
+            </TouchableOpacity>
           </View>
-
-          {/* Title */}
-          <Text style={styles.title}>Welcome to Beruang!</Text>
-
-          {/* Description */}
-          <Text style={styles.description}>
-            Let's get started by setting your current total balance. This will be
-            your starting point.
-          </Text>
-
-          {/* Amount Input */}
-          <View style={styles.inputView}>
-            <Text style={styles.currencySymbol}>RM</Text>
-            <TextInput
-              placeholder="0.00"
-              placeholderTextColor={COLORS.darkGray}
-              style={styles.amountInput}
-              keyboardType="numeric"
-              value={amount}
-              onChangeText={setAmount}
-              editable={!isLoading}
-              autoFocus={true}
-            />
-          </View>
-
-          {/* Continue Button */}
-          <TouchableOpacity
-            style={[styles.saveButton, isLoading && { opacity: 0.6 }]}
-            onPress={handleSubmit}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={COLORS.white} size="small" />
-            ) : (
-              <Text style={styles.saveButtonText}>Set Starting Balance</Text>
-            )}
-          </TouchableOpacity>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };
