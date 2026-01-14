@@ -24,6 +24,7 @@ import {
     doc,
 } from 'firebase/firestore';
 import { getAuth, deleteUser, signOut } from 'firebase/auth';
+import { getStorage, ref, listAll, deleteObject } from 'firebase/storage';
 
 type PrivacySecurityScreenProps = {
     onBack: () => void;
@@ -136,6 +137,24 @@ export const PrivacySecurityScreen = ({ onBack }: PrivacySecurityScreenProps) =>
         );
     };
 
+    // Recursive function to delete all files in a folder
+    const deleteFolderContents = async (storageRef: any) => {
+        try {
+            const listResult = await listAll(storageRef);
+
+            // Delete all files
+            const filePromises = listResult.items.map((itemRef) => deleteObject(itemRef));
+            await Promise.all(filePromises);
+
+            // Recursively delete all subfolders
+            const folderPromises = listResult.prefixes.map((folderRef) => deleteFolderContents(folderRef));
+            await Promise.all(folderPromises);
+        } catch (error) {
+            console.error('Error deleting folder contents:', error);
+            // Don't throw, just log. We want text data deletion to proceed even if storage fails.
+        }
+    };
+
     const confirmDeleteAccount = async () => {
         setIsDeleting(true);
         try {
@@ -148,18 +167,18 @@ export const PrivacySecurityScreen = ({ onBack }: PrivacySecurityScreenProps) =>
             }
 
             const db = getFirestore();
+            const storage = getStorage();
             const userId = user.uid;
 
-            // Delete all transactions
+            // 1. Delete all transactions
             const transactionsSnap = await getDocs(collection(db, 'users', userId, 'transactions'));
             for (const docSnap of transactionsSnap.docs) {
                 await deleteDoc(doc(db, 'users', userId, 'transactions', docSnap.id));
             }
 
-            // Delete all chat sessions
+            // 2. Delete all chat sessions & messages
             const chatsSnap = await getDocs(collection(db, 'users', userId, 'chatSessions'));
             for (const docSnap of chatsSnap.docs) {
-                // Delete messages in each chat session
                 const messagesSnap = await getDocs(collection(db, 'users', userId, 'chatSessions', docSnap.id, 'messages'));
                 for (const msgDoc of messagesSnap.docs) {
                     await deleteDoc(doc(db, 'users', userId, 'chatSessions', docSnap.id, 'messages', msgDoc.id));
@@ -167,14 +186,35 @@ export const PrivacySecurityScreen = ({ onBack }: PrivacySecurityScreenProps) =>
                 await deleteDoc(doc(db, 'users', userId, 'chatSessions', docSnap.id));
             }
 
-            // Delete user profile document
+            // 3. Delete monthlyBudgets (MISSED PREVIOUSLY)
+            const budgetsSnap = await getDocs(collection(db, 'users', userId, 'monthlyBudgets'));
+            for (const docSnap of budgetsSnap.docs) {
+                await deleteDoc(doc(db, 'users', userId, 'monthlyBudgets', docSnap.id));
+            }
+
+            // 4. Delete savedAdvices (MISSED PREVIOUSLY)
+            const adviceSnap = await getDocs(collection(db, 'users', userId, 'savedAdvices'));
+            for (const docSnap of adviceSnap.docs) {
+                await deleteDoc(doc(db, 'users', userId, 'savedAdvices', docSnap.id));
+            }
+
+            // 5. Delete User Storage (Profile pics, Receipts, etc)
+            // Note: Client SDK cannot delete a "folder" directly, so we list and delete files.
+            const userStorageRef = ref(storage, `users/${userId}`);
+            await deleteFolderContents(userStorageRef);
+
+            // 6. Delete user profile document
             await deleteDoc(doc(db, 'users', userId));
 
-            // Delete Firebase Auth user
+            // 7. Delete Firebase Auth user
             await deleteUser(user);
 
-            // Sign out (in case deleteUser doesn't auto-redirect)
-            await signOut(auth);
+            // 8. Sign out (in case deleteUser doesn't auto-redirect)
+            try {
+                await signOut(auth);
+            } catch (e) {
+                // Ignore signout error if user is already deleted
+            }
 
             setIsDeleting(false);
             Alert.alert('Account Deleted', 'Your account and all data have been permanently deleted.');
@@ -190,7 +230,7 @@ export const PrivacySecurityScreen = ({ onBack }: PrivacySecurityScreenProps) =>
                     [{ text: 'OK' }]
                 );
             } else {
-                Alert.alert('Delete Failed', 'Could not delete your account. Please try again.');
+                Alert.alert('Delete Failed', 'Could not delete your account. Please try again. Error: ' + error.message);
             }
         }
     };
