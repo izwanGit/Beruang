@@ -204,7 +204,9 @@ class NotificationService {
             const triggerDate = new Date();
 
             if (reminder.relativeMinutes !== undefined) {
-                triggerDate.setMinutes(triggerDate.getMinutes() + reminder.relativeMinutes);
+                // FIXED: Use millisecond arithmetic to avoid integer truncation issues with setMinutes()
+                const offsetMs = reminder.relativeMinutes * 60 * 1000;
+                triggerDate.setTime(now.getTime() + offsetMs);
             } else {
                 triggerDate.setHours(reminder.hour, reminder.minute, 0, 0);
                 // If the time has passed today, schedule for tomorrow

@@ -269,7 +269,8 @@ export default function App() {
   // --- AppState Listener for Smart Notifications ---
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
-      if (nextAppState === 'background' && !hasScheduledNotification.current) {
+      // Only schedule if user is logged in (has profile)
+      if (nextAppState === 'background' && !hasScheduledNotification.current && userProfile) {
         hasScheduledNotification.current = true;
         const budgetData = userProfile && transactions.length > 0
           ? calculateMonthlyStats(transactions, userProfile)
@@ -1105,7 +1106,7 @@ export default function App() {
 
     let foundMessage = false;
     const batch = writeBatch(db);
-    const historyForServer = [];
+    const historyForServer: any[] = [];
 
     for (const docSnap of messagesSnap.docs) {
       const messageData = docSnap.data();

@@ -143,15 +143,25 @@ export const PrivacySecurityScreen = ({ onBack }: PrivacySecurityScreenProps) =>
             const listResult = await listAll(storageRef);
 
             // Delete all files
-            const filePromises = listResult.items.map((itemRef) => deleteObject(itemRef));
+            const filePromises = listResult.items.map(async (itemRef) => {
+                try {
+                    await deleteObject(itemRef);
+                } catch (e: any) {
+                    // Ignore "object not found" as it might be race condition or already gone
+                    if (e.code !== 'storage/object-not-found') throw e;
+                }
+            });
             await Promise.all(filePromises);
 
             // Recursively delete all subfolders
             const folderPromises = listResult.prefixes.map((folderRef) => deleteFolderContents(folderRef));
             await Promise.all(folderPromises);
-        } catch (error) {
-            console.error('Error deleting folder contents:', error);
-            // Don't throw, just log. We want text data deletion to proceed even if storage fails.
+        } catch (error: any) {
+            // Suppress "unknown" or "not found" errors on the folder listing itself
+            // This happens often if the folder is virtual or empty
+            if (error.code !== 'storage/object-not-found' && error.code !== 'storage/unknown') {
+                console.error('Error deleting folder contents:', error);
+            }
         }
     };
 
@@ -164,6 +174,23 @@ export const PrivacySecurityScreen = ({ onBack }: PrivacySecurityScreenProps) =>
                 Alert.alert('Error', 'You must be logged in to delete your account.');
                 setIsDeleting(false);
                 return;
+            }
+
+            // --- SECURITY CHECK: Force fresh login if > 5 mins ---
+            const lastSignInTime = user.metadata.lastSignInTime;
+            if (lastSignInTime) {
+                const loginDate = new Date(lastSignInTime);
+                const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+                if (loginDate < fiveMinutesAgo) {
+                    setIsDeleting(false);
+                    Alert.alert(
+                        'Recent Login Required',
+                        'For your security, you must have logged in within the last 5 minutes to delete your account.\n\nPlease log out and log back in, then try again.',
+                        [{ text: 'OK' }]
+                    );
+                    return;
+                }
             }
 
             const db = getFirestore();
