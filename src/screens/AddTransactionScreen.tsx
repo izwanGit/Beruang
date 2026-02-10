@@ -1187,7 +1187,6 @@ const addTransactionStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
-    alignItems: 'center',
     padding: 20,
   },
   modalContent: {
@@ -1331,6 +1330,7 @@ const addTransactionStyles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: 20,
     width: '85%',
+    alignSelf: 'center',
     overflow: 'hidden',
   },
   xpHeader: {
